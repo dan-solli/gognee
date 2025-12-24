@@ -8,6 +8,8 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -102,11 +104,29 @@ func (o *OpenAILLM) CompleteWithSchema(ctx context.Context, prompt string, schem
 		return err
 	}
 
-	if err := json.Unmarshal([]byte(response), schema); err != nil {
+	// Strip markdown code fences if present (LLM sometimes wraps JSON in ```json ... ```)
+	cleaned := stripMarkdownCodeFence(response)
+
+	if err := json.Unmarshal([]byte(cleaned), schema); err != nil {
 		return fmt.Errorf("failed to unmarshal LLM response: %w", err)
 	}
 
 	return nil
+}
+
+// stripMarkdownCodeFence removes markdown code fences from LLM responses.
+// Handles formats like: ```json\n...\n``` or ```\n...\n```
+func stripMarkdownCodeFence(s string) string {
+	s = strings.TrimSpace(s)
+
+	// Regex to match ```json or ``` at start, and ``` at end
+	// Pattern: optional ```json or ```, content, optional ```
+	re := regexp.MustCompile("(?s)^```(?:json)?\\s*\n?(.*?)\\s*```$")
+	if matches := re.FindStringSubmatch(s); len(matches) == 2 {
+		return strings.TrimSpace(matches[1])
+	}
+
+	return s
 }
 
 func (o *OpenAILLM) makeRequest(ctx context.Context, prompt string) (string, error) {

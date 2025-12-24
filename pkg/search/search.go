@@ -51,8 +51,8 @@ type Searcher interface {
 	Search(ctx context.Context, query string, opts SearchOptions) ([]SearchResult, error)
 }
 
-// applyDefaults sets default values for unspecified search options.
-func applyDefaults(opts *SearchOptions) {
+// ApplyDefaults sets default values for unspecified search options.
+func ApplyDefaults(opts *SearchOptions) {
 	if opts.TopK <= 0 {
 		opts.TopK = 10
 	}

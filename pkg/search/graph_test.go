@@ -353,6 +353,14 @@ func (t *testGraphStore) GetNeighbors(ctx context.Context, nodeID string, depth 
 	return result, nil
 }
 
+func (t *testGraphStore) NodeCount(ctx context.Context) (int64, error) {
+	return int64(len(t.nodes)), nil
+}
+
+func (t *testGraphStore) EdgeCount(ctx context.Context) (int64, error) {
+	return 0, nil
+}
+
 func (t *testGraphStore) Close() error {
 	return nil
 }

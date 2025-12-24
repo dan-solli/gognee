@@ -90,6 +90,14 @@ func (m *mockGraphStore) GetNeighbors(ctx context.Context, nodeID string, depth 
 	return nil, nil
 }
 
+func (m *mockGraphStore) NodeCount(ctx context.Context) (int64, error) {
+	return int64(len(m.nodes)), nil
+}
+
+func (m *mockGraphStore) EdgeCount(ctx context.Context) (int64, error) {
+	return 0, nil
+}
+
 func (m *mockGraphStore) Close() error {
 	return nil
 }

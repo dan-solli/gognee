@@ -30,7 +30,7 @@ func NewVectorSearcher(
 // Search performs vector similarity search.
 // It embeds the query, searches the vector store, and enriches results with full node data.
 func (v *VectorSearcher) Search(ctx context.Context, query string, opts SearchOptions) ([]SearchResult, error) {
-	applyDefaults(&opts)
+	ApplyDefaults(&opts)
 
 	// Embed the query
 	embedding, err := v.embeddings.EmbedOne(ctx, query)

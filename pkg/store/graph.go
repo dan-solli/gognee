@@ -68,6 +68,12 @@ type GraphStore interface {
 	// Returns unique nodes only (no duplicates).
 	GetNeighbors(ctx context.Context, nodeID string, depth int) ([]*Node, error)
 
+	// NodeCount returns the total number of nodes in the graph.
+	NodeCount(ctx context.Context) (int64, error)
+
+	// EdgeCount returns the total number of edges in the graph.
+	EdgeCount(ctx context.Context) (int64, error)
+
 	// Close releases any resources held by the store (e.g., database connections).
 	Close() error
 }

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -755,5 +756,147 @@ func TestDatabasePath(t *testing.T) {
 	// Verify file was created
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		t.Error("Database file was not created")
+	}
+}
+
+func TestNodeCount(t *testing.T) {
+	store, err := NewSQLiteGraphStore(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+
+	// Initial count should be 0
+	count, err := store.NodeCount(ctx)
+	if err != nil {
+		t.Fatalf("NodeCount failed: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("Initial NodeCount: got %d, want 0", count)
+	}
+
+	// Add nodes and verify count increases
+	for i := 0; i < 3; i++ {
+		node := &Node{
+			ID:        fmt.Sprintf("node-%d", i),
+			Name:      fmt.Sprintf("Node %d", i),
+			Type:      "Test",
+			CreatedAt: time.Now(),
+		}
+		if err := store.AddNode(ctx, node); err != nil {
+			t.Fatalf("AddNode failed: %v", err)
+		}
+
+		count, err := store.NodeCount(ctx)
+		if err != nil {
+			t.Fatalf("NodeCount failed: %v", err)
+		}
+		if count != int64(i+1) {
+			t.Fatalf("NodeCount after adding node %d: got %d, want %d", i, count, i+1)
+		}
+	}
+
+	// Upsert (replace) should not increase count
+	node := &Node{
+		ID:        "node-0",
+		Name:      "Updated Node 0",
+		Type:      "Test",
+		CreatedAt: time.Now(),
+	}
+	if err := store.AddNode(ctx, node); err != nil {
+		t.Fatalf("AddNode failed: %v", err)
+	}
+
+	count2, err2 := store.NodeCount(ctx)
+	if err2 != nil {
+		t.Fatalf("NodeCount failed: %v", err2)
+	}
+	if count2 != 3 {
+		t.Fatalf("NodeCount after upsert: got %d, want 3", count2)
+	}
+}
+
+func TestEdgeCount(t *testing.T) {
+	store, err := NewSQLiteGraphStore(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+
+	// Create nodes
+	node1 := &Node{
+		ID:        "node-1",
+		Name:      "Node 1",
+		Type:      "Test",
+		CreatedAt: time.Now(),
+	}
+	node2 := &Node{
+		ID:        "node-2",
+		Name:      "Node 2",
+		Type:      "Test",
+		CreatedAt: time.Now(),
+	}
+	if err := store.AddNode(ctx, node1); err != nil {
+		t.Fatalf("AddNode failed: %v", err)
+	}
+	if err := store.AddNode(ctx, node2); err != nil {
+		t.Fatalf("AddNode failed: %v", err)
+	}
+
+	// Initial count should be 0
+	count, err := store.EdgeCount(ctx)
+	if err != nil {
+		t.Fatalf("EdgeCount failed: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("Initial EdgeCount: got %d, want 0", count)
+	}
+
+	// Add edges and verify count increases
+	for i := 0; i < 3; i++ {
+		edge := &Edge{
+			ID:        fmt.Sprintf("edge-%d", i),
+			SourceID:  "node-1",
+			TargetID:  "node-2",
+			Relation:  "TEST",
+			Weight:    1.0,
+			CreatedAt: time.Now(),
+		}
+		if err := store.AddEdge(ctx, edge); err != nil {
+			t.Fatalf("AddEdge failed: %v", err)
+		}
+
+		count, err := store.EdgeCount(ctx)
+		if err != nil {
+			t.Fatalf("EdgeCount failed: %v", err)
+		}
+		if count != int64(i+1) {
+			t.Fatalf("EdgeCount after adding edge %d: got %d, want %d", i, count, i+1)
+		}
+	}
+
+	// Upsert should not increase count
+	edge := &Edge{
+		ID:        "edge-0",
+		SourceID:  "node-1",
+		TargetID:  "node-2",
+		Relation:  "UPDATED",
+		Weight:    2.0,
+		CreatedAt: time.Now(),
+	}
+	if err := store.AddEdge(ctx, edge); err != nil {
+		t.Fatalf("AddEdge failed: %v", err)
+	}
+
+	count2, err2 := store.EdgeCount(ctx)
+	if err2 != nil {
+		t.Fatalf("EdgeCount failed: %v", err2)
+	}
+	if count2 != 3 {
+		t.Fatalf("EdgeCount after upsert: got %d, want 3", count2)
 	}
 }

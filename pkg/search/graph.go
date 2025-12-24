@@ -26,7 +26,7 @@ func NewGraphSearcher(graphStore store.GraphStore) *GraphSearcher {
 // Search performs graph traversal from seed nodes.
 // The query parameter is ignored (graph search uses opts.SeedNodeIDs).
 func (g *GraphSearcher) Search(ctx context.Context, query string, opts SearchOptions) ([]SearchResult, error) {
-	applyDefaults(&opts)
+	ApplyDefaults(&opts)
 
 	if len(opts.SeedNodeIDs) == 0 {
 		return nil, ErrNoSeeds

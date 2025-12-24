@@ -33,7 +33,7 @@ func NewHybridSearcher(
 // Score formula: combined_score = vector_score + graph_score
 // where vector_score = 0 if not found by vector, graph_score = 0 if not found by graph.
 func (h *HybridSearcher) Search(ctx context.Context, query string, opts SearchOptions) ([]SearchResult, error) {
-	applyDefaults(&opts)
+	ApplyDefaults(&opts)
 
 	// Step 1: Embed the query
 	embedding, err := h.embeddings.EmbedOne(ctx, query)

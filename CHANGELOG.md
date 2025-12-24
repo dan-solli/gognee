@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-12-24
+
+### Added
+- **Unified API** (`pkg/gognee`)
+  - `Add(ctx, text, opts)` method to buffer documents for processing
+  - `Cognify(ctx, opts)` method implementing full extraction pipeline:
+    - Text chunking → entity extraction → relation extraction → graph storage → vector indexing
+    - Returns `CognifyResult` with processing statistics and error list
+    - Best-effort semantics: continues processing on chunk failures, always clears buffer
+    - Deterministic node ID generation using SHA-256 hash of normalized (name, type)
+  - `Search(ctx, query, opts)` method delegating to HybridSearcher
+  - `Close()` method for resource cleanup
+  - `Stats()` method returning node count, edge count, buffered documents, last cognify time
+  - `BufferedCount()` method for inspection
+  - `Config` extension with `DBPath` field for persistent SQLite storage
+- **GraphStore Interface Extension**
+  - `NodeCount(ctx)` method returning total node count
+  - `EdgeCount(ctx)` method returning total edge count
+- **SQLiteGraphStore Implementation**
+  - `NodeCount()` and `EdgeCount()` methods using efficient SQL COUNT queries
+- **Type Re-exports** (`pkg/gognee/types.go`)
+  - Re-exported `SearchResult`, `SearchOptions`, `SearchType` for convenience
+  - Re-exported `Node`, `Edge` from store package
+  - Constants: `SearchTypeVector`, `SearchTypeGraph`, `SearchTypeHybrid`
+- **Integration Tests** (`pkg/gognee/gognee_integration_test.go`)
+  - Build-tag gated (`//go:build integration`) integration tests
+  - Full pipeline test with real OpenAI API
+  - Upsert semantics verification
+  - All search type options test
+  - Tests skipped if `OPENAI_API_KEY` not available
+- **Documentation**
+  - Comprehensive README.md with quick start, API reference, and examples
+  - Usage examples for all core methods
+  - Integration test documentation
+  - MVP limitations and future enhancements documented
+- **Unit Tests**
+  - 8 new unit tests for Gognee API (all offline, mocked dependencies)
+  - Tests for Config defaults, Add buffering, Cognify empty buffer, Close, Stats
+  - Tests for deterministic node ID generation
+  - 2 new SQLite store tests for NodeCount and EdgeCount methods
+  - Test mocks updated for new GraphStore interface methods
+
+### Changed
+- **Search Module**: Exported `ApplyDefaults` function for use by top-level API
+- **GraphStore Interface**: Added `NodeCount` and `EdgeCount` methods to interface
+- **Test Mocks**: Updated all test mocks (testGraphStore, mockGraphStore) to implement new interface methods
+- **Backward Compatibility**: Maintained all existing accessor methods (GetChunker, GetEmbeddings, GetLLM)
+
+### Fixed
+- **LLM Response Parsing**: Added `stripMarkdownCodeFence()` to handle LLM responses wrapped in Markdown code fences (```json ... ```). This fixes integration test failures where OpenAI returned JSON inside backticks.
+
+### Technical Details
+- **Deterministic IDs**: Node IDs are derived from SHA-256(lowercase(trimmed_name) + "|" + type)
+  - Enables upsert semantics: same entity across documents resolves to same node
+  - Prevents duplicate nodes for identical entities mentioned multiple times
+- **Buffer Semantics**: Add() only buffers; Cognify() processes and always clears buffer
+  - Caller controls when expensive LLM operations occur
+  - Allows batch processing of multiple documents before cognification
+- **Error Handling**: CognifyResult includes Errors slice for inspection
+  - Catastrophic errors (DB connection lost) return error
+  - Per-chunk failures collected and returned; buffer still cleared
+- **Storage**: DBPath ":memory:" or empty uses in-memory SQLite; file path uses persistent storage
+
 ## [0.5.0] - 2025-12-24
 
 ### Added

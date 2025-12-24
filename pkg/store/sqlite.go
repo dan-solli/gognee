@@ -390,6 +390,26 @@ func (s *SQLiteGraphStore) GetNeighbors(ctx context.Context, nodeID string, dept
 	return neighbors, nil
 }
 
+// NodeCount returns the total number of nodes in the graph.
+func (s *SQLiteGraphStore) NodeCount(ctx context.Context) (int64, error) {
+	var count int64
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes").Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count nodes: %w", err)
+	}
+	return count, nil
+}
+
+// EdgeCount returns the total number of edges in the graph.
+func (s *SQLiteGraphStore) EdgeCount(ctx context.Context) (int64, error) {
+	var count int64
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM edges").Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count edges: %w", err)
+	}
+	return count, nil
+}
+
 // Close releases database resources.
 func (s *SQLiteGraphStore) Close() error {
 	return s.db.Close()

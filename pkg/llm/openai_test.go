@@ -374,3 +374,96 @@ func TestOpenAILLMCompleteWithSchema_InvalidJSON(t *testing.T) {
 		t.Errorf("Expected unmarshal error, got: %v", err)
 	}
 }
+
+func TestStripMarkdownCodeFence(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "plain JSON",
+			input:    `[{"name": "test"}]`,
+			expected: `[{"name": "test"}]`,
+		},
+		{
+			name:     "with json fence",
+			input:    "```json\n[{\"name\": \"test\"}]\n```",
+			expected: `[{"name": "test"}]`,
+		},
+		{
+			name:     "with plain fence",
+			input:    "```\n[{\"name\": \"test\"}]\n```",
+			expected: `[{"name": "test"}]`,
+		},
+		{
+			name:     "with surrounding whitespace",
+			input:    "  ```json\n[{\"name\": \"test\"}]\n```  ",
+			expected: `[{"name": "test"}]`,
+		},
+		{
+			name:     "multiline JSON in fence",
+			input:    "```json\n[\n  {\"name\": \"test\"},\n  {\"name\": \"test2\"}\n]\n```",
+			expected: "[\n  {\"name\": \"test\"},\n  {\"name\": \"test2\"}\n]",
+		},
+		{
+			name:     "no closing fence - return as is",
+			input:    "```json\n[{\"name\": \"test\"}]",
+			expected: "```json\n[{\"name\": \"test\"}]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := stripMarkdownCodeFence(tt.input)
+			if result != tt.expected {
+				t.Errorf("stripMarkdownCodeFence(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCompleteWithSchema_StripsMarkdownFence(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Return JSON wrapped in markdown code fence (like LLM sometimes does)
+		resp := openAIResponse{
+			Choices: []struct {
+				Message message `json:"message"`
+			}{
+				{
+					Message: message{
+						Role:    "assistant",
+						Content: "```json\n[{\"name\": \"React\", \"type\": \"Technology\"}]\n```",
+					},
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := NewOpenAILLM("test-key")
+	client.BaseURL = server.URL
+
+	type Entity struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
+	}
+
+	var entities []Entity
+	err := client.CompleteWithSchema(context.Background(), "test prompt", &entities)
+	if err != nil {
+		t.Fatalf("CompleteWithSchema failed: %v", err)
+	}
+
+	if len(entities) != 1 {
+		t.Fatalf("Expected 1 entity, got %d", len(entities))
+	}
+	if entities[0].Name != "React" {
+		t.Errorf("Expected name 'React', got %q", entities[0].Name)
+	}
+	if entities[0].Type != "Technology" {
+		t.Errorf("Expected type 'Technology', got %q", entities[0].Type)
+	}
+}
