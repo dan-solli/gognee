@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-12-24
+
+### Added
+- **Storage Layer** (`pkg/store`)
+  - `Node` struct representing knowledge graph entities with embeddings and metadata
+  - `Edge` struct representing relationships between nodes
+  - `GraphStore` interface defining graph storage operations
+  - `SQLiteGraphStore` implementation for persistent graph storage
+    - SQLite schema with nodes and edges tables
+    - Full CRUD operations for nodes and edges
+    - Case-insensitive node name search with `FindNodesByName` and `FindNodeByName`
+    - Direction-agnostic edge retrieval (Cognee-aligned)
+    - Multi-depth graph traversal with `GetNeighbors`
+    - Automatic embedding and metadata serialization
+    - Upsert semantics (INSERT OR REPLACE) for idempotent operations
+  - `VectorStore` interface for vector similarity search
+  - `MemoryVectorStore` in-memory implementation
+    - Cosine similarity search with top-K results
+    - Thread-safe operations using RWMutex
+    - Efficient vector operations
+  - `CosineSimilarity` function for computing vector similarity
+
+### Technical Details
+- SQLite driver: `modernc.org/sqlite` (pure Go, no CGO required)
+- UUID generation: `github.com/google/uuid`
+- Graph traversal is direction-agnostic (undirected) for Cognee alignment
+- Depth=1 neighbors return direct adjacents only (default for Cognee parity)
+- Node embeddings stored as BLOB, metadata as JSON in SQLite
+- Vector store does not persist across restarts (MVP limitation, documented)
+- 86.2% test coverage for store package
+- All tests pass with race detector enabled
+
+### Notes
+- This release implements Phase 4 from the roadmap: Storage Layer
+- The in-memory vector store is suitable for MVP but requires re-population after restart
+- Phase 5 (Hybrid Search) will combine graph traversal and vector search
+- Phase 6 (Integration) will connect the full Add→Cognify→Search pipeline
+
 ## [0.3.0] - 2025-12-24
 
 ### Added

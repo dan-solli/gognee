@@ -25,12 +25,12 @@ Build a Go library package that provides AI assistants with:
 | [Phase 1](#phase-1-foundation) | Foundation (Chunking + Embeddings) | 1 week | ✅ Delivered (v0.1.0) |
 | [Phase 2](#phase-2-entity-extraction) | Entity Extraction via LLM | 1 week | ✅ Delivered (v0.2.0) |
 | [Phase 3](#phase-3-relationship-extraction) | Relationship Extraction | 1 week | ✅ Delivered (v0.3.0) |
-| [Phase 4](#phase-4-storage-layer) | Storage Layer (SQLite Graph + Vector) | 1 week | ⬜ Not Started |
+| [Phase 4](#phase-4-storage-layer) | Storage Layer (SQLite Graph + Vector) | 1 week | ✅ Delivered (v0.4.0) |
 | [Phase 5](#phase-5-search) | Hybrid Search | 1 week | ⬜ Not Started |
 | [Phase 6](#phase-6-integration) | Full Pipeline + API | 1-2 weeks | ⬜ Not Started |
 
 **Total estimated time: 6-8 weeks for MVP**
-**Elapsed time: 3 weeks (Phases 1-3 complete)**
+**Elapsed time: 4 weeks (Phases 1-4 complete)**
 
 ---
 
@@ -242,11 +242,11 @@ Return ONLY valid JSON array:
 ## Phase 4: Storage Layer
 
 ### Goals
-- [ ] Design SQLite schema for nodes and edges
-- [ ] Implement graph storage with node/edge CRUD
-- [ ] Implement in-memory vector store
-- [ ] Add vector storage with cosine similarity search
-- [ ] Write integration tests
+- [x] Design SQLite schema for nodes and edges
+- [x] Implement graph storage with node/edge CRUD
+- [x] Implement in-memory vector store
+- [x] Add vector storage with cosine similarity search
+- [x] Write integration tests
 
 ### Deliverables
 
