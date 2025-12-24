@@ -80,6 +80,11 @@ type Chunker struct {
 func (c *Chunker) Chunk(text string) []Chunk
 ```
 
+**Implementation notes:**
+- **Chunk IDs:** Generate deterministically using a content hash (e.g., SHA-256 of text) plus index, or use UUIDs if deduplication is not required.
+- **Token counting:** Use a simple word-based heuristic (split on whitespace) or adopt a tiktoken port like `github.com/pkoukk/tiktoken-go`. Document the chosen method so callers understand sizing behavior.
+```
+
 #### 1.3 Embedding Client
 ```go
 // pkg/embeddings/client.go
@@ -94,6 +99,10 @@ type OpenAIClient struct {
     Model  string // "text-embedding-3-small"
 }
 ```
+
+### Testing Strategy
+- **Unit tests** must not require network access or an `OPENAI_API_KEY`. Use interface mocks or an in-process fake HTTP server.
+- **Integration tests** (optional) that hit the real OpenAI API should be gated behind a build tag (e.g., `//go:build integration`) or environment variable so they don't run by default.
 
 ### Learning Outcomes
 - Go project structure and modules
@@ -143,6 +152,8 @@ type EntityExtractor struct {
 
 func (e *EntityExtractor) Extract(ctx context.Context, text string) ([]Entity, error)
 ```
+
+**Error handling:** LLM calls should use exponential backoff with a maximum of 3 retries. If extraction fails after retries, return a clear error (do not silently skip). Callers can choose to proceed without entities if appropriate.
 
 #### 2.3 Entity Extraction Prompt
 ```
@@ -321,6 +332,9 @@ type MemoryVectorStore struct {
 }
 
 func CosineSimilarity(a, b []float32) float64
+```
+
+**MVP limitation:** The in-memory vector store does not persist embeddings across restarts. Full "persistent memory" requires either re-running `Cognify()` after restart or implementing a SQLite-backed vector store (see Future Enhancements).
 ```
 
 ### Learning Outcomes
@@ -522,8 +536,11 @@ func main() {
 |------------|--------|
 | **External vector DB** | Adds deployment complexity. In-memory works for personal use. |
 | **Neo4j/other graph DB** | SQLite with edges table is sufficient for our scale. |
-| **CGO SQLite** | Breaks cross-compilation. Pure Go is worth the tradeoff. |
 | **LangChain** | Overengineered for our needs. Direct API calls are clearer. |
+
+### CGO Policy
+
+**CGO is allowed** in this project. A pure-Go SQLite driver (e.g., `modernc.org/sqlite`) is recommended for easier cross-compilation, but CGO-based drivers (e.g., `mattn/go-sqlite3`) are acceptable if needed for performance or compatibility.
 
 ---
 
