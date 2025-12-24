@@ -29,10 +29,10 @@ func TestNewAppliesDefaults(t *testing.T) {
 
 func TestNewRespectsEmbeddingConfig(t *testing.T) {
 	g, err := New(Config{
-		OpenAIKey:       "k-test",
-		EmbeddingModel:  "m-test",
-		ChunkSize:       123,
-		ChunkOverlap:    7,
+		OpenAIKey:      "k-test",
+		EmbeddingModel: "m-test",
+		ChunkSize:      123,
+		ChunkOverlap:   7,
 	})
 	if err != nil {
 		t.Fatalf("New returned error: %v", err)
