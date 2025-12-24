@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/dan-solli/gognee/pkg/embeddings"
+	"github.com/dan-solli/gognee/pkg/llm"
 )
 
 func TestNewAppliesDefaults(t *testing.T) {
@@ -25,12 +26,17 @@ func TestNewAppliesDefaults(t *testing.T) {
 	if g.GetEmbeddings() == nil {
 		t.Fatalf("GetEmbeddings returned nil")
 	}
+
+	if g.GetLLM() == nil {
+		t.Fatalf("GetLLM returned nil")
+	}
 }
 
 func TestNewRespectsEmbeddingConfig(t *testing.T) {
 	g, err := New(Config{
 		OpenAIKey:      "k-test",
 		EmbeddingModel: "m-test",
+		LLMModel:       "llm-test",
 		ChunkSize:      123,
 		ChunkOverlap:   7,
 	})
@@ -54,5 +60,16 @@ func TestNewRespectsEmbeddingConfig(t *testing.T) {
 	}
 	if client.Model != "m-test" {
 		t.Fatalf("Model: got %q, want %q", client.Model, "m-test")
+	}
+
+	llmClient, ok := g.GetLLM().(*llm.OpenAILLM)
+	if !ok {
+		t.Fatalf("GetLLM type: got %T, want *llm.OpenAILLM", g.GetLLM())
+	}
+	if llmClient.APIKey != "k-test" {
+		t.Fatalf("LLM APIKey: got %q, want %q", llmClient.APIKey, "k-test")
+	}
+	if llmClient.Model != "llm-test" {
+		t.Fatalf("LLM Model: got %q, want %q", llmClient.Model, "llm-test")
 	}
 }

@@ -1,16 +1,20 @@
 # gognee - A Go Knowledge Graph Memory System
 
-> **gognee** is a teaching project to build a knowledge graph memory system in Go, inspired by [Cognee](https://github.com/topoteretes/cognee). The goal is to create an embeddable, single-binary solution for AI assistants to have persistent memory.
+> **gognee** is an importable Go library that mimics [Cognee](https://github.com/topoteretes/cognee), providing knowledge graph memory for AI assistants. It will be used as the foundation for **Glowbabe** (a Go implementation of Flowbaby).
 
 ## 🎯 Project Vision
 
-Build a Go library that provides AI assistants with:
+Build a Go library package that provides AI assistants with:
 - **Persistent memory** across conversations
 - **Knowledge graph** for understanding relationships between concepts
 - **Vector search** for semantic retrieval
 - **Hybrid search** combining graph traversal and vector similarity
 
-No Python. No external dependencies beyond SQLite. Just a single Go binary.
+**Design Goals:**
+- Pure library (no CLI) - importable via `import "github.com/dan-solli/gognee/pkg/gognee"`
+- Mimic Cognee's API design as closely as reasonable
+- No Python. No external dependencies beyond SQLite
+- Embeddable in other Go projects (e.g., Glowbabe)
 
 ---
 
@@ -42,9 +46,6 @@ No Python. No external dependencies beyond SQLite. Just a single Go binary.
 #### 1.1 Project Structure
 ```
 gognee/
-├── cmd/
-│   └── gognee/
-│       └── main.go           # CLI entry point (later)
 ├── pkg/
 │   ├── chunker/
 │   │   ├── chunker.go        # Text chunking logic
@@ -59,6 +60,8 @@ gognee/
 ├── go.sum
 └── README.md
 ```
+
+**Note:** No `cmd/` directory - gognee is a library package, not an executable.
 
 #### 1.2 Text Chunker
 Split text into chunks of ~500 tokens with sentence boundary awareness.
@@ -414,12 +417,12 @@ func (h *HybridSearcher) Search(ctx context.Context, query string, opts SearchOp
 ## Phase 6: Integration
 
 ### Goals
-- [ ] Create unified `Gognee` API
+- [ ] Create unified `Gognee` API (mirroring Cognee)
 - [ ] Implement `Add()`, `Cognify()`, `Search()` methods
 - [ ] Add configuration options
-- [ ] Create CLI tool
 - [ ] Write end-to-end tests
-- [ ] Add documentation
+- [ ] Add documentation and usage examples
+- [ ] Ensure API compatibility for Glowbabe integration
 
 ### Deliverables
 
@@ -458,22 +461,7 @@ func (g *Gognee) Close() error
 func (g *Gognee) Stats() Stats
 ```
 
-#### 6.2 CLI Tool
-```bash
-# Add text to memory
-gognee add "The user prefers dark mode and uses vim keybindings."
-
-# Process and build knowledge graph
-gognee cognify
-
-# Search
-gognee search "What are the user's preferences?"
-
-# Interactive mode
-gognee repl
-```
-
-#### 6.3 Example Usage
+#### 6.2 Example Usage (Library Import)
 ```go
 package main
 
@@ -513,10 +501,10 @@ func main() {
 ```
 
 ### Learning Outcomes
-- API design
+- Library API design (mirroring Cognee)
 - Configuration management
-- CLI development with Cobra
 - End-to-end testing
+- Package structure for importable libraries
 
 ---
 

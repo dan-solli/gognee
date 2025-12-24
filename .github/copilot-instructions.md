@@ -1,22 +1,23 @@
 # Copilot instructions for `gognee`
 
 ## Big picture
-- `gognee` is a teaching project to build an **embeddable Go knowledge-graph memory system** (inspired by Cognee) with **persistent memory**, **knowledge graph relations**, and **vector + hybrid search**.
-- Primary constraints from [ROADMAP.md](ROADMAP.md): **single Go binary**, **no Python**, **no external deps beyond SQLite**.
+- `gognee` is an **importable Go library package** that mimics [Cognee](https://github.com/topoteretes/cognee) (Python) with **persistent memory**, **knowledge graph relations**, and **vector + hybrid search**.
+- **Not a CLI tool** - it's a library designed to be imported and used by other Go projects (specifically **Glowbabe**, which will mimic Flowbaby using gognee instead of cognee).
+- Primary constraints from [ROADMAP.md](../ROADMAP.md): **library-only**, **no CLI**, **single Go binary**, **no Python**, **no external deps beyond SQLite**.
 
 ## Source of truth
 - Treat [ROADMAP.md](ROADMAP.md) as the authoritative spec for architecture, phases, and key APIs.
 - Agent process conventions live in `.github/skills/` (notably `memory-contract` and `testing-patterns`).
 
 ## Intended project layout (follow the roadmap)
-- CLI entrypoint (later): `cmd/gognee/main.go`
+- **No CLI**: gognee is a library package only (no `cmd/` directory needed)
 - Library packages under `pkg/` (examples in the roadmap):
   - `pkg/chunker` (token-ish chunking + overlap)
   - `pkg/embeddings` (interface + OpenAI implementation)
   - `pkg/llm` (interface + OpenAI implementation)
   - `pkg/extraction` (entities + relations)
   - `pkg/store` (SQLite graph + vector storage)
-  - `pkg/gognee` (high-level library façade)
+  - `pkg/gognee` (high-level library façade - main entry point for importers)
 
 ## Project-specific patterns to follow
 - Prefer **interfaces** at boundaries (`EmbeddingClient`, `LLMClient`, `GraphStore`) as sketched in [ROADMAP.md](ROADMAP.md), so implementations can swap without rewriting callers.
