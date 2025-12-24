@@ -26,11 +26,11 @@ Build a Go library package that provides AI assistants with:
 | [Phase 2](#phase-2-entity-extraction) | Entity Extraction via LLM | 1 week | ✅ Delivered (v0.2.0) |
 | [Phase 3](#phase-3-relationship-extraction) | Relationship Extraction | 1 week | ✅ Delivered (v0.3.0) |
 | [Phase 4](#phase-4-storage-layer) | Storage Layer (SQLite Graph + Vector) | 1 week | ✅ Delivered (v0.4.0) |
-| [Phase 5](#phase-5-search) | Hybrid Search | 1 week | ⬜ Not Started |
+| [Phase 5](#phase-5-search) | Hybrid Search | 1 week | ✅ Delivered (v0.5.0) |
 | [Phase 6](#phase-6-integration) | Full Pipeline + API | 1-2 weeks | ⬜ Not Started |
 
 **Total estimated time: 6-8 weeks for MVP**
-**Elapsed time: 4 weeks (Phases 1-4 complete)**
+**Elapsed time: 5 weeks (Phases 1-5 complete)**
 
 ---
 
@@ -352,10 +352,10 @@ func CosineSimilarity(a, b []float32) float64
 ## Phase 5: Search
 
 ### Goals
-- [ ] Implement vector-only search
-- [ ] Implement graph traversal search
-- [ ] Implement hybrid search combining both
-- [ ] Add result ranking and scoring
+- [x] Implement vector-only search
+- [x] Implement graph traversal search
+- [x] Implement hybrid search combining both
+- [x] Add result ranking and scoring
 
 ### Deliverables
 

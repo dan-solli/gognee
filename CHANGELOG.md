@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-12-24
+
+### Added
+- **Search Layer** (`pkg/search`)
+  - `SearchType` enum with `vector`, `graph`, and `hybrid` search modes
+  - `SearchResult` struct with NodeID, Node, Score, Source, and GraphDepth fields
+  - `SearchOptions` struct with Type, TopK, GraphDepth, and SeedNodeIDs configuration
+  - `Searcher` interface for unified search API across all search types
+  - `VectorSearcher` implementation
+    - Text-to-embedding-to-vector-search pipeline
+    - Enriches results with full node data from GraphStore
+    - Gracefully handles stale vector index entries (missing nodes)
+    - Source tagged as "vector" for direct similarity hits
+  - `GraphSearcher` implementation
+    - BFS traversal from seed nodes with configurable depth
+    - Score decay formula: `1.0 / (1 + depth)` where seeds score 1.0
+    - Deduplicates nodes discovered via multiple paths (keeps shortest)
+    - Uses `SeedNodeIDs` from SearchOptions for unified interface
+    - Returns error if no seeds provided
+  - `HybridSearcher` implementation
+    - Combines vector similarity and graph traversal
+    - Explicit score formula: `combined_score = vector_score + graph_score`
+    - Fetches `max(TopK * 2, 20)` initial vector results for expansion base
+    - Expands via graph neighbors from each vector hit
+    - Three-way Source tagging: "vector" (vector only), "graph" (graph only), "hybrid" (both)
+    - Nodes found by both paths receive score boost
+    - Final results sorted by combined score and limited to TopK
+
+### Technical Details
+- 85.0% test coverage for search package
+- All searchers implement the `Searcher` interface
+- Default TopK = 10, default GraphDepth = 1 (Cognee-aligned)
+- Graph traversal uses BFS with visited tracking for accurate depth
+- Hybrid search prioritizes nodes with high combined scores (both semantic and structural relevance)
+- Offline-first unit tests with mocked dependencies (no network calls)
+- All tests pass
+
+### Notes
+- This release implements Phase 5 from the roadmap: Hybrid Search
+- Three search modes enable flexible querying strategies: pure similarity, pure structure, or combined
+- Phase 6 (Integration) will wire searchers into `Gognee.Search()` API and complete the Add→Cognify→Search pipeline
+
 ## [0.4.0] - 2025-12-24
 
 ### Added
