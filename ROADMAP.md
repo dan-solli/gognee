@@ -22,14 +22,15 @@ Build a Go library package that provides AI assistants with:
 
 | Phase | Focus | Duration | Status |
 |-------|-------|----------|--------|
-| [Phase 1](#phase-1-foundation) | Foundation (Chunking + Embeddings) | 1 week | ⬜ Not Started |
-| [Phase 2](#phase-2-entity-extraction) | Entity Extraction via LLM | 1 week | ⬜ Not Started |
-| [Phase 3](#phase-3-relationship-extraction) | Relationship Extraction | 1 week | ⬜ Not Started |
+| [Phase 1](#phase-1-foundation) | Foundation (Chunking + Embeddings) | 1 week | ✅ Delivered (v0.1.0) |
+| [Phase 2](#phase-2-entity-extraction) | Entity Extraction via LLM | 1 week | ✅ Delivered (v0.2.0) |
+| [Phase 3](#phase-3-relationship-extraction) | Relationship Extraction | 1 week | ✅ Delivered (v0.3.0) |
 | [Phase 4](#phase-4-storage-layer) | Storage Layer (SQLite Graph + Vector) | 1 week | ⬜ Not Started |
 | [Phase 5](#phase-5-search) | Hybrid Search | 1 week | ⬜ Not Started |
 | [Phase 6](#phase-6-integration) | Full Pipeline + API | 1-2 weeks | ⬜ Not Started |
 
 **Total estimated time: 6-8 weeks for MVP**
+**Elapsed time: 3 weeks (Phases 1-3 complete)**
 
 ---
 
@@ -187,10 +188,10 @@ Return ONLY valid JSON array:
 ## Phase 3: Relationship Extraction
 
 ### Goals
-- [ ] Design relationship extraction prompt
-- [ ] Implement triplet extraction (subject, relation, object)
-- [ ] Link relationships to extracted entities
-- [ ] Handle cases where entities aren't found
+- [x] Design relationship extraction prompt
+- [x] Implement triplet extraction (subject, relation, object)
+- [x] Link relationships to extracted entities
+- [x] Handle cases where entities aren't found
 
 ### Deliverables
 

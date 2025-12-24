@@ -6,11 +6,12 @@
 
 **Epic Alignment:** ROADMAP Phase 2 — Entity Extraction via LLM
 
-**Status:** In Progress
+**Status:** Complete
 
 **Changelog**
 - 2025-12-24: Created plan for Phase 2 implementation.
 - 2025-12-24: Implementation started.
+- 2025-12-24: Implementation completed; tests passing.
 
 ---
 

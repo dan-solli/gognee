@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-12-24
+
+### Added
+- **Relationship Extraction** (`pkg/extraction`)
+  - `Triplet` struct with Subject, Relation, and Object fields
+  - `RelationExtractor` for extracting relationships between entities using LLM
+  - `NewRelationExtractor` constructor following Phase 2 patterns
+  - Relationship extraction prompt requesting JSON-only output
+  - **Strict linking mode**: triplets must reference known entities or extraction fails
+  - Case-insensitive entity name matching for linking
+  - Whitespace trimming for all triplet fields
+  - Deduplication with first-occurrence-wins ordering (case-insensitive comparison)
+  - Validation of required fields (subject, relation, object all non-empty)
+- **Integration tests**
+  - `relations_integration_test.go` with `//go:build integration` tag
+  - Tests full entity→relationship extraction pipeline against real OpenAI API
+  - Validates triplets link to extracted entities
+
+### Technical Details
+- All new unit tests are offline-first using fake `LLMClient`
+- 100% test coverage for `pkg/extraction` package
+- No additional retry logic added (uses `LLMClient`'s built-in retry)
+- Relation names are not normalized or restricted to an allowlist in Phase 3
+- Prompt encourages consistent relation names (USES, DEPENDS_ON, etc.) but accepts any non-empty value
+
+### Notes
+- This release implements Phase 3 from the roadmap: Relationship Extraction
+- Strict mode ensures linking correctness—no silent dropping of invalid triplets
+- Run integration tests with: `go test -tags=integration ./...`
+- Phase 4 (Storage Layer) will persist the extracted graph structure
+
 ## [0.2.0] - 2025-12-24
 
 ### Added

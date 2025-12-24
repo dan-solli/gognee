@@ -10,11 +10,15 @@ import (
 
 // fakeLLMClient is a test implementation of llm.LLMClient
 type fakeLLMClient struct {
-	response string
-	err      error
+	response      string
+	err           error
+	capturePrompt func(string) // optional callback to capture the prompt
 }
 
 func (f *fakeLLMClient) Complete(ctx context.Context, prompt string) (string, error) {
+	if f.capturePrompt != nil {
+		f.capturePrompt(prompt)
+	}
 	if f.err != nil {
 		return "", f.err
 	}
@@ -22,6 +26,9 @@ func (f *fakeLLMClient) Complete(ctx context.Context, prompt string) (string, er
 }
 
 func (f *fakeLLMClient) CompleteWithSchema(ctx context.Context, prompt string, schema any) error {
+	if f.capturePrompt != nil {
+		f.capturePrompt(prompt)
+	}
 	if f.err != nil {
 		return f.err
 	}
