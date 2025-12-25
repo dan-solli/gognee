@@ -171,6 +171,119 @@ func TestNewRespectsConfig(t *testing.T) {
 	}
 }
 
+func TestNew_DecayDefaults(t *testing.T) {
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Verify defaults are applied
+	if g.config.DecayEnabled {
+		t.Error("DecayEnabled should default to false")
+	}
+	if g.config.DecayHalfLifeDays != 30 {
+		t.Errorf("DecayHalfLifeDays: got %d, want 30", g.config.DecayHalfLifeDays)
+	}
+	if g.config.DecayBasis != "access" {
+		t.Errorf("DecayBasis: got %q, want 'access'", g.config.DecayBasis)
+	}
+}
+
+func TestNew_DecayValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  Config
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid_decay_config",
+			config: Config{
+				DBPath:            ":memory:",
+				DecayEnabled:      true,
+				DecayHalfLifeDays: 15,
+				DecayBasis:        "creation",
+			},
+			wantErr: false,
+		},
+		{
+			name: "decay_default_half_life_when_zero",
+			config: Config{
+				DBPath:            ":memory:",
+				DecayEnabled:      true,
+				DecayHalfLifeDays: 0, // Should get default of 30
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid_half_life_negative",
+			config: Config{
+				DBPath:            ":memory:",
+				DecayEnabled:      true,
+				DecayHalfLifeDays: -5,
+			},
+			wantErr: true,
+			errMsg:  "DecayHalfLifeDays must be positive",
+		},
+		{
+			name: "invalid_decay_basis",
+			config: Config{
+				DBPath:            ":memory:",
+				DecayEnabled:      true,
+				DecayHalfLifeDays: 30,
+				DecayBasis:        "invalid",
+			},
+			wantErr: true,
+			errMsg:  "DecayBasis must be 'access' or 'creation'",
+		},
+		{
+			name: "decay_disabled_ignores_invalid_config",
+			config: Config{
+				DBPath:            ":memory:",
+				DecayEnabled:      false,
+				DecayHalfLifeDays: -5,
+				DecayBasis:        "invalid",
+			},
+			wantErr: false, // Should not validate when decay is disabled
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g, err := New(tt.config)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("Expected error, got nil")
+				}
+				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
+					t.Errorf("Error message: got %q, want to contain %q", err.Error(), tt.errMsg)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Expected no error, got %v", err)
+				}
+				if g != nil {
+					g.Close()
+				}
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func TestAddBuffersText(t *testing.T) {
 	g, err := New(Config{DBPath: ":memory:"})
 	if err != nil {

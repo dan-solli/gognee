@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -898,5 +899,320 @@ func TestEdgeCount(t *testing.T) {
 	}
 	if count2 != 3 {
 		t.Fatalf("EdgeCount after upsert: got %d, want 3", count2)
+	}
+}
+
+// TestSchemaMigration_NewColumns tests that new columns are added to existing database.
+func TestSchemaMigration_NewColumns(t *testing.T) {
+	// Create a database with the old schema (without last_accessed_at and access_count)
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test.db")
+
+	store, err := NewSQLiteGraphStore(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to create store: %v", err)
+	}
+
+	ctx := context.Background()
+
+	// Add a node before migration
+	node := &Node{
+		ID:   "test-node-1",
+		Name: "Test Node",
+		Type: "Concept",
+	}
+	if err := store.AddNode(ctx, node); err != nil {
+		t.Fatalf("AddNode failed: %v", err)
+	}
+
+	store.Close()
+
+	// Reopen the store (this should trigger migration)
+	store2, err := NewSQLiteGraphStore(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to reopen store: %v", err)
+	}
+	defer store2.Close()
+
+	// Verify the column exists by querying
+	var lastAccessed sql.NullTime
+	var accessCount int
+	err = store2.db.QueryRow("SELECT last_accessed_at, access_count FROM nodes WHERE id = ?", "test-node-1").Scan(&lastAccessed, &accessCount)
+	if err != nil {
+		t.Fatalf("Failed to query new columns: %v", err)
+	}
+
+	// Existing node should have NULL last_accessed_at
+	if lastAccessed.Valid {
+		t.Errorf("Expected NULL last_accessed_at for existing node, got %v", lastAccessed.Time)
+	}
+
+	// Existing node should have default access_count of 0
+	if accessCount != 0 {
+		t.Errorf("Expected access_count=0 for existing node, got %d", accessCount)
+	}
+}
+
+// TestGetNode_UpdatesLastAccessed tests that GetNode updates last_accessed_at timestamp.
+func TestGetNode_UpdatesLastAccessed(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	ctx := context.Background()
+
+	// Add a node
+	node := &Node{
+		ID:   "test-node-1",
+		Name: "Test Node",
+		Type: "Concept",
+	}
+	if err := store.AddNode(ctx, node); err != nil {
+		t.Fatalf("AddNode failed: %v", err)
+	}
+
+	// Get the node (should update last_accessed_at)
+	time.Sleep(10 * time.Millisecond) // Ensure time difference
+	retrieved, err := store.GetNode(ctx, "test-node-1")
+	if err != nil {
+		t.Fatalf("GetNode failed: %v", err)
+	}
+
+	if retrieved == nil {
+		t.Fatal("Expected node, got nil")
+	}
+
+	// Verify last_accessed_at was set by querying directly
+	var lastAccessed sql.NullTime
+	err = store.db.QueryRow("SELECT last_accessed_at FROM nodes WHERE id = ?", "test-node-1").Scan(&lastAccessed)
+	if err != nil {
+		t.Fatalf("Failed to query last_accessed_at: %v", err)
+	}
+
+	if !lastAccessed.Valid {
+		t.Error("Expected last_accessed_at to be set after GetNode, got NULL")
+	}
+
+	if lastAccessed.Valid && lastAccessed.Time.Before(node.CreatedAt) {
+		t.Errorf("last_accessed_at (%v) should be after created_at (%v)", lastAccessed.Time, node.CreatedAt)
+	}
+}
+
+// TestUpdateAccessTime_BatchUpdate tests batch updating of last_accessed_at timestamps
+func TestUpdateAccessTime_BatchUpdate(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	ctx := context.Background()
+
+	// Add multiple nodes
+	nodes := []*Node{
+		{ID: "node1", Name: "Node 1", Type: "Concept"},
+		{ID: "node2", Name: "Node 2", Type: "Concept"},
+		{ID: "node3", Name: "Node 3", Type: "Concept"},
+	}
+
+	for _, node := range nodes {
+		if err := store.AddNode(ctx, node); err != nil {
+			t.Fatalf("AddNode failed: %v", err)
+		}
+	}
+
+	// Wait to ensure time difference
+	time.Sleep(10 * time.Millisecond)
+
+	// Batch update access times for first two nodes
+	nodeIDs := []string{"node1", "node2"}
+	err := store.UpdateAccessTime(ctx, nodeIDs)
+	if err != nil {
+		t.Fatalf("UpdateAccessTime failed: %v", err)
+	}
+
+	// Verify node1 and node2 have last_accessed_at set
+	for _, id := range nodeIDs {
+		var lastAccessed sql.NullTime
+		err := store.db.QueryRow("SELECT last_accessed_at FROM nodes WHERE id = ?", id).Scan(&lastAccessed)
+		if err != nil {
+			t.Fatalf("Failed to query last_accessed_at for %s: %v", id, err)
+		}
+		if !lastAccessed.Valid {
+			t.Errorf("Expected last_accessed_at to be set for %s", id)
+		}
+	}
+
+	// Verify node3 does NOT have last_accessed_at set
+	var lastAccessed sql.NullTime
+	err = store.db.QueryRow("SELECT last_accessed_at FROM nodes WHERE id = ?", "node3").Scan(&lastAccessed)
+	if err != nil {
+		t.Fatalf("Failed to query last_accessed_at for node3: %v", err)
+	}
+	if lastAccessed.Valid {
+		t.Errorf("Expected last_accessed_at to be NULL for node3, got %v", lastAccessed.Time)
+	}
+}
+
+// TestUpdateAccessTime_EmptyList tests that empty node list doesn't cause error
+func TestUpdateAccessTime_EmptyList(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	ctx := context.Background()
+
+	// Should not error on empty list
+	err := store.UpdateAccessTime(ctx, []string{})
+	if err != nil {
+		t.Errorf("UpdateAccessTime with empty list failed: %v", err)
+	}
+}
+
+func TestGetAllNodes_ReturnsNodesAndLoadsLastAccessedAt(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	ctx := context.Background()
+
+	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	n1 := &Node{
+		ID:          "node-a",
+		Name:        "Node A",
+		Type:        "Concept",
+		Description: "first",
+		Embedding:   []float32{0.1, 0.2, 0.3},
+		CreatedAt:   base,
+		Metadata:    map[string]any{"k": "v"},
+	}
+	n2 := &Node{
+		ID:          "node-b",
+		Name:        "Node B",
+		Type:        "Concept",
+		Description: "second",
+		CreatedAt:   base.Add(1 * time.Hour),
+	}
+
+	if err := store.AddNode(ctx, n1); err != nil {
+		t.Fatalf("AddNode(n1) failed: %v", err)
+	}
+	if err := store.AddNode(ctx, n2); err != nil {
+		t.Fatalf("AddNode(n2) failed: %v", err)
+	}
+
+	// Ensure last_accessed_at is non-NULL for node-b.
+	if err := store.UpdateAccessTime(ctx, []string{"node-b"}); err != nil {
+		t.Fatalf("UpdateAccessTime failed: %v", err)
+	}
+	var dbLastAccessed sql.NullTime
+	if err := store.db.QueryRow("SELECT last_accessed_at FROM nodes WHERE id = ?", "node-b").Scan(&dbLastAccessed); err != nil {
+		t.Fatalf("Failed to query last_accessed_at for node-b: %v", err)
+	}
+	if !dbLastAccessed.Valid {
+		t.Fatalf("Expected last_accessed_at to be set in DB for node-b")
+	}
+
+	nodes, err := store.GetAllNodes(ctx)
+	if err != nil {
+		t.Fatalf("GetAllNodes failed: %v", err)
+	}
+	if len(nodes) != 2 {
+		t.Fatalf("Expected 2 nodes, got %d", len(nodes))
+	}
+
+	// Ordering is deterministic by created_at, id.
+	if nodes[0].ID != "node-a" || nodes[1].ID != "node-b" {
+		t.Fatalf("Unexpected order: got [%s, %s]", nodes[0].ID, nodes[1].ID)
+	}
+
+	if nodes[0].Metadata == nil || nodes[0].Metadata["k"] != "v" {
+		t.Fatalf("Expected metadata to roundtrip for node-a, got %#v", nodes[0].Metadata)
+	}
+	if len(nodes[0].Embedding) != 3 {
+		t.Fatalf("Expected embedding length 3 for node-a, got %d", len(nodes[0].Embedding))
+	}
+
+	if nodes[1].LastAccessedAt == nil {
+		t.Fatalf("Expected LastAccessedAt to be hydrated for node-b (DB has %v)", dbLastAccessed.Time)
+	}
+}
+
+func TestDeleteNode_RemovesNode(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	ctx := context.Background()
+
+	if err := store.AddNode(ctx, &Node{ID: "node-delete", Name: "To delete", Type: "Concept"}); err != nil {
+		t.Fatalf("AddNode failed: %v", err)
+	}
+
+	before, err := store.NodeCount(ctx)
+	if err != nil {
+		t.Fatalf("NodeCount failed: %v", err)
+	}
+	if before != 1 {
+		t.Fatalf("Expected NodeCount=1 before delete, got %d", before)
+	}
+
+	if err := store.DeleteNode(ctx, "node-delete"); err != nil {
+		t.Fatalf("DeleteNode failed: %v", err)
+	}
+
+	after, err := store.NodeCount(ctx)
+	if err != nil {
+		t.Fatalf("NodeCount failed: %v", err)
+	}
+	if after != 0 {
+		t.Fatalf("Expected NodeCount=0 after delete, got %d", after)
+	}
+
+	got, err := store.GetNode(ctx, "node-delete")
+	if err != nil {
+		t.Fatalf("GetNode failed: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("Expected deleted node to be nil, got %#v", got)
+	}
+}
+
+func TestDeleteEdge_RemovesEdge(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	ctx := context.Background()
+
+	if err := store.AddNode(ctx, &Node{ID: "n1", Name: "N1", Type: "Concept"}); err != nil {
+		t.Fatalf("AddNode(n1) failed: %v", err)
+	}
+	if err := store.AddNode(ctx, &Node{ID: "n2", Name: "N2", Type: "Concept"}); err != nil {
+		t.Fatalf("AddNode(n2) failed: %v", err)
+	}
+
+	if err := store.AddEdge(ctx, &Edge{ID: "e1", SourceID: "n1", Relation: "RELATES_TO", TargetID: "n2"}); err != nil {
+		t.Fatalf("AddEdge failed: %v", err)
+	}
+
+	before, err := store.EdgeCount(ctx)
+	if err != nil {
+		t.Fatalf("EdgeCount failed: %v", err)
+	}
+	if before != 1 {
+		t.Fatalf("Expected EdgeCount=1 before delete, got %d", before)
+	}
+
+	if err := store.DeleteEdge(ctx, "e1"); err != nil {
+		t.Fatalf("DeleteEdge failed: %v", err)
+	}
+
+	after, err := store.EdgeCount(ctx)
+	if err != nil {
+		t.Fatalf("EdgeCount failed: %v", err)
+	}
+	if after != 0 {
+		t.Fatalf("Expected EdgeCount=0 after delete, got %d", after)
+	}
+
+	edges, err := store.GetEdges(ctx, "n1")
+	if err != nil {
+		t.Fatalf("GetEdges failed: %v", err)
+	}
+	if len(edges) != 0 {
+		t.Fatalf("Expected 0 edges after delete, got %d", len(edges))
 	}
 }

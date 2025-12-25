@@ -5,6 +5,85 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2025-12-25
+
+### Added
+- **Memory Decay System** (`pkg/gognee`)
+  - Time-based decay affecting search ranking to keep knowledge graph relevant
+  - `Config` extensions:
+    - `DecayEnabled bool` - Enable decay scoring (default: false for backward compatibility)
+    - `DecayHalfLifeDays int` - Days for score to halve (default: 30)
+    - `DecayBasis string` - "access" or "creation" decay calculation (default: "access")
+  - Exponential decay formula: `0.5^(age_days / half_life_days)`
+  - Configuration validation on `New()` for decay parameters
+- **Access Reinforcement**
+  - `Search()` automatically updates `last_accessed_at` for returned nodes
+  - Batch UPDATE operations for performance (single SQL statement for all TopK results)
+  - Access-based decay preserves frequently queried nodes (mimics human memory)
+- **Prune API**
+  - `Prune(ctx, PruneOptions)` method for explicit node deletion
+  - `PruneOptions` struct:
+    - `MaxAgeDays int` - Remove nodes older than N days
+    - `MinDecayScore float64` - Remove nodes below decay threshold
+    - `DryRun bool` - Preview pruning without deletion
+  - `PruneResult` struct with NodesEvaluated, NodesPruned, EdgesPruned, NodeIDs
+  - Cascade deletion: edges automatically deleted when endpoints are pruned
+  - Vector store synchronization on prune
+- **DecayingSearcher** (`pkg/search`)
+  - Decorator pattern implementation wrapping any `Searcher`
+  - Fetches node timestamps and applies decay multipliers post-search
+  - Fallback to `created_at` when `last_accessed_at` is NULL
+  - Filters nodes with extremely low scores (< 0.001)
+  - No changes required to Searcher interface or existing implementations
+- **Schema Migration** (`pkg/store`)
+  - Automatic column addition on database initialization
+  - `last_accessed_at DATETIME DEFAULT NULL` column to nodes table
+  - `access_count INTEGER DEFAULT 0` column for future frequency-based decay
+  - `columnExists()` helper to detect and migrate existing databases
+  - Safe migration: NULL-friendly defaults preserve existing rows
+- **SQLiteGraphStore Extensions**
+  - `UpdateAccessTime(ctx, nodeIDs)` for batch access timestamp updates
+  - `GetAllNodes(ctx)` for prune evaluation (returns all nodes with timestamps)
+  - `DeleteNode(ctx, nodeID)` for node removal
+  - `DeleteEdge(ctx, edgeID)` for edge removal
+- **Node struct extension** (`pkg/store`)
+  - `LastAccessedAt *time.Time` field for decay tracking
+
+### Changed
+- **gognee.New()** wires `DecayingSearcher` when `DecayEnabled=true`
+- **gognee.Search()** now updates access timestamps for returned results (batch operation)
+- **Schema initialization** runs migrations to add new columns to existing databases
+
+### Technical Details
+- **Decay Implementation**:
+  - `calculateDecay(age, halfLife)` function implements exponential decay
+  - Edge cases handled: negative age (1.0), zero half-life (1.0), NULL timestamps (fallback)
+  - Decorator pattern keeps decay orthogonal to search implementations
+- **Migration Strategy**:
+  - On startup, `initSchema()` calls `migrateSchema()`
+  - Uses `PRAGMA table_info()` to detect missing columns
+  - `ALTER TABLE nodes ADD COLUMN` executed per missing column
+  - Existing rows get NULL/0 defaults (backward compatible)
+- **Performance**:
+  - Batch access updates use single `UPDATE ... WHERE id IN (...)` statement
+  - TopK-only tracking: only final results updated, not intermediate candidates
+  - Decay calculation is O(1) per node (simple exponential)
+- **Testing**:
+  - 7 unit tests for decay function (zero age, half-life, edge cases)
+  - 5 unit tests for DecayingSearcher (disabled, access-based, creation-based, fallback, threshold)
+  - 4 unit tests for Prune API (dry run, MaxAgeDays, cascade, empty database)
+  - 2 integration tests (end-to-end decay+prune, access reinforcement)
+  - Schema migration test (old DB → migration → verify columns)
+
+### Documentation
+- **README.md**: New "Memory Decay and Forgetting" section
+  - Configuration options explained
+  - Access reinforcement behavior documented
+  - Prune API usage examples with dry run pattern
+  - Decay math formula and examples
+  - Best practices for half-life tuning by domain
+- **Removed** "No Memory Decay" from MVP limitations (now implemented)
+
 ## [0.6.0] - 2025-12-24
 
 ### Added

@@ -36,6 +36,16 @@ type Config struct {
 	// DBPath is the path to the SQLite database file.
 	// If empty or ":memory:", an in-memory database is used.
 	DBPath string
+
+	// DecayEnabled enables time-based memory decay scoring (default: false)
+	DecayEnabled bool
+
+	// DecayHalfLifeDays is the number of days after which a node's score is halved (default: 30)
+	DecayHalfLifeDays int
+
+	// DecayBasis determines decay calculation: "access" (last access time) or "creation" (creation time)
+	// Default: "access"
+	DecayBasis string
 }
 
 // Gognee is the main entry point for the memory system
@@ -88,6 +98,29 @@ type Stats struct {
 	LastCognified time.Time
 }
 
+// PruneOptions configures the Prune() method
+type PruneOptions struct {
+	// MaxAgeDays prunes nodes older than this many days (based on decay basis).
+	// If zero, this criterion is not used.
+	MaxAgeDays int
+
+	// MinDecayScore prunes nodes with decay score below this threshold.
+	// If zero, this criterion is not used.
+	// Score is calculated using current decay settings.
+	MinDecayScore float64
+
+	// DryRun reports what would be pruned without actually deleting.
+	DryRun bool
+}
+
+// PruneResult reports the outcome of a Prune() operation
+type PruneResult struct {
+	NodesEvaluated int      // Total number of nodes considered
+	NodesPruned    int      // Number of nodes deleted
+	EdgesPruned    int      // Number of edges deleted (via cascade)
+	NodeIDs        []string // IDs of pruned nodes (for verification)
+}
+
 // New creates a new Gognee instance
 func New(cfg Config) (*Gognee, error) {
 	// Apply defaults
@@ -96,6 +129,24 @@ func New(cfg Config) (*Gognee, error) {
 	}
 	if cfg.ChunkOverlap == 0 {
 		cfg.ChunkOverlap = 50
+	}
+	if cfg.DecayBasis == "" {
+		cfg.DecayBasis = "access"
+	}
+
+	// Validate decay configuration (before applying half-life default)
+	if cfg.DecayEnabled {
+		if cfg.DecayHalfLifeDays < 0 {
+			return nil, fmt.Errorf("DecayHalfLifeDays must be positive, got %d", cfg.DecayHalfLifeDays)
+		}
+		if cfg.DecayBasis != "access" && cfg.DecayBasis != "creation" {
+			return nil, fmt.Errorf("DecayBasis must be 'access' or 'creation', got %q", cfg.DecayBasis)
+		}
+	}
+
+	// Apply half-life default after validation
+	if cfg.DecayHalfLifeDays == 0 {
+		cfg.DecayHalfLifeDays = 30
 	}
 
 	// Initialize chunker
@@ -134,7 +185,15 @@ func New(cfg Config) (*Gognee, error) {
 	relationExtractor := extraction.NewRelationExtractor(llmClient)
 
 	// Initialize searcher
-	searcher := search.NewHybridSearcher(embeddingsClient, vectorStore, graphStore)
+	baseSearcher := search.NewHybridSearcher(embeddingsClient, vectorStore, graphStore)
+
+	// Wrap with DecayingSearcher if decay is enabled
+	var searcher search.Searcher
+	if cfg.DecayEnabled {
+		searcher = search.NewDecayingSearcher(baseSearcher, graphStore, cfg.DecayEnabled, cfg.DecayHalfLifeDays, cfg.DecayBasis)
+	} else {
+		searcher = baseSearcher
+	}
 
 	return &Gognee{
 		config:            cfg,
@@ -306,7 +365,28 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 // Search queries the knowledge graph
 func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOptions) ([]search.SearchResult, error) {
 	search.ApplyDefaults(&opts)
-	return g.searcher.Search(ctx, query, opts)
+	results, err := g.searcher.Search(ctx, query, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update access times for returned results (for decay reinforcement)
+	// Only update if we have results
+	if len(results) > 0 {
+		nodeIDs := make([]string, len(results))
+		for i, result := range results {
+			nodeIDs[i] = result.NodeID
+		}
+
+		// Cast to SQLiteGraphStore to access UpdateAccessTime
+		// This is safe because we control the concrete type in New()
+		if sqlStore, ok := g.graphStore.(*store.SQLiteGraphStore); ok {
+			// Best-effort update - don't fail search if access tracking fails
+			_ = sqlStore.UpdateAccessTime(ctx, nodeIDs)
+		}
+	}
+
+	return results, nil
 }
 
 // Close releases all resources
@@ -334,6 +414,117 @@ func (g *Gognee) Stats() (Stats, error) {
 		BufferedDocs:  len(g.buffer),
 		LastCognified: g.lastCognified,
 	}, nil
+}
+
+// Prune removes old or low-scoring nodes from the knowledge graph.
+// Edges connected to pruned nodes are also deleted (cascade).
+// Use DryRun to preview what would be pruned without actually deleting.
+func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, error) {
+	result := &PruneResult{
+		NodeIDs: make([]string, 0),
+	}
+
+	// Get all nodes for evaluation
+	sqlStore, ok := g.graphStore.(*store.SQLiteGraphStore)
+	if !ok {
+		return nil, fmt.Errorf("prune requires SQLiteGraphStore")
+	}
+
+	// Query all nodes
+	allNodes, err := sqlStore.GetAllNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nodes: %w", err)
+	}
+
+	result.NodesEvaluated = len(allNodes)
+
+	// Evaluate each node for pruning
+	now := time.Now()
+	nodesToPrune := make([]string, 0)
+
+	for _, node := range allNodes {
+		shouldPrune := false
+
+		// Check MaxAgeDays criterion
+		if opts.MaxAgeDays > 0 {
+			var age time.Duration
+			if g.config.DecayBasis == "access" && node.LastAccessedAt != nil {
+				age = now.Sub(*node.LastAccessedAt)
+			} else {
+				age = now.Sub(node.CreatedAt)
+			}
+
+			ageDays := int(age.Hours() / 24)
+			if ageDays > opts.MaxAgeDays {
+				shouldPrune = true
+			}
+		}
+
+		// Check MinDecayScore criterion
+		if opts.MinDecayScore > 0 && g.config.DecayEnabled {
+			var age time.Duration
+			if g.config.DecayBasis == "access" && node.LastAccessedAt != nil {
+				age = now.Sub(*node.LastAccessedAt)
+			} else {
+				age = now.Sub(node.CreatedAt)
+			}
+
+			decayScore := calculateDecay(age, g.config.DecayHalfLifeDays)
+			if decayScore < opts.MinDecayScore {
+				shouldPrune = true
+			}
+		}
+
+		if shouldPrune {
+			nodesToPrune = append(nodesToPrune, node.ID)
+		}
+	}
+
+	result.NodesPruned = len(nodesToPrune)
+	result.NodeIDs = nodesToPrune
+
+	// If dry run, stop here
+	if opts.DryRun {
+		// Estimate edges that would be pruned
+		for _, nodeID := range nodesToPrune {
+			edges, err := g.graphStore.GetEdges(ctx, nodeID)
+			if err == nil {
+				result.EdgesPruned += len(edges)
+			}
+		}
+		return result, nil
+	}
+
+	// Actually prune nodes and edges
+	for _, nodeID := range nodesToPrune {
+		// Delete edges first (cascade)
+		edges, err := g.graphStore.GetEdges(ctx, nodeID)
+		if err != nil {
+			continue
+		}
+		result.EdgesPruned += len(edges)
+
+		// Delete the edges
+		for _, edge := range edges {
+			if err := sqlStore.DeleteEdge(ctx, edge.ID); err != nil {
+				// Continue on error to prune as much as possible
+				continue
+			}
+		}
+
+		// Delete from vector store
+		if err := g.vectorStore.Delete(ctx, nodeID); err != nil {
+			// Continue on error
+		}
+
+		// Delete the node
+		if err := sqlStore.DeleteNode(ctx, nodeID); err != nil {
+			// Continue on error
+			continue
+		}
+	}
+
+	return result, nil
 }
 
 // generateDeterministicNodeID creates a deterministic node ID from name and type

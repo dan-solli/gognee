@@ -212,6 +212,100 @@ g, _ := gognee.New(cfg)
 
 The database file is created automatically if it doesn't exist.
 
+## Memory Decay and Forgetting
+
+gognee supports time-based memory decay to keep the knowledge graph relevant and bounded. Older or rarely-accessed nodes receive lower scores in search results, and can be explicitly pruned.
+
+### Configuration
+
+Enable decay by setting decay-related fields in `Config`:
+
+```go
+cfg := gognee.Config{
+    OpenAIKey:         "sk-...",
+    DBPath:            "./knowledge.db",
+    DecayEnabled:      true,          // Enable time-based decay (default: false)
+    DecayHalfLifeDays: 30,            // Nodes' scores halve after 30 days (default: 30)
+    DecayBasis:        "access",      // Decay based on last access ("access" or "creation", default: "access")
+}
+```
+
+**Decay Options:**
+- **DecayEnabled**: When `true`, search results are scored with decay multipliers. Off by default for backward compatibility
+- **DecayHalfLifeDays**: Number of days after which a node's score is multiplied by 0.5. Shorter values mean faster decay
+- **DecayBasis**: 
+  - `"access"`: Decay based on `last_accessed_at` timestamp (nodes accessed recently resist decay)
+  - `"creation"`: Decay based on `created_at` timestamp (age since creation)
+  - If a node has never been accessed, falls back to `created_at`
+
+### Access Reinforcement
+
+When decay is enabled, nodes returned in search results have their `last_accessed_at` timestamp updated automatically. This means frequently searched nodes resist decay (mimicking human memory reinforcement).
+
+### Pruning Nodes
+
+Use `Prune()` to permanently delete nodes that are too old or have decayed below a threshold:
+
+```go
+// Preview what would be pruned (dry run)
+result, err := g.Prune(ctx, gognee.PruneOptions{
+    MaxAgeDays:    60,      // Prune nodes older than 60 days
+    MinDecayScore: 0.1,     // Prune nodes with decay score < 0.1
+    DryRun:        true,    // Don't actually delete
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Would prune %d nodes and %d edges\n", result.NodesPruned, result.EdgesPruned)
+
+// Actually prune
+result, err = g.Prune(ctx, gognee.PruneOptions{
+    MaxAgeDays: 60,
+    DryRun:     false,
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Pruned %d nodes\n", result.NodesPruned)
+```
+
+**PruneOptions:**
+- **MaxAgeDays**: Remove nodes older than this many days (based on `DecayBasis`). If 0, this criterion is not used
+- **MinDecayScore**: Remove nodes with decay score below this value. If 0, this criterion is not used. Requires `DecayEnabled=true`
+- **DryRun**: If `true`, reports what would be pruned without actually deleting
+
+**PruneResult:**
+- **NodesEvaluated**: Total number of nodes checked
+- **NodesPruned**: Number of nodes deleted
+- **EdgesPruned**: Number of edges deleted (cascade deletion when endpoints are removed)
+- **NodeIDs**: List of pruned node IDs (for verification)
+
+**Important:** Pruning is permanent. Use `DryRun=true` first to preview the impact.
+
+### Decay Math
+
+Decay uses an exponential formula:
+
+```
+score_multiplier = 0.5 ^ (age_days / half_life_days)
+```
+
+Examples with 30-day half-life:
+- 0 days old: multiplier = 1.0 (no decay)
+- 30 days old: multiplier = 0.5 (half score)
+- 60 days old: multiplier = 0.25 (quarter score)
+- 90 days old: multiplier = 0.125
+
+### Best Practices
+
+1. **Start with decay disabled** to build your knowledge graph, then enable it once populated
+2. **Use access-based decay** (`DecayBasis="access"`) to preserve frequently queried nodes
+3. **Run dry-run prunes** periodically to understand decay behavior before committing
+4. **Adjust half-life** based on your domain:
+   - News/events: 7-14 days
+   - Product documentation: 90-180 days
+   - Reference knowledge: 365+ days
+
 ## MVP Limitations
 
 This is the MVP (Minimum Viable Product). Known limitations:
@@ -220,14 +314,12 @@ This is the MVP (Minimum Viable Product). Known limitations:
 2. **No Parallelization**: Document processing is sequential. Large batches may take time
 3. **Single LLM Provider**: Only OpenAI is supported
 4. **Basic Chunking**: Token-based chunking without semantic awareness
-5. **No Memory Decay**: All entities and relationships are equally important forever
 
 ### Future Enhancements
 
 - Persistent vector store (SQLite-backed)
 - Multiple LLM providers (Anthropic, Ollama, local models)
 - Parallel processing of documents
-- Memory decay/forgetting
 - Graph visualization
 - Incremental cognify (process only new documents)
 

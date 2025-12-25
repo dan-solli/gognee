@@ -1,12 +1,14 @@
 # gognee - Product Roadmap
 
-**Last Updated**: 2025-12-24
+**Last Updated**: 2025-12-25
 **Roadmap Owner**: roadmap agent
 **Strategic Vision**: Build a Go library package that provides AI assistants with persistent memory across conversations, knowledge graph for understanding relationships, and hybrid search combining graph traversal and vector similarity. Pure library design (no CLI), embeddable in Go projects like Glowbabe.
 
 ## Change Log
 | Date & Time | Change | Rationale |
 |-------------|--------|-----------|
+| 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED |
+| 2025-12-24 | Plans 007-010 created for post-MVP epics 7.1, 7.3, 7.4, 7.5 | User requested backlog planning; Skipped 7.2 and 7.6 |
 | 2025-12-24 23:30 | Created product roadmap; marked v0.6.0 as Released | Retrospective closed for Plan 006 (Phase 6 Integration); MVP delivered |
 
 ---
@@ -85,7 +87,35 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: None (MVP complete, planning next phase)
+**Current Working Release**: v0.7.0 (Production Hardening)
+
+### v0.7.0 Release - Production Hardening
+**Target Date**: TBD
+**Status**: Planning
+**Strategic Goal**: Complete persistence story and fix known correctness issues
+
+| Plan ID | Title | Epic | Status | Target |
+|---------|-------|------|--------|--------|
+| 007 | Persistent Vector Store | 7.1 | Critic Approved | v0.7.0 |
+| 008 | Edge ID Correctness Fix | 7.3 | Critic Approved | v0.7.0 |
+
+### v0.8.0 Release - Efficiency
+**Target Date**: TBD
+**Status**: Planning
+**Strategic Goal**: Reduce processing costs for updates
+
+| Plan ID | Title | Epic | Status | Target |
+|---------|-------|------|--------|--------|
+| 009 | Incremental Cognify | 7.4 | Critic Approved | v0.8.0 |
+
+### v0.9.0 Release - Memory Management
+**Target Date**: TBD  
+**Status**: Planning
+**Strategic Goal**: Enable bounded knowledge graph growth
+
+| Plan ID | Title | Epic | Status | Target |
+|---------|-------|------|--------|--------|
+| 010 | Memory Decay / Forgetting | 7.5 | Critic Approved | v0.9.0 |
 
 ### v0.6.0 Release Summary
 | Plan ID | Title | UAT Status | Committed | Released |
@@ -113,7 +143,8 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ### Epic 7.1: Persistent Vector Store (Post-MVP)
 **Priority**: P1
-**Status**: Planned
+**Status**: Critic Approved (Plan 007)
+**Target Release**: v0.7.0
 
 **User Story**:
 As a developer deploying gognee in production,
@@ -137,7 +168,7 @@ So that I don't need to re-run Cognify() every time my application starts.
 
 ### Epic 7.2: Multiple LLM Provider Support (Post-MVP)
 **Priority**: P2
-**Status**: Planned
+**Status**: Deferred (user decision)
 
 **User Story**:
 As a developer with diverse infrastructure,
@@ -156,7 +187,8 @@ So that I'm not locked into OpenAI and can optimize for cost/performance.
 
 ### Epic 7.3: Edge ID Correctness Fix (Post-MVP)
 **Priority**: P2
-**Status**: Planned
+**Status**: Critic Approved (Plan 008)
+**Target Release**: v0.7.0
 
 **User Story**:
 As a developer relying on graph traversal,
@@ -180,7 +212,8 @@ So that graph queries return accurate relationship paths.
 
 ### Epic 7.4: Incremental Cognify (Post-MVP)
 **Priority**: P2
-**Status**: Planned
+**Status**: Critic Approved (Plan 009)
+**Target Release**: v0.8.0
 
 **User Story**:
 As a developer with large document corpora,
@@ -199,7 +232,8 @@ So that I can update my knowledge graph efficiently without reprocessing everyth
 
 ### Epic 7.5: Memory Decay / Forgetting (Post-MVP)
 **Priority**: P3
-**Status**: Planned
+**Status**: Critic Approved (Plan 010)
+**Target Release**: v0.9.0
 
 **User Story**:
 As a developer building a long-lived AI assistant,
@@ -218,7 +252,7 @@ So that the knowledge graph stays relevant and doesn't grow unbounded.
 
 ### Epic 7.6: Graph Visualization (Post-MVP)
 **Priority**: P3
-**Status**: Planned
+**Status**: Deferred (user decision)
 
 **User Story**:
 As a developer debugging knowledge graph issues,

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,6 +38,7 @@ func NewSQLiteGraphStore(dbPath string) (*SQLiteGraphStore, error) {
 }
 
 // initSchema creates the database schema if it doesn't exist.
+// Also performs schema migrations for new columns.
 func (s *SQLiteGraphStore) initSchema() error {
 	schema := `
 	CREATE TABLE IF NOT EXISTS nodes (
@@ -67,7 +69,63 @@ func (s *SQLiteGraphStore) initSchema() error {
 	`
 
 	_, err := s.db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Run schema migrations for new columns
+	return s.migrateSchema()
+}
+
+// migrateSchema adds new columns to existing tables if they don't exist.
+func (s *SQLiteGraphStore) migrateSchema() error {
+	// Check and add last_accessed_at column
+	if !s.columnExists("nodes", "last_accessed_at") {
+		_, err := s.db.Exec("ALTER TABLE nodes ADD COLUMN last_accessed_at DATETIME DEFAULT NULL")
+		if err != nil {
+			return fmt.Errorf("failed to add last_accessed_at column: %w", err)
+		}
+	}
+
+	// Check and add access_count column
+	if !s.columnExists("nodes", "access_count") {
+		_, err := s.db.Exec("ALTER TABLE nodes ADD COLUMN access_count INTEGER DEFAULT 0")
+		if err != nil {
+			return fmt.Errorf("failed to add access_count column: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// columnExists checks if a column exists in a table.
+func (s *SQLiteGraphStore) columnExists(tableName, columnName string) bool {
+	query := fmt.Sprintf("PRAGMA table_info(%s)", tableName)
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name string
+		var ctype string
+		var notnull int
+		var dfltValue sql.NullString
+		var pk int
+
+		err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk)
+		if err != nil {
+			return false
+		}
+
+		if name == columnName {
+			return true
+		}
+	}
+
+	return false
 }
 
 // AddNode adds or updates a node in the graph.
@@ -124,6 +182,7 @@ func (s *SQLiteGraphStore) AddNode(ctx context.Context, node *Node) error {
 }
 
 // GetNode retrieves a node by its ID.
+// Also updates last_accessed_at timestamp to track access for decay.
 func (s *SQLiteGraphStore) GetNode(ctx context.Context, id string) (*Node, error) {
 	query := `
 		SELECT id, name, type, description, embedding, created_at, metadata
@@ -165,6 +224,13 @@ func (s *SQLiteGraphStore) GetNode(ctx context.Context, id string) (*Node, error
 		if err := json.Unmarshal(metadataJSON, &node.Metadata); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
 		}
+	}
+
+	// Update last_accessed_at timestamp
+	_, err = s.db.ExecContext(ctx, "UPDATE nodes SET last_accessed_at = ? WHERE id = ?", time.Now(), id)
+	if err != nil {
+		// Log but don't fail - access tracking is not critical
+		// In production, could use a logger here
 	}
 
 	return &node, nil
@@ -408,6 +474,117 @@ func (s *SQLiteGraphStore) EdgeCount(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("failed to count edges: %w", err)
 	}
 	return count, nil
+}
+
+// UpdateAccessTime updates the last_accessed_at timestamp for a batch of nodes.
+// This is used for access reinforcement in memory decay.
+func (s *SQLiteGraphStore) UpdateAccessTime(ctx context.Context, nodeIDs []string) error {
+	if len(nodeIDs) == 0 {
+		return nil
+	}
+
+	// Build IN clause with placeholders
+	placeholders := make([]string, len(nodeIDs))
+	args := make([]interface{}, len(nodeIDs)+1)
+	args[0] = time.Now()
+
+	for i, nodeID := range nodeIDs {
+		placeholders[i] = "?"
+		args[i+1] = nodeID
+	}
+
+	query := fmt.Sprintf("UPDATE nodes SET last_accessed_at = ? WHERE id IN (%s)",
+		strings.Join(placeholders, ","))
+
+	_, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update access time: %w", err)
+	}
+
+	return nil
+}
+
+// GetAllNodes returns all nodes in the graph (for pruning operations).
+func (s *SQLiteGraphStore) GetAllNodes(ctx context.Context) ([]*Node, error) {
+	query := `
+		SELECT id, name, type, description, embedding, created_at, metadata, last_accessed_at
+		FROM nodes
+		ORDER BY created_at, id
+	`
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query all nodes: %w", err)
+	}
+	defer rows.Close()
+
+	var nodes []*Node
+	for rows.Next() {
+		var node Node
+		var embeddingBytes []byte
+		var metadataJSON []byte
+		var lastAccessed sql.NullTime
+
+		err := rows.Scan(
+			&node.ID,
+			&node.Name,
+			&node.Type,
+			&node.Description,
+			&embeddingBytes,
+			&node.CreatedAt,
+			&metadataJSON,
+			&lastAccessed,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan node: %w", err)
+		}
+
+		// Deserialize embedding
+		if len(embeddingBytes) > 0 {
+			node.Embedding = make([]float32, len(embeddingBytes)/4)
+			for i := range node.Embedding {
+				node.Embedding[i] = math.Float32frombits(binary.LittleEndian.Uint32(embeddingBytes[i*4:]))
+			}
+		}
+
+		// Deserialize metadata
+		if len(metadataJSON) > 0 {
+			if err := json.Unmarshal(metadataJSON, &node.Metadata); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+			}
+		}
+
+		// Hydrate last_accessed_at if it's not NULL
+		if lastAccessed.Valid {
+			node.LastAccessedAt = &lastAccessed.Time
+		}
+
+		nodes = append(nodes, &node)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating nodes: %w", err)
+	}
+
+	return nodes, nil
+}
+
+// DeleteNode removes a node from the graph.
+func (s *SQLiteGraphStore) DeleteNode(ctx context.Context, nodeID string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM nodes WHERE id = ?", nodeID)
+	if err != nil {
+		return fmt.Errorf("failed to delete node: %w", err)
+	}
+	return nil
+}
+
+// DeleteEdge removes an edge from the graph.
+func (s *SQLiteGraphStore) DeleteEdge(ctx context.Context, edgeID string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM edges WHERE id = ?", edgeID)
+	if err != nil {
+		return fmt.Errorf("failed to delete edge: %w", err)
+	}
+	return nil
 }
 
 // Close releases database resources.

@@ -9,13 +9,14 @@ import (
 
 // Node represents a knowledge graph entity with embeddings and metadata.
 type Node struct {
-	ID          string                 // Unique identifier (UUID)
-	Name        string                 // Entity name
-	Type        string                 // Entity type (Person, Concept, System, etc.)
-	Description string                 // Brief description
-	Embedding   []float32              // Vector embedding for semantic search
-	CreatedAt   time.Time              // Timestamp of creation
-	Metadata    map[string]interface{} // Additional metadata as JSON
+	ID             string                 // Unique identifier (UUID)
+	Name           string                 // Entity name
+	Type           string                 // Entity type (Person, Concept, System, etc.)
+	Description    string                 // Brief description
+	Embedding      []float32              // Vector embedding for semantic search
+	CreatedAt      time.Time              // Timestamp of creation
+	LastAccessedAt *time.Time             // Timestamp of last access (for decay tracking)
+	Metadata       map[string]interface{} // Additional metadata as JSON
 }
 
 // Edge represents a relationship between two nodes in the knowledge graph.
