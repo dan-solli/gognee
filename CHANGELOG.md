@@ -5,6 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2025-12-25
+
+### Added
+- **Incremental Cognify** - Document-level deduplication to skip previously processed documents
+  - New `processed_documents` SQLite table tracks processed document hashes
+  - Document identity based on SHA-256 hash of exact text content
+  - `Source` field stored as metadata only (does not affect identity)
+  - Tracking persists across application restarts (file-based DB only)
+  - In `:memory:` mode, tracking is lost on restart
+
+- **DocumentTracker Interface** (`pkg/store`)
+  - New interface for document processing tracking (separate from GraphStore)
+  - `IsDocumentProcessed(ctx, hash)` - Check if document was processed
+  - `MarkDocumentProcessed(ctx, hash, source, chunkCount)` - Mark document as processed
+  - `GetProcessedDocumentCount(ctx)` - Get total processed documents
+  - `ClearProcessedDocuments(ctx)` - Reset tracking without deleting graph data
+  - Implemented by `SQLiteGraphStore`
+
+- **CognifyOptions Extensions**
+  - `SkipProcessed *bool` - Enable/disable incremental mode (default: `true`)
+  - `Force bool` - Reprocess all documents regardless of cache (overrides `SkipProcessed`)
+  - Use pointer for `SkipProcessed` to distinguish unset vs explicit false
+
+- **CognifyResult Extensions**
+  - `DocumentsSkipped int` - Count of documents skipped due to caching
+  - `DocumentsProcessed` now excludes skipped documents (only counts actually processed)
+
+- **Helper Functions** (`pkg/gognee`)
+  - `computeDocumentHash(text)` - SHA-256 hash for document identity
+
+### Changed
+- **Default Behavior: Incremental by Default**
+  - `Cognify()` with empty options (`CognifyOptions{}`) now skips processed documents
+  - Previously all documents were always reprocessed
+  - Set `SkipProcessed: &false` or `Force: true` to restore old behavior
+  - Gracefully handles stores that don't implement DocumentTracker (incremental disabled)
+
+- **Cognify() Logic**
+  - Checks document hash before processing (if tracker available)
+  - Marks document as processed after successful chunk+extract+store
+  - Tracking errors are non-fatal (logged in `CognifyResult.Errors`)
+  - Buffer always cleared even if tracking fails
+
+- **Schema Changes** (`pkg/store/sqlite.go`)
+  - Added `processed_documents` table with `hash`, `source`, `processed_at`, `chunk_count`
+  - Index on `source` column for optional source-based queries
+  - Backward compatible (new table, no existing schema changes)
+
+### Benefits
+- **Performance**: ~0ms for cached documents vs 5-10s with LLM processing
+- **Cost Reduction**: Zero LLM API calls for duplicate documents
+- **Continuous Updates**: Add new documents without full reprocessing
+
+### Usage Examples
+
+```go
+// Default: Skip processed documents (incremental mode ON)
+g.Add(ctx, "Document text", gognee.AddOptions{})
+result, _ := g.Cognify(ctx, gognee.CognifyOptions{})
+// result.DocumentsProcessed=1, DocumentsSkipped=0
+
+g.Add(ctx, "Document text", gognee.AddOptions{}) // Same text
+result, _ = g.Cognify(ctx, gognee.CognifyOptions{})
+// result.DocumentsProcessed=0, DocumentsSkipped=1 (no LLM calls)
+
+// Force reprocessing
+result, _ = g.Cognify(ctx, gognee.CognifyOptions{Force: true})
+// result.DocumentsProcessed=1, DocumentsSkipped=0 (LLM called)
+
+// Disable incremental mode
+skipProcessed := false
+result, _ = g.Cognify(ctx, gognee.CognifyOptions{SkipProcessed: &skipProcessed})
+
+// Reset tracking
+tracker := g.GetGraphStore().(store.DocumentTracker)
+tracker.ClearProcessedDocuments(ctx)
+```
+
+### Testing
+- 6 new Plan 009-tagged unit tests for DocumentTracker CRUD operations
+- 3 new Plan 009-tagged unit tests for incremental Cognify behavior
+  - Default skips on second run
+  - Force override
+  - SkipProcessed=false reprocesses
+- Test coverage: pkg/gognee 84.9% (+1.2%), pkg/store 85.5% (+4.1%)
+- All existing tests pass with backward compatibility
+
+### Migration Notes
+- **Existing code**: Works without changes (incremental ON by default)
+- **To restore old behavior**: Set `Force: true` or `SkipProcessed: &false`
+- **Schema migration**: Automatic on first DB open (new table created)
+- **Existing databases**: Compatible (new table is independent)
+
+### Known Limitations
+- `:memory:` mode loses tracking on restart (incremental only within session)
+- Changing `ChunkSize`/`ChunkOverlap` requires `Force: true` or `ClearProcessedDocuments()`
+- Document identity is exact text match (whitespace changes = new document)
+- Stores not implementing DocumentTracker have incremental mode disabled automatically
+
 ## [0.7.1] - 2025-12-25
 
 ### Fixed

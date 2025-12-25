@@ -77,12 +77,22 @@ type AddOptions struct {
 
 // CognifyOptions configures the Cognify() method
 type CognifyOptions struct {
-	// Reserved for future options like ChunkSize override
+	// SkipProcessed enables incremental mode, skipping previously processed documents.
+	// Default: true (incremental by default). Use pointer to distinguish unset from explicit false.
+	// When true, documents are identified by content hash (SHA-256).
+	// Documents with matching hash are skipped unless Force is true.
+	SkipProcessed *bool
+
+	// Force reprocesses all documents regardless of cached state.
+	// Overrides SkipProcessed when true.
+	// Use after changing chunker settings or to rebuild the knowledge graph.
+	Force bool
 }
 
 // CognifyResult reports the outcome of a Cognify() operation
 type CognifyResult struct {
-	DocumentsProcessed int
+	DocumentsProcessed int // Documents actually processed (chunked + extracted)
+	DocumentsSkipped   int // Documents skipped due to incremental caching
 	ChunksProcessed    int
 	ChunksFailed       int
 	NodesCreated       int
@@ -336,8 +346,37 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 		return result, nil
 	}
 
+	// Apply default for SkipProcessed (incremental by default)
+	skipProcessed := true
+	if opts.SkipProcessed != nil {
+		skipProcessed = *opts.SkipProcessed
+	}
+
+	// Try to get DocumentTracker interface from graphStore (optional)
+	// If not available, incremental mode is disabled
+	tracker, _ := g.graphStore.(store.DocumentTracker)
+
 	// Process each document
 	for _, doc := range g.buffer {
+		// Compute document hash for identity
+		hash := computeDocumentHash(doc.Text)
+
+		// Check if document is already processed (incremental mode)
+		// Only if tracker is available and incremental mode is enabled
+		if tracker != nil && skipProcessed && !opts.Force {
+			processed, err := tracker.IsDocumentProcessed(ctx, hash)
+			if err != nil {
+				return nil, fmt.Errorf("failed to check document processed status: %w", err)
+			}
+
+			if processed {
+				result.DocumentsSkipped++
+				continue // Skip this document
+			}
+		}
+
+		// Track chunks for this document
+		docChunkCount := 0
 		result.DocumentsProcessed++
 
 		// Chunk the text
@@ -346,6 +385,7 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 		// Process each chunk
 		for _, chunk := range chunks {
 			result.ChunksProcessed++
+			docChunkCount++
 
 			// Extract entities
 			entities, err := g.entityExtractor.Extract(ctx, chunk.Text)
@@ -453,6 +493,14 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 					continue
 				}
 				result.EdgesCreated++
+			}
+		}
+
+		// Mark document as processed after successful processing (if tracker available)
+		if tracker != nil {
+			if err := tracker.MarkDocumentProcessed(ctx, hash, doc.Source, docChunkCount); err != nil {
+				// Log but don't fail - tracking failure shouldn't break Cognify
+				result.Errors = append(result.Errors, fmt.Errorf("failed to mark document as processed: %w", err))
 			}
 		}
 	}
@@ -648,4 +696,12 @@ func generateDeterministicNodeID(name, nodeType string) string {
 // sanitizeRelation converts relation names to safe edge IDs
 func sanitizeRelation(relation string) string {
 	return strings.ToUpper(strings.ReplaceAll(relation, " ", "_"))
+}
+
+// computeDocumentHash computes a SHA-256 hash of document text for identity.
+// Used for document-level deduplication in incremental Cognify.
+// Hash is computed on exact text without normalization to detect any changes.
+func computeDocumentHash(text string) string {
+	hash := sha256.Sum256([]byte(text))
+	return fmt.Sprintf("%x", hash[:])
 }

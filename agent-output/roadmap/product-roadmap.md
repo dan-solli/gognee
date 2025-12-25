@@ -6,7 +6,9 @@
 
 ## Change Log
 | Date & Time | Change | Rationale |
-|-------------|--------|-----------|| 2025-12-25 | Marked Plan 008 (Edge ID Correctness) as Delivered; v0.7.1 released | Retrospective closed for Plan 008; QA+UAT verified edge endpoint IDs match node IDs correctly |
+|-------------|--------|-----------||
+| 2025-12-25 | Marked Plan 009 (Incremental Cognify) as Delivered; v0.8.0 ready for release | Retrospective closed for Plan 009; UAT approved incremental Cognify with cost/time reduction value delivered |
+| 2025-12-25 | Marked Plan 008 (Edge ID Correctness) as Delivered; v0.7.1 released | Retrospective closed for Plan 008; QA+UAT verified edge endpoint IDs match node IDs correctly |
 | 2025-12-25 | Marked Plan 010 (Memory Decay/Forgetting) as Delivered; v0.9.0 released | Retrospective closed for Plan 010; Epic 7.5 complete with full UAT approval || 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED || 2025-12-25 | Marked Plan 008 as QA Complete | QA executed: unit tests + coverage verified; integration suite warning documented |
 | 2025-12-24 | Plans 007-010 created for post-MVP epics 7.1, 7.3, 7.4, 7.5 | User requested backlog planning; Skipped 7.2 and 7.6 |
 | 2025-12-24 23:30 | Created product roadmap; marked v0.6.0 as Released | Retrospective closed for Plan 006 (Phase 6 Integration); MVP delivered |
@@ -87,7 +89,7 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: v0.7.1 (Edge ID Correctness)
+**Current Working Release**: None (all planned releases delivered)
 
 ### v0.7.0 Release Summary
 | Plan ID | Title | UAT Status | Committed | Released |
@@ -126,13 +128,27 @@ So that I can integrate knowledge graph memory into my application with a single
 - Test coverage: 86.9% overall
 
 ### v0.8.0 Release - Efficiency
-**Target Date**: TBD
-**Status**: Planning
+**Target Date**: 2025-12-25
+**Actual Release Date**: 2025-12-25
+**Status**: Released ✅
 **Strategic Goal**: Reduce processing costs for updates
 
-| Plan ID | Title | Epic | Status | Target |
-|---------|-------|------|--------|--------|
-| 009 | Incremental Cognify | 7.4 | Critic Approved | v0.8.0 |
+| Plan ID | Title | Epic | Status | Committed | Released |
+|---------|-------|------|--------|----------|----------|
+| 009 | Incremental Cognify | 7.4 | Delivered | ✅ Yes | ✅ 2025-12-25 |
+
+**Release Status**: ✅ RELEASED
+**Blocking Items**: None
+**Release Notes**:
+- Document-level deduplication via SHA-256 content hash
+- SkipProcessed defaults to true (incremental by default)
+- Force option to override caching and reprocess all documents
+- New `processed_documents` SQLite table for tracking
+- DocumentTracker interface implemented by SQLiteGraphStore
+- CognifyResult reports DocumentsSkipped count
+- Performance: ~0ms for cached documents vs 5-10s with LLM
+- Backward compatible (incremental mode can be disabled)
+- Test coverage: 84.9% (pkg/gognee), 85.5% (pkg/store)
 
 ### v0.9.0 Release Summary
 | Plan ID | Title | UAT Status | Committed | Released |
@@ -164,6 +180,10 @@ So that I can integrate knowledge graph memory into my application with a single
 ### Previous Releases
 | Version | Date | Plans Included | Status | Notes |
 |---------|------|----------------|--------|-------|
+| v0.9.0 | 2025-12-25 | 010 (Memory Decay/Forgetting) | Released | Time-based decay + Prune() API |
+| v0.8.0 | 2025-12-25 | 009 (Incremental Cognify) | Released | Document-level deduplication |
+| v0.7.1 | 2025-12-25 | 008 (Edge ID Correctness) | Released | Fixed edge endpoint ID derivation |
+| v0.7.0 | 2025-12-25 | 007 (Persistent Vector Store) | Released | SQLite-backed embeddings persistence |
 | v0.6.0 | 2025-12-24 | 006 (Phase 6 Integration) | Released | MVP complete - unified API |
 | v0.5.0 | 2025-12-24 | 005 (Phase 5 Search) | Released | Hybrid search implementation |
 | v0.4.0 | 2025-12-24 | 004 (Phase 4 Storage) | Released | SQLite graph + in-memory vector store |
@@ -255,8 +275,9 @@ So that graph queries return accurate relationship paths.
 
 ### Epic 7.4: Incremental Cognify (Post-MVP)
 **Priority**: P2
-**Status**: Critic Approved (Plan 009)
+**Status**: Delivered ✅
 **Target Release**: v0.8.0
+**Actual Release**: v0.8.0 (2025-12-25)
 
 **User Story**:
 As a developer with large document corpora,
@@ -264,12 +285,41 @@ I want to process only new/changed documents,
 So that I can update my knowledge graph efficiently without reprocessing everything.
 
 **Business Value**:
-- Reduces processing time for updates
-- Reduces LLM API costs for incremental updates
-- Enables continuous knowledge graph updates
+- Reduces processing time for updates (~0ms for cached vs 5-10s per doc with LLM)
+- Reduces LLM API costs for incremental updates (zero API calls for cached documents)
+- Enables continuous knowledge graph updates in production environments
 
 **Dependencies**:
 - v0.6.0 MVP complete
+
+**Acceptance Criteria** (outcome-focused):
+- ✅ Document identity based on SHA-256 hash of text content
+- ✅ SkipProcessed defaults to true (incremental by default)
+- ✅ Force option reprocesses all documents regardless of cache
+- ✅ DocumentTracker interface separate from GraphStore
+- ✅ CognifyResult reports DocumentsSkipped count
+- ✅ Tracking persists across restarts (file DB mode)
+- ✅ :memory: mode limitation documented
+- ✅ Test coverage ≥80% for new code
+- ✅ Backward compatible (opt-out via Force or SkipProcessed=false)
+
+**Status Notes**:
+- 2025-12-24: Plan 009 created and approved by critic
+- 2025-12-25: Implementation complete - all milestones delivered
+- 2025-12-25: QA Complete - 84.9% (pkg/gognee), 85.5% (pkg/store) coverage
+- 2025-12-25: UAT Complete - value delivery validated, approved for release
+- 2025-12-25: Retrospective closed - v0.8.0 released
+
+**Delivered Artifacts**:
+- DocumentTracker interface (pkg/store/tracker.go)
+- processed_documents SQLite table + index
+- Incremental Cognify logic with hash checking
+- CognifyOptions: SkipProcessed, Force fields
+- CognifyResult: DocumentsSkipped field
+- computeDocumentHash() helper function
+- 6 Plan 009-tagged unit tests (DocumentTracker CRUD + incremental behavior)
+- README Incremental Cognify section
+- CHANGELOG v0.8.0 entry
 
 ---
 

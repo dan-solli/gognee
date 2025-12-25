@@ -254,6 +254,95 @@ g, _ := gognee.New(cfg)
 
 The database file is created automatically if it doesn't exist.
 
+## Incremental Cognify
+
+By default, gognee tracks processed documents to avoid redundant processing. This reduces costs and processing time when re-adding documents.
+
+### How It Works
+
+When you call `Cognify()`, gognee:
+1. Computes a SHA-256 hash of each document's text
+2. Checks if that hash has been processed before
+3. **Skips** documents that have already been processed (incremental mode)
+4. Processes new/changed documents normally
+
+**Benefits:**
+- ⚡ Near-instant processing for duplicate documents (~0ms vs 5-10s)
+- 💰 Zero LLM API costs for cached documents
+- 🔄 Enables continuous updates without full reprocessing
+
+### Default Behavior
+
+Incremental mode is **ON by default**:
+
+```go
+// Second Cognify() call skips already-processed documents
+g.Add(ctx, "React is a UI library", gognee.AddOptions{})
+g.Cognify(ctx, gognee.CognifyOptions{}) // Processes document (hash: abc123)
+
+g.Add(ctx, "React is a UI library", gognee.AddOptions{}) // Same text
+g.Cognify(ctx, gognee.CognifyOptions{}) // Skips (hash: abc123 already processed)
+// DocumentsProcessed=0, DocumentsSkipped=1
+```
+
+### Controlling Incremental Behavior
+
+Use `CognifyOptions` to control incremental processing:
+
+```go
+// Disable incremental mode (always reprocess)
+skipProcessed := false
+g.Cognify(ctx, gognee.CognifyOptions{
+    SkipProcessed: &skipProcessed,
+})
+
+// Force reprocessing even with incremental mode enabled
+g.Cognify(ctx, gognee.CognifyOptions{
+    Force: true, // Overrides SkipProcessed
+})
+```
+
+**When to use `Force: true`:**
+- After changing `ChunkSize` or `ChunkOverlap` settings
+- To rebuild the knowledge graph from scratch
+- After updating extraction prompts or LLM models
+
+### Document Identity
+
+Documents are identified by **exact text content** (SHA-256 hash). Any change to the text (including whitespace) creates a new document:
+
+```go
+g.Add(ctx, "React is great", gognee.AddOptions{Source: "file-a"})
+g.Cognify(ctx, gognee.CognifyOptions{}) // Processes
+
+g.Add(ctx, "React is great", gognee.AddOptions{Source: "file-b"}) // Different source
+g.Cognify(ctx, gognee.CognifyOptions{}) // Skips (same text)
+
+g.Add(ctx, "React is great!", gognee.AddOptions{}) // Punctuation changed
+g.Cognify(ctx, gognee.CognifyOptions{}) // Processes (different hash)
+```
+
+**Note:** The `Source` field is metadata only and does NOT affect document identity. Identity is purely content-based.
+
+### Persistence
+
+Document tracking persists in the SQLite database (table: `processed_documents`). Tracking survives application restarts when using file-based `DBPath`.
+
+For `:memory:` mode, tracking is lost on restart (incremental behavior only applies within a single session).
+
+### Resetting Tracking
+
+To clear processed document history without deleting the knowledge graph:
+
+```go
+// Access DocumentTracker interface
+tracker := g.GetGraphStore().(store.DocumentTracker)
+tracker.ClearProcessedDocuments(ctx)
+
+// Now all documents will be reprocessed
+g.Cognify(ctx, gognee.CognifyOptions{})
+```
+
 ## Memory Decay and Forgetting
 
 gognee supports time-based memory decay to keep the knowledge graph relevant and bounded. Older or rarely-accessed nodes receive lower scores in search results, and can be explicitly pruned.

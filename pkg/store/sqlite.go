@@ -66,6 +66,15 @@ func (s *SQLiteGraphStore) initSchema() error {
 
 	CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source_id);
 	CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_id);
+
+	CREATE TABLE IF NOT EXISTS processed_documents (
+		hash TEXT PRIMARY KEY,
+		source TEXT,
+		processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		chunk_count INTEGER DEFAULT 0
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_processed_documents_source ON processed_documents(source);
 	`
 
 	_, err := s.db.Exec(schema)
