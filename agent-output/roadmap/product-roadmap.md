@@ -6,7 +6,8 @@
 
 ## Change Log
 | Date & Time | Change | Rationale |
-|-------------|--------|-----------|| 2025-12-25 | Marked Plan 010 (Memory Decay/Forgetting) as Delivered; v0.9.0 released | Retrospective closed for Plan 010; Epic 7.5 complete with full UAT approval || 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED |
+|-------------|--------|-----------|| 2025-12-25 | Marked Plan 008 (Edge ID Correctness) as Delivered; v0.7.1 released | Retrospective closed for Plan 008; QA+UAT verified edge endpoint IDs match node IDs correctly |
+| 2025-12-25 | Marked Plan 010 (Memory Decay/Forgetting) as Delivered; v0.9.0 released | Retrospective closed for Plan 010; Epic 7.5 complete with full UAT approval || 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED || 2025-12-25 | Marked Plan 008 as QA Complete | QA executed: unit tests + coverage verified; integration suite warning documented |
 | 2025-12-24 | Plans 007-010 created for post-MVP epics 7.1, 7.3, 7.4, 7.5 | User requested backlog planning; Skipped 7.2 and 7.6 |
 | 2025-12-24 23:30 | Created product roadmap; marked v0.6.0 as Released | Retrospective closed for Plan 006 (Phase 6 Integration); MVP delivered |
 
@@ -86,17 +87,43 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: v0.7.0 (Production Hardening)
+**Current Working Release**: v0.7.1 (Edge ID Correctness)
 
-### v0.7.0 Release - Production Hardening
-**Target Date**: TBD
-**Status**: Planning
-**Strategic Goal**: Complete persistence story and fix known correctness issues
+### v0.7.0 Release Summary
+| Plan ID | Title | UAT Status | Committed | Released |
+|---------|-------|------------|----------|----------|
+| 007 | Persistent Vector Store | ✅ Approved | ✅ Yes | ✅ 2025-12-25 |
 
-| Plan ID | Title | Epic | Status | Target |
-|---------|-------|------|--------|--------|
-| 007 | Persistent Vector Store | 7.1 | Critic Approved | v0.7.0 |
-| 008 | Edge ID Correctness Fix | 7.3 | Critic Approved | v0.7.0 |
+**Release Status**: ✅ RELEASED
+**Blocking Items**: None
+**Release Notes**:
+- SQLite-backed persistent vector store for file-based databases
+- Embeddings persist across application restarts without re-Cognify()
+- Automatic mode selection (SQLite for persistent DBPath, MemoryVectorStore for :memory:)
+- Direct-query linear scan search (acceptable for <10K nodes)
+- Test coverage: 87.1% overall
+
+### v0.7.1 Release - Edge ID Correctness
+**Target Date**: 2025-12-25
+**Actual Release Date**: 2025-12-25
+**Status**: Released ✅
+**Strategic Goal**: Fix edge ID derivation bug to ensure graph traversal correctness
+
+| Plan ID | Title | Epic | Status | Committed | Released |
+|---------|-------|------|--------|----------|----------|
+| 008 | Edge ID Correctness Fix | 7.3 | Delivered | ✅ Yes | ✅ 2025-12-25 |
+
+**Release Status**: ✅ RELEASED
+**Blocking Items**: None
+**Release Notes**:
+- Fixed edge endpoint ID generation to include entity types
+- Edges now correctly reference node IDs derived from (name, type) pairs
+- Added case-insensitive and whitespace-normalized entity name matching
+- Ambiguous entity detection with EdgesSkipped tracking
+- 6 new unit tests validating edge ID correctness
+- Integration test confirms edge-node connectivity
+- Improved relation extraction robustness (filtering instead of failing on invalid triplets)
+- Test coverage: 86.9% overall
 
 ### v0.8.0 Release - Efficiency
 **Target Date**: TBD
@@ -194,8 +221,8 @@ So that I'm not locked into OpenAI and can optimize for cost/performance.
 
 ### Epic 7.3: Edge ID Correctness Fix (Post-MVP)
 **Priority**: P2
-**Status**: Critic Approved (Plan 008)
-**Target Release**: v0.7.0
+**Status**: Delivered (Plan 008) ✅
+**Target Release**: v0.7.1
 
 **User Story**:
 As a developer relying on graph traversal,
@@ -206,14 +233,23 @@ So that graph queries return accurate relationship paths.
 - Fixes correctness issue identified in QA (Finding 3)
 - Improves reliability of graph traversal search
 - Enables more sophisticated graph queries
+- Ensures graph traversal returns valid node endpoints
 
 **Dependencies**:
 - v0.6.0 MVP complete
 
-**Technical Approach (TBD)**:
-- Map triplet endpoints (Subject/Object) to entity types from extracted entities
-- Generate edge endpoint IDs using correct (name, type) pairs
-- Add validation tests for edge-node ID consistency
+**Technical Implementation** ✅:
+- Maps triplet endpoints (Subject/Object) to entity types from extracted entities
+- Generates edge endpoint IDs using correct (name, type) pairs
+- Case-insensitive + whitespace-normalized entity name matching
+- Detects and skips ambiguous entity references (multiple types for same name)
+- Comprehensive validation tests for edge-node ID consistency
+
+**Status Notes**:
+- 2025-12-25: Implementation complete with edge ID determinism fix
+- 2025-12-25: QA Complete - 86.9% coverage, all unit + integration tests pass
+- 2025-12-25: UAT Complete - edge connectivity verified, graph queries validated
+- 2025-12-25: Retrospective closed - v0.7.1 released
 
 ---
 

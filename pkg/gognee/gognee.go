@@ -87,7 +87,8 @@ type CognifyResult struct {
 	ChunksFailed       int
 	NodesCreated       int
 	EdgesCreated       int
-	Errors             []error
+	EdgesSkipped       int     // Count of edges skipped due to entity lookup failure or ambiguity
+	Errors             []error // Includes details of skipped edges ("skipped edge" in message)
 }
 
 // Stats reports basic telemetry about the knowledge graph
@@ -242,6 +243,68 @@ func (g *Gognee) GetVectorStore() store.VectorStore {
 	return g.vectorStore
 }
 
+// normalizeEntityName applies normalization for entity lookup matching.
+// Normalization: ToLower() + TrimSpace() + collapse internal whitespace
+func normalizeEntityName(name string) string {
+	// Trim leading/trailing whitespace
+	normalized := strings.TrimSpace(name)
+	// Convert to lowercase for case-insensitive matching
+	normalized = strings.ToLower(normalized)
+	// Collapse internal whitespace
+	fields := strings.Fields(normalized)
+	return strings.Join(fields, " ")
+}
+
+// buildEntityTypeMap creates a map from normalized entity names to their types.
+// Returns the map and a set of ambiguous names (names that map to multiple types).
+func buildEntityTypeMap(entities []extraction.Entity) (map[string]string, map[string]bool) {
+	entityMap := make(map[string]string)
+	typeCounts := make(map[string]map[string]bool) // normalized name -> set of types
+
+	for _, entity := range entities {
+		normalized := normalizeEntityName(entity.Name)
+		if normalized == "" {
+			continue // Skip empty names
+		}
+
+		// Track all types seen for this normalized name
+		if typeCounts[normalized] == nil {
+			typeCounts[normalized] = make(map[string]bool)
+		}
+		typeCounts[normalized][entity.Type] = true
+	}
+
+	// Build entity map, marking ambiguous names
+	ambiguous := make(map[string]bool)
+	for normalized, types := range typeCounts {
+		if len(types) > 1 {
+			// Multiple types for same name = ambiguous
+			ambiguous[normalized] = true
+		} else {
+			// Single type - safe to use
+			for typ := range types {
+				entityMap[normalized] = typ
+				break
+			}
+		}
+	}
+
+	return entityMap, ambiguous
+}
+
+// lookupEntityType looks up the entity type by name using the entity map.
+// Returns empty string if not found or ambiguous.
+func lookupEntityType(name string, entityMap map[string]string, ambiguous map[string]bool) (string, bool) {
+	normalized := normalizeEntityName(name)
+
+	if ambiguous[normalized] {
+		return "", false // Ambiguous - multiple types
+	}
+
+	typ, found := entityMap[normalized]
+	return typ, found
+}
+
 // Add buffers text for processing via Cognify()
 func (g *Gognee) Add(ctx context.Context, text string, opts AddOptions) error {
 	if strings.TrimSpace(text) == "" {
@@ -292,6 +355,9 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 				continue
 			}
 
+			// Build entity name->type lookup map before processing triplets
+			entityMap, ambiguous := buildEntityTypeMap(entities)
+
 			// Extract relations
 			triplets, err := g.relationExtractor.Extract(ctx, chunk.Text, entities)
 			if err != nil {
@@ -341,8 +407,37 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 
 			// Create edges for each triplet
 			for _, triplet := range triplets {
-				sourceID := generateDeterministicNodeID(triplet.Subject, "")
-				targetID := generateDeterministicNodeID(triplet.Object, "")
+				// Look up source entity type
+				sourceType, sourceFound := lookupEntityType(triplet.Subject, entityMap, ambiguous)
+				if !sourceFound {
+					result.EdgesSkipped++
+					if ambiguous[normalizeEntityName(triplet.Subject)] {
+						result.Errors = append(result.Errors, fmt.Errorf("skipped edge %s-%s-%s: subject '%s' is ambiguous (multiple types)",
+							triplet.Subject, triplet.Relation, triplet.Object, triplet.Subject))
+					} else {
+						result.Errors = append(result.Errors, fmt.Errorf("skipped edge %s-%s-%s: subject '%s' not found in extracted entities",
+							triplet.Subject, triplet.Relation, triplet.Object, triplet.Subject))
+					}
+					continue
+				}
+
+				// Look up target entity type
+				targetType, targetFound := lookupEntityType(triplet.Object, entityMap, ambiguous)
+				if !targetFound {
+					result.EdgesSkipped++
+					if ambiguous[normalizeEntityName(triplet.Object)] {
+						result.Errors = append(result.Errors, fmt.Errorf("skipped edge %s-%s-%s: object '%s' is ambiguous (multiple types)",
+							triplet.Subject, triplet.Relation, triplet.Object, triplet.Object))
+					} else {
+						result.Errors = append(result.Errors, fmt.Errorf("skipped edge %s-%s-%s: object '%s' not found in extracted entities",
+							triplet.Subject, triplet.Relation, triplet.Object, triplet.Object))
+					}
+					continue
+				}
+
+				// Generate edge IDs using correct entity types (FIX: was using empty string)
+				sourceID := generateDeterministicNodeID(triplet.Subject, sourceType)
+				targetID := generateDeterministicNodeID(triplet.Object, targetType)
 
 				edge := &store.Edge{
 					ID:        fmt.Sprintf("%s-%s-%s", sourceID, sanitizeRelation(triplet.Relation), targetID),

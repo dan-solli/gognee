@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2025-12-25
+
+### Fixed
+- **Edge ID Correctness** (`pkg/gognee`)
+  - Edge source/target IDs now use correct entity types when generating IDs
+  - Previously, edges were created with `generateDeterministicNodeID(name, "")` (empty type)
+  - Now edges use `generateDeterministicNodeID(name, entityType)` matching node ID generation
+  - This ensures edges correctly reference existing nodes for accurate graph traversal
+  - Entity type lookup with normalization (case-insensitive, whitespace-insensitive)
+  - Ambiguous entity names (same name, multiple types) cause edge skip with warning
+
+### Added
+- **Entity Lookup Helper Functions** (`pkg/gognee`)
+  - `normalizeEntityName()` - Applies ToLower, TrimSpace, and whitespace collapsing
+  - `buildEntityTypeMap()` - Creates normalized name→type map with ambiguity detection
+  - `lookupEntityType()` - Case and whitespace-insensitive entity type lookup
+  - Handles edge cases: Unicode names, whitespace variations, name normalization
+- **CognifyResult.EdgesSkipped Field**
+  - New field tracks edges skipped due to entity lookup failure or ambiguity
+  - Contract: `EdgesSkipped == count(Errors where message contains "skipped edge")`
+  - Provides visibility into extraction quality (missing/ambiguous entity references)
+- **Enhanced Error Reporting**
+  - Detailed error messages for skipped edges (subject, relation, object, reason)
+  - Distinguishes between "not found" and "ambiguous" entity scenarios
+  - Diagnostic logging shows available entity names when lookup fails
+
+### Changed
+- **Edge Creation Logic** (`pkg/gognee.Cognify()`)
+  - Builds entity name→type lookup map before processing triplets
+  - Validates source and target entities exist before creating edges
+  - Skips edge creation if entity not found or ambiguous (with warning)
+  - All edges now correctly reference node IDs for proper graph traversal
+
+### Testing
+- 6 new unit tests covering:
+  - Edge ID consistency (source/target IDs match node IDs)
+  - Missing entity handling (edge skipped with error)
+  - Case-insensitive matching ("React" vs "react")
+  - Whitespace normalization ("  React  " vs "React")
+  - Unicode entity names ("Café", "François")
+  - Ambiguous entity names (same name, different types)
+- 1 new integration test: `TestIntegrationEdgeNodeConnectivity`
+  - Validates edges reference actual nodes end-to-end with real LLM
+  - Verifies both source and target nodes exist for all edges
+- All existing tests pass (no regressions)
+
+### Migration Notes
+- **Existing databases**: Run `Cognify()` to regenerate edges with correct IDs
+- **New edges**: Automatically created with correct IDs after upgrade
+- **Old edges**: Remain in database but may reference non-existent nodes (orphaned)
+- **Backward compatible**: No schema changes or breaking API changes
+
+### Known Limitations
+- **Semantic variations not matched**: "PostgreSQL" vs "Postgres" treated as different entities
+  - Documented limitation of LLM extraction consistency
+  - Future enhancement: fuzzy matching or entity resolution
+- **Defensive logic**: Edge skip logic may be unnecessary with current relation extractor validation
+  - Relation extractor already validates subject/object exist in entities
+  - However, logic provides future flexibility and defensive programming
+
 ## [0.7.0] - 2025-12-25
 
 ### Added

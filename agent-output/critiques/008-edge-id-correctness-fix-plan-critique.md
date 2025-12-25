@@ -2,14 +2,15 @@
 
 **Artifact Path**: `agent-output/planning/008-edge-id-correctness-fix-plan.md`
 **Date**: 2025-12-24
-**Status**: Follow-up Review
-**Critique Status**: RESOLVED
+**Status**: Final Review (Revision 2)
+**Critique Status**: APPROVED
 
 ## Changelog
 | Date | Agent Handoff | Request | Summary |
 |------|---------------|---------|---------|
 | 2025-12-24 | Planner → Critic | Review for clarity, completeness, architectural alignment | Initial critique |
 | 2025-12-24 | Planner → Critic | Revise plan per critique | Plan updated: ambiguity policy specified for duplicate normalized names; lookup helper tracks ambiguity explicitly |
+| 2025-12-25 | Planner → Critic | Final review before implementation | Plan updated: normalization spec added, EdgesSkipped contract clarified, edge case tests added, target release v0.7.1 |
 
 ---
 
@@ -80,7 +81,7 @@ None — the one OPEN QUESTION is marked `[RESOLVED]`.
 ## Findings
 
 ### Finding 1: Entity Name Normalization Mismatch Risk
-**Status**: OPEN
+**Status**: RESOLVED ✅
 **Severity**: Medium
 
 **Issue**: The plan assumes entity names in triplets match entity names from extraction. However, LLMs may produce variations:
@@ -96,6 +97,13 @@ The plan mentions "case-insensitive lookup" but doesn't address semantic variati
 2. Consider whitespace normalization in addition to case normalization
 3. Add a specific test case for common variations (e.g., "PostgreSQL" vs "Postgres")
 4. Log the actual names that failed lookup for debugging
+
+**Resolution (v0.7.1)**: Plan now includes explicit "Normalization Specification" section:
+- `strings.ToLower()` - case-insensitive matching
+- `strings.TrimSpace()` - remove leading/trailing whitespace  
+- `strings.Join(strings.Fields(), " ")` - collapse internal whitespace
+- Documents semantic variation limitation explicitly
+- Adds diagnostic logging requirement for skipped edges
 
 ---
 
@@ -114,7 +122,7 @@ The plan mentions "case-insensitive lookup" but doesn't address semantic variati
 ---
 
 ### Finding 3: EdgesSkipped vs Errors Redundancy
-**Status**: OPEN  
+**Status**: RESOLVED ✅
 **Severity**: Low
 
 **Issue**: Plan adds both `EdgesSkipped int` field AND adds errors to the Errors list. This is redundant — callers must check two places.
@@ -127,10 +135,15 @@ The plan mentions "case-insensitive lookup" but doesn't address semantic variati
 
 For consistency with existing ChunksFailed pattern, recommend keeping Errors list and deriving count.
 
+**Resolution (v0.7.1)**: Plan now defines explicit contract in Milestone 3:
+- `EdgesSkipped == count(Errors where message contains "skipped edge")`
+- Single source of truth pattern: Errors is authoritative, EdgesSkipped is convenience count
+- Implementation must maintain this invariant
+
 ---
 
 ### Finding 4: Missing "How will this break in production?" Analysis
-**Status**: OPEN
+**Status**: RESOLVED ✅
 **Severity**: Medium
 
 **Issue**: Per critic methodology, we should ask "How will this plan result in a hotfix after deployment?"
@@ -145,39 +158,80 @@ For consistency with existing ChunksFailed pattern, recommend keeping Errors lis
 - Long entity names (>100 chars)
 - Entity names with special characters
 
+**Resolution (v0.7.1)**: Plan now includes explicit edge case tests in Milestone 4:
+- Test case 5: Unicode entity names (e.g., "Café") handled correctly
+- Test case 4: Whitespace normalization (e.g., "  React  " matches "React")
+- Test case 6: Ambiguous entity names → edge skipped
+- Long names (>100 chars) not explicitly added but normalization covers this
+
 ---
 
 ## Questions for Planner
 
-1. What normalization is applied to entity names before lookup? (lowercase + trim? More aggressive?)
-2. What happens if the same entity name appears with multiple types in extraction?
-3. Should there be a minimum match threshold before skipping becomes a warning vs error?
+~~1. What normalization is applied to entity names before lookup? (lowercase + trim? More aggressive?)~~ **ANSWERED**: ToLower + TrimSpace + collapse internal whitespace
+~~2. What happens if the same entity name appears with multiple types in extraction?~~ **ANSWERED**: Ambiguity policy - skip edge, record in EdgesSkipped
+~~3. Should there be a minimum match threshold before skipping becomes a warning vs error?~~ **ANSWERED**: All skips treated equally; Errors list provides full detail
 
 ---
 
 ## Risk Assessment
 
-**Overall Risk**: LOW
+**Overall Risk**: LOW ✅
 
-The fix is straightforward and well-scoped. Main risk is edge cases from LLM extraction inconsistencies, which are inherent to LLM-based systems.
+The fix is straightforward and well-scoped. All significant edge cases are now addressed with explicit normalization specification and test coverage.
 
 ---
 
 ## Recommendations
 
-1. **Document name variation limitation** (Finding 1)
-2. **Specify ambiguous entity handling** (Finding 2)
-3. **Simplify EdgesSkipped/Errors relationship** (Finding 3)
-4. **Add edge case tests** (Finding 4)
+All recommendations from initial review have been addressed:
+
+1. ~~**Document name variation limitation**~~ ✅ RESOLVED - Explicit limitation documented
+2. ~~**Specify ambiguous entity handling**~~ ✅ RESOLVED - Ambiguity policy defined
+3. ~~**Simplify EdgesSkipped/Errors relationship**~~ ✅ RESOLVED - Contract defined
+4. ~~**Add edge case tests**~~ ✅ RESOLVED - Unicode, whitespace, ambiguity tests added
 
 ---
 
 ## Approval Status
 
-**APPROVED** — Blocking ambiguity handling is now specified in the plan.
+**APPROVED FOR IMPLEMENTATION** ✅
 
-Non-blocking recommendations to consider during implementation:
-- Improve normalization beyond case-insensitive matching (whitespace normalization at minimum).
-- Decide whether `EdgesSkipped` is redundant with Errors, or define a strict counting contract.
-- Add edge-case tests (Unicode, long names, special characters) to reduce hotfix risk.
+All findings from initial and follow-up reviews have been addressed:
+
+| Finding | Status | Resolution |
+|---------|--------|------------|
+| F1: Name normalization mismatch | RESOLVED | Normalization spec added |
+| F2: Duplicate entity names | RESOLVED | Ambiguity policy defined |
+| F3: EdgesSkipped/Errors redundancy | RESOLVED | Contract clarified |
+| F4: Missing edge case tests | RESOLVED | Tests added to Milestone 4 |
+
+**Plan Quality Assessment**:
+- ✅ Clear value statement
+- ✅ All open questions resolved  
+- ✅ Architectural alignment verified
+- ✅ Scope appropriate (small, focused bug fix)
+- ✅ Test coverage comprehensive
+- ✅ Risks documented with mitigations
+
+**Ready for Implementer handoff.**
+
+---
+
+## Revision History
+
+### Revision 2 (2025-12-25)
+**Artifact Changes**:
+- Target release updated from v0.7.0 to v0.7.1 (v0.7.0 already released with Plan 007)
+- Status updated from "Draft" to "Ready for Implementation"
+- Normalization Specification section added (Finding 1)
+- EdgesSkipped contract clarified in Milestone 3 (Finding 3)
+- Edge case tests added to Milestone 4 (Finding 4)
+
+**Findings Status Changes**:
+- Finding 1: OPEN → RESOLVED
+- Finding 3: OPEN → RESOLVED
+- Finding 4: OPEN → RESOLVED
+
+**Critique Status**: APPROVED
 

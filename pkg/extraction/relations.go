@@ -21,6 +21,8 @@ const relationExtractionPrompt = `You are a knowledge graph construction assista
 Given this text and the entities already extracted, identify relationships between them.
 Express each relationship as a triplet: (subject, relation, object)
 
+IMPORTANT: Use ONLY entity names from the "Known entities" list below. Do not create new entities or use partial names.
+
 Use clear, consistent relation names like:
 - USES, DEPENDS_ON, CREATED_BY, CONTAINS, IS_A, RELATES_TO, MENTIONS
 
@@ -31,7 +33,7 @@ Text:
 
 Known entities: %s
 
-Return ONLY valid JSON array:
+Return ONLY valid JSON array where subject and object are exact matches from the Known entities list:
 [{"subject": "...", "relation": "...", "object": "..."}, ...]`
 
 // RelationExtractor extracts relationships between entities from text using an LLM
@@ -100,34 +102,28 @@ func buildEntityLookup(entities []Entity) map[string]bool {
 }
 
 // validateAndProcessTriplets validates each triplet and ensures linking to known entities
+// Invalid triplets are filtered out rather than causing the entire extraction to fail
 func validateAndProcessTriplets(triplets []Triplet, entityLookup map[string]bool) ([]Triplet, error) {
 	result := make([]Triplet, 0, len(triplets))
 
-	for i, triplet := range triplets {
+	for _, triplet := range triplets {
 		// Trim whitespace
 		subject := strings.TrimSpace(triplet.Subject)
 		relation := strings.TrimSpace(triplet.Relation)
 		object := strings.TrimSpace(triplet.Object)
 
-		// Validate non-empty fields
-		if subject == "" {
-			return nil, fmt.Errorf("triplet at index %d has empty subject", i)
-		}
-		if relation == "" {
-			return nil, fmt.Errorf("triplet at index %d has empty relation", i)
-		}
-		if object == "" {
-			return nil, fmt.Errorf("triplet at index %d has empty object", i)
+		// Skip triplets with empty fields
+		if subject == "" || relation == "" || object == "" {
+			continue
 		}
 
-		// Strict mode: validate subject exists in entity list (case-insensitive)
+		// Filter mode: skip triplets referencing unknown entities (case-insensitive)
 		if !entityLookup[strings.ToLower(subject)] {
-			return nil, fmt.Errorf("triplet at index %d has unknown subject: %q (not in known entities)", i, subject)
+			continue
 		}
 
-		// Strict mode: validate object exists in entity list (case-insensitive)
 		if !entityLookup[strings.ToLower(object)] {
-			return nil, fmt.Errorf("triplet at index %d has unknown object: %q (not in known entities)", i, object)
+			continue
 		}
 
 		// Add validated and trimmed triplet

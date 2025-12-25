@@ -815,3 +815,358 @@ func TestCognifyAddEdgeError(t *testing.T) {
 		t.Errorf("Expected at least 1 error for AddEdge failure, got %d", len(result.Errors))
 	}
 }
+
+// TestEdgeIDConsistency verifies that edge source/target IDs match node IDs (Plan 008)
+func TestEdgeIDConsistency(t *testing.T) {
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Setup mock LLM with entities and triplets
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{
+				{Name: "React", Type: "Technology", Description: "A JavaScript library"},
+				{Name: "TypeScript", Type: "Technology", Description: "A typed superset of JavaScript"},
+			},
+		},
+		RelationResponses: [][]extraction.Triplet{
+			{
+				{Subject: "React", Relation: "USES", Object: "TypeScript"},
+			},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	ctx := context.Background()
+	g.Add(ctx, "React uses TypeScript", AddOptions{})
+
+	result, err := g.Cognify(ctx, CognifyOptions{})
+	if err != nil {
+		t.Fatalf("Cognify failed: %v", err)
+	}
+
+	if result.NodesCreated != 2 {
+		t.Errorf("Expected 2 nodes created, got %d", result.NodesCreated)
+	}
+	if result.EdgesCreated != 1 {
+		t.Errorf("Expected 1 edge created, got %d", result.EdgesCreated)
+	}
+
+	// Verify that edge source/target IDs reference actual nodes
+	// Get the edge
+	reactNodeID := generateDeterministicNodeID("React", "Technology")
+	edges, err := g.graphStore.GetEdges(ctx, reactNodeID)
+	if err != nil {
+		t.Fatalf("GetEdges failed: %v", err)
+	}
+
+	if len(edges) != 1 {
+		t.Fatalf("Expected 1 edge from React node, got %d", len(edges))
+	}
+
+	edge := edges[0]
+
+	// Verify source node exists
+	sourceNode, err := g.graphStore.GetNode(ctx, edge.SourceID)
+	if err != nil {
+		t.Errorf("Source node %s not found: %v", edge.SourceID, err)
+	}
+	if sourceNode != nil && sourceNode.Name != "React" {
+		t.Errorf("Expected source node name 'React', got '%s'", sourceNode.Name)
+	}
+
+	// Verify target node exists
+	targetNode, err := g.graphStore.GetNode(ctx, edge.TargetID)
+	if err != nil {
+		t.Errorf("Target node %s not found: %v", edge.TargetID, err)
+	}
+	if targetNode != nil && targetNode.Name != "TypeScript" {
+		t.Errorf("Expected target node name 'TypeScript', got '%s'", targetNode.Name)
+	}
+}
+
+// TestEdgeIDMissingEntity verifies that edges referencing non-existent entities are skipped (Plan 008)
+// Note: We test this indirectly because the relation extractor validates entities exist.
+// Instead, we test the normalization and lookup logic with case/whitespace variations.
+func TestEdgeIDMissingEntity(t *testing.T) {
+	// This test validates the lookup logic by testing entity name variations.
+	// The actual "missing entity" scenario is prevented by the relation extractor's validation.
+	// However, the edge creation code still needs the defensive logic for future flexibility.
+
+	// We'll test the helper functions directly
+	entities := []extraction.Entity{
+		{Name: "React", Type: "Technology", Description: "A library"},
+	}
+
+	entityMap, ambiguous := buildEntityTypeMap(entities)
+
+	// Test that "React" is found
+	typ, found := lookupEntityType("React", entityMap, ambiguous)
+	if !found {
+		t.Error("Expected 'React' to be found")
+	}
+	if typ != "Technology" {
+		t.Errorf("Expected type 'Technology', got '%s'", typ)
+	}
+
+	// Test that "TypeScript" is NOT found
+	_, found = lookupEntityType("TypeScript", entityMap, ambiguous)
+	if found {
+		t.Error("Expected 'TypeScript' to NOT be found")
+	}
+
+	// Test case-insensitive match
+	typ, found = lookupEntityType("react", entityMap, ambiguous)
+	if !found {
+		t.Error("Expected 'react' (lowercase) to be found")
+	}
+	if typ != "Technology" {
+		t.Errorf("Expected type 'Technology', got '%s'", typ)
+	}
+
+	// Test whitespace normalization
+	typ, found = lookupEntityType("  React  ", entityMap, ambiguous)
+	if !found {
+		t.Error("Expected '  React  ' (with whitespace) to be found")
+	}
+	if typ != "Technology" {
+		t.Errorf("Expected type 'Technology', got '%s'", typ)
+	}
+}
+
+// TestEdgeIDCaseInsensitive verifies case-insensitive entity name matching (Plan 008)
+func TestEdgeIDCaseInsensitive(t *testing.T) {
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Setup: entity extracted as "React", triplet uses "react" (lowercase)
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{
+				{Name: "React", Type: "Technology", Description: "A JavaScript library"},
+				{Name: "TypeScript", Type: "Technology", Description: "A typed superset"},
+			},
+		},
+		RelationResponses: [][]extraction.Triplet{
+			{
+				// Lowercase names should still match
+				{Subject: "react", Relation: "USES", Object: "typescript"},
+			},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	ctx := context.Background()
+	g.Add(ctx, "react uses typescript", AddOptions{})
+
+	result, err := g.Cognify(ctx, CognifyOptions{})
+	if err != nil {
+		t.Fatalf("Cognify failed: %v", err)
+	}
+
+	if result.NodesCreated != 2 {
+		t.Errorf("Expected 2 nodes created, got %d", result.NodesCreated)
+	}
+
+	// Edge SHOULD be created despite case mismatch
+	if result.EdgesCreated != 1 {
+		t.Errorf("Expected 1 edge created (case-insensitive match), got %d", result.EdgesCreated)
+	}
+
+	if result.EdgesSkipped != 0 {
+		t.Errorf("Expected 0 edges skipped, got %d", result.EdgesSkipped)
+	}
+}
+
+// TestEdgeIDWhitespaceNormalization verifies whitespace normalization (Plan 008)
+func TestEdgeIDWhitespaceNormalization(t *testing.T) {
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Setup: entity "React" vs triplet "  React  " (extra whitespace)
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{
+				{Name: "React", Type: "Technology", Description: "A JavaScript library"},
+				{Name: "TypeScript", Type: "Technology", Description: "A typed superset"},
+			},
+		},
+		RelationResponses: [][]extraction.Triplet{
+			{
+				{Subject: "  React  ", Relation: "USES", Object: "  TypeScript  "},
+			},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	ctx := context.Background()
+	g.Add(ctx, "React uses TypeScript", AddOptions{})
+
+	result, err := g.Cognify(ctx, CognifyOptions{})
+	if err != nil {
+		t.Fatalf("Cognify failed: %v", err)
+	}
+
+	if result.NodesCreated != 2 {
+		t.Errorf("Expected 2 nodes created, got %d", result.NodesCreated)
+	}
+
+	// Edge SHOULD be created despite whitespace differences
+	if result.EdgesCreated != 1 {
+		t.Errorf("Expected 1 edge created (whitespace normalized), got %d", result.EdgesCreated)
+	}
+}
+
+// TestEdgeIDUnicode verifies Unicode entity names handled correctly (Plan 008)
+func TestEdgeIDUnicode(t *testing.T) {
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Setup: Unicode entity names
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{
+				{Name: "Café", Type: "Concept", Description: "A coffee shop"},
+				{Name: "François", Type: "Person", Description: "Owner"},
+			},
+		},
+		RelationResponses: [][]extraction.Triplet{
+			{
+				{Subject: "François", Relation: "OWNS", Object: "Café"},
+			},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	ctx := context.Background()
+	g.Add(ctx, "François owns Café", AddOptions{})
+
+	result, err := g.Cognify(ctx, CognifyOptions{})
+	if err != nil {
+		t.Fatalf("Cognify failed: %v", err)
+	}
+
+	// Debug: check for errors
+	if len(result.Errors) > 0 {
+		for _, e := range result.Errors {
+			t.Logf("Error: %v", e)
+		}
+	}
+
+	if result.NodesCreated != 2 {
+		t.Errorf("Expected 2 nodes created, got %d (ChunksProcessed=%d, ChunksFailed=%d)",
+			result.NodesCreated, result.ChunksProcessed, result.ChunksFailed)
+	}
+
+	if result.EdgesCreated != 1 {
+		t.Errorf("Expected 1 edge created, got %d", result.EdgesCreated)
+	}
+
+	// Verify edge connects to actual nodes
+	francoisNodeID := generateDeterministicNodeID("François", "Person")
+	edges, err := g.graphStore.GetEdges(ctx, francoisNodeID)
+	if err != nil {
+		t.Fatalf("GetEdges failed: %v", err)
+	}
+
+	if len(edges) != 1 {
+		t.Fatalf("Expected 1 edge from François node, got %d", len(edges))
+	}
+}
+
+// TestEdgeIDAmbiguousEntity verifies ambiguous entity names cause edge skip (Plan 008)
+func TestEdgeIDAmbiguousEntity(t *testing.T) {
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Setup: "Python" exists as both Technology and Concept
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{
+				{Name: "Python", Type: "Technology", Description: "Programming language"},
+				{Name: "Python", Type: "Concept", Description: "A type of snake"},
+				{Name: "Django", Type: "Technology", Description: "Web framework"},
+			},
+		},
+		RelationResponses: [][]extraction.Triplet{
+			{
+				// Ambiguous: which Python?
+				{Subject: "Django", Relation: "USES", Object: "Python"},
+			},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	ctx := context.Background()
+	g.Add(ctx, "Django uses Python", AddOptions{})
+
+	result, err := g.Cognify(ctx, CognifyOptions{})
+	if err != nil {
+		t.Fatalf("Cognify failed: %v", err)
+	}
+
+	if result.NodesCreated != 3 {
+		t.Errorf("Expected 3 nodes created, got %d", result.NodesCreated)
+	}
+
+	// Edge SHOULD be skipped due to ambiguity
+	if result.EdgesCreated != 0 {
+		t.Errorf("Expected 0 edges created (Python is ambiguous), got %d", result.EdgesCreated)
+	}
+
+	if result.EdgesSkipped != 1 {
+		t.Errorf("Expected 1 edge skipped, got %d", result.EdgesSkipped)
+	}
+
+	// Verify error logged mentions ambiguity
+	foundAmbiguityError := false
+	for _, err := range result.Errors {
+		if err != nil && (contains(err.Error(), "ambiguous") || contains(err.Error(), "skipped edge")) {
+			foundAmbiguityError = true
+			break
+		}
+	}
+	if !foundAmbiguityError {
+		t.Error("Expected ambiguity-related error for skipped edge")
+	}
+}

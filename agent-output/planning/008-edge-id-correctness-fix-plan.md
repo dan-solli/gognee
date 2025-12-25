@@ -1,15 +1,18 @@
 # Plan 008: Edge ID Correctness Fix
 
 **Plan ID**: 008
-**Target Release**: v0.7.0
+**Target Release**: v0.7.1
 **Epic Alignment**: Epic 7.3 - Edge ID Correctness Fix (P2)
-**Status**: Draft
+**Status**: QA Complete
 **Created**: 2025-12-24
 
 ## Changelog
 | Date | Change |
 |------|--------|
 | 2025-12-24 | Initial plan creation |
+| 2025-12-25 | Revised per critic feedback; target release updated to v0.7.1; finalized for implementation |
+| 2025-12-25 | Implementation complete - all milestones delivered |
+| 2025-12-25 | QA complete - unit tests + coverage verified; integration suite warning documented |
 
 ---
 
@@ -62,6 +65,17 @@ Edge source/target IDs should use the same (name, type) derivation as nodes, ens
 **OPEN QUESTION [RESOLVED]**: What if a triplet references an entity name that wasn't in the extracted entities list?
 **Resolution**: Log a warning and skip the edge. This preserves data quality over completeness. Document that callers should inspect CognifyResult.Errors for skipped edges.
 
+### Normalization Specification (Critic Finding 1)
+
+Entity name normalization for lookup:
+1. `strings.ToLower()` - case-insensitive matching
+2. `strings.TrimSpace()` - remove leading/trailing whitespace
+3. `strings.Join(strings.Fields(normalized), " ")` - collapse internal whitespace
+
+**Known Limitation**: Semantic variations (e.g., "PostgreSQL" vs "Postgres") will NOT match. This is documented as a limitation of LLM extraction. Future enhancement: fuzzy matching or entity resolution.
+
+**Diagnostic logging**: When an edge is skipped due to missing entity, log both the triplet name and available entity names for debugging.
+
 ---
 
 ## Plan
@@ -112,12 +126,14 @@ Edge source/target IDs should use the same (name, type) derivation as nodes, ens
 
 **Tasks**:
 1. Add `EdgesSkipped int` field to CognifyResult
-2. Add specific error type or message for skipped edges
+2. Record each skipped edge as an entry in Errors list (with specific message format)
 3. Document the field in type comments
+4. Contract: `EdgesSkipped == count(Errors where message contains "skipped edge")`
 
 **Acceptance Criteria**:
 - CognifyResult.EdgesSkipped accurately counts skipped edges
-- Errors list includes details about which edges were skipped
+- Errors list includes details about which edges were skipped (subject, relation, object, reason)
+- EdgesSkipped count is derivable from Errors (single source of truth pattern)
 
 **Dependencies**: Milestone 2
 
@@ -131,11 +147,15 @@ Edge source/target IDs should use the same (name, type) derivation as nodes, ens
 1. Add test case: extracted entities + triplets → verify edge source/target IDs match node IDs
 2. Add test case: triplet references entity not in extraction → edge skipped, warning logged
 3. Add test case: case mismatch between triplet and entity → still matches correctly
-4. Verify EdgesSkipped count in result
+4. Add test case: whitespace normalization (e.g., "  React  " matches "React")
+5. Add test case: Unicode entity names (e.g., "Café") handled correctly
+6. Add test case: ambiguous entity names (same name, different types) → edge skipped
+7. Verify EdgesSkipped count in result
 
 **Acceptance Criteria**:
 - Tests verify edge IDs are consistent with node IDs
 - Tests verify graceful handling of missing entity references
+- Tests cover edge cases: Unicode, whitespace, case variations
 - All tests pass offline
 
 **Dependencies**: Milestone 2, Milestone 3

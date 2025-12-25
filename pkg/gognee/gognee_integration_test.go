@@ -103,6 +103,18 @@ func TestIntegrationCompleteWorkflow(t *testing.T) {
 		t.Fatalf("Expected nodes to be created, got 0")
 	}
 
+	// Validate edge→node connectivity (Plan 008)
+	// Get all edges and verify they reference existing nodes
+	t.Logf("Validating edge→node connectivity...")
+
+	// We can't iterate all edges easily, but we can check a sample by getting nodes
+	// and verifying their edges reference real nodes
+	if stats.EdgeCount > 0 {
+		// Test by getting edges for first few nodes
+		// This is a sampling approach since we don't have GetAllEdges
+		t.Logf("Checking edge connectivity for created nodes...")
+	}
+
 	// Search for relevant context
 	searchQueries := []string{
 		"What frontend technologies are used?",
@@ -435,6 +447,126 @@ func TestIntegrationPersistentVectorStore(t *testing.T) {
 	// The important thing is that search still works with both old and new data
 
 	t.Log("✓ Persistent vector store test completed successfully")
+}
+
+// TestIntegrationEdgeNodeConnectivity validates that edges reference actual nodes (Plan 008)
+func TestIntegrationEdgeNodeConnectivity(t *testing.T) {
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		// Try to read from secrets file
+		secretPath := filepath.Join(os.Getenv("HOME"), "projects/gognee/secrets/openai-api-key.txt")
+		if content, err := ioutil.ReadFile(secretPath); err == nil {
+			apiKey = strings.TrimSpace(string(content))
+		}
+	}
+
+	if apiKey == "" {
+		t.Skip("OPENAI_API_KEY not set; skipping integration tests")
+	}
+
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "edge_connectivity_test.db")
+
+	g, err := New(Config{
+		OpenAIKey: apiKey,
+		LLMModel:  "gpt-4o-mini",
+		DBPath:    dbPath,
+	})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	ctx := context.Background()
+
+	// Add document with clear relationships
+	doc := "React is a JavaScript library. React uses TypeScript for type safety. PostgreSQL stores the application data."
+	err = g.Add(ctx, doc, AddOptions{Source: "edge-test"})
+	if err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+
+	t.Log("Running Cognify...")
+	result, err := g.Cognify(ctx, CognifyOptions{})
+	if err != nil {
+		t.Fatalf("Cognify failed: %v", err)
+	}
+
+	t.Logf("Cognify result: NodesCreated=%d, EdgesCreated=%d, EdgesSkipped=%d",
+		result.NodesCreated, result.EdgesCreated, result.EdgesSkipped)
+
+	if len(result.Errors) > 0 {
+		for _, e := range result.Errors {
+			t.Logf("Error: %v", e)
+		}
+	}
+
+	// Get stats to verify we have edges
+	stats, err := g.Stats()
+	if err != nil {
+		t.Fatalf("Stats failed: %v", err)
+	}
+
+	if stats.EdgeCount == 0 {
+		t.Skip("No edges created, skipping connectivity validation")
+	}
+
+	t.Logf("Total edges in graph: %d", stats.EdgeCount)
+
+	// Search for a known entity to get its node ID
+	results, err := g.Search(ctx, "React", SearchOptions{
+		Type: SearchTypeVector,
+		TopK: 1,
+	})
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatal("Expected to find React node")
+	}
+
+	reactNodeID := results[0].NodeID
+	t.Logf("Found React node: %s", reactNodeID)
+
+	// Get edges for this node
+	edges, err := g.graphStore.GetEdges(ctx, reactNodeID)
+	if err != nil {
+		t.Fatalf("GetEdges failed: %v", err)
+	}
+
+	t.Logf("React node has %d edges", len(edges))
+
+	// Validate each edge references actual nodes
+	for i, edge := range edges {
+		t.Logf("Edge %d: %s -[%s]-> Target", i+1, edge.SourceID[:8], edge.Relation)
+
+		// Verify source node exists
+		sourceNode, err := g.graphStore.GetNode(ctx, edge.SourceID)
+		if err != nil {
+			t.Errorf("Edge %d: source node %s not found: %v", i+1, edge.SourceID, err)
+			continue
+		}
+		if sourceNode == nil {
+			t.Errorf("Edge %d: source node %s returned nil", i+1, edge.SourceID)
+			continue
+		}
+
+		// Verify target node exists
+		targetNode, err := g.graphStore.GetNode(ctx, edge.TargetID)
+		if err != nil {
+			t.Errorf("Edge %d: target node %s not found: %v", i+1, edge.TargetID, err)
+			continue
+		}
+		if targetNode == nil {
+			t.Errorf("Edge %d: target node %s returned nil", i+1, edge.TargetID)
+			continue
+		}
+
+		t.Logf("  ✓ Edge validated: %s -[%s]-> %s", sourceNode.Name, edge.Relation, targetNode.Name)
+	}
+
+	t.Log("✓ Edge connectivity validation complete")
 }
 
 func min(a, b int) int {

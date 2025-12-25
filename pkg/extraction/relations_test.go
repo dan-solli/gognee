@@ -146,13 +146,14 @@ func TestRelationExtractorExtract_EmptySubject(t *testing.T) {
 	fakeLLM := &fakeLLMClient{response: tripletsJSON(triplets)}
 	extractor := NewRelationExtractor(fakeLLM)
 
-	_, err := extractor.Extract(context.Background(), "Some text", entities)
-	if err == nil {
-		t.Fatal("Expected error for empty subject, got nil")
+	result, err := extractor.Extract(context.Background(), "Some text", entities)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
 	}
 
-	if !strings.Contains(err.Error(), "empty subject") {
-		t.Errorf("Expected 'empty subject' error, got: %v", err)
+	// Empty subject should be filtered out
+	if len(result) != 0 {
+		t.Errorf("Expected empty result (filtered), got %d triplets", len(result))
 	}
 }
 
@@ -169,13 +170,14 @@ func TestRelationExtractorExtract_EmptyRelation(t *testing.T) {
 	fakeLLM := &fakeLLMClient{response: tripletsJSON(triplets)}
 	extractor := NewRelationExtractor(fakeLLM)
 
-	_, err := extractor.Extract(context.Background(), "Some text", entities)
-	if err == nil {
-		t.Fatal("Expected error for empty relation, got nil")
+	result, err := extractor.Extract(context.Background(), "Some text", entities)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
 	}
 
-	if !strings.Contains(err.Error(), "empty relation") {
-		t.Errorf("Expected 'empty relation' error, got: %v", err)
+	// Empty relation should be filtered out
+	if len(result) != 0 {
+		t.Errorf("Expected empty result (filtered), got %d triplets", len(result))
 	}
 }
 
@@ -192,13 +194,14 @@ func TestRelationExtractorExtract_EmptyObject(t *testing.T) {
 	fakeLLM := &fakeLLMClient{response: tripletsJSON(triplets)}
 	extractor := NewRelationExtractor(fakeLLM)
 
-	_, err := extractor.Extract(context.Background(), "Some text", entities)
-	if err == nil {
-		t.Fatal("Expected error for empty object, got nil")
+	result, err := extractor.Extract(context.Background(), "Some text", entities)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
 	}
 
-	if !strings.Contains(err.Error(), "empty object") {
-		t.Errorf("Expected 'empty object' error, got: %v", err)
+	// Empty object should be filtered out
+	if len(result) != 0 {
+		t.Errorf("Expected empty result (filtered), got %d triplets", len(result))
 	}
 }
 
@@ -215,13 +218,14 @@ func TestRelationExtractorExtract_UnknownSubject(t *testing.T) {
 	fakeLLM := &fakeLLMClient{response: tripletsJSON(triplets)}
 	extractor := NewRelationExtractor(fakeLLM)
 
-	_, err := extractor.Extract(context.Background(), "Some text", entities)
-	if err == nil {
-		t.Fatal("Expected error for unknown subject (strict mode), got nil")
+	result, err := extractor.Extract(context.Background(), "Some text", entities)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
 	}
 
-	if !strings.Contains(err.Error(), "unknown subject") || !strings.Contains(err.Error(), "Bob") {
-		t.Errorf("Expected 'unknown subject' error mentioning 'Bob', got: %v", err)
+	// Unknown subject should be filtered out
+	if len(result) != 0 {
+		t.Errorf("Expected empty result (filtered), got %d triplets", len(result))
 	}
 }
 
@@ -238,13 +242,14 @@ func TestRelationExtractorExtract_UnknownObject(t *testing.T) {
 	fakeLLM := &fakeLLMClient{response: tripletsJSON(triplets)}
 	extractor := NewRelationExtractor(fakeLLM)
 
-	_, err := extractor.Extract(context.Background(), "Some text", entities)
-	if err == nil {
-		t.Fatal("Expected error for unknown object (strict mode), got nil")
+	result, err := extractor.Extract(context.Background(), "Some text", entities)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
 	}
 
-	if !strings.Contains(err.Error(), "unknown object") || !strings.Contains(err.Error(), "Python") {
-		t.Errorf("Expected 'unknown object' error mentioning 'Python', got: %v", err)
+	// Unknown object should be filtered out
+	if len(result) != 0 {
+		t.Errorf("Expected empty result (filtered), got %d triplets", len(result))
 	}
 }
 
