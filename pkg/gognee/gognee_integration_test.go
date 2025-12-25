@@ -268,6 +268,175 @@ func TestIntegrationSearchTypes(t *testing.T) {
 	}
 }
 
+// TestIntegrationPersistentVectorStore validates that embeddings persist across restarts
+func TestIntegrationPersistentVectorStore(t *testing.T) {
+	// Get API key
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		// Try to read from secrets file
+		secretPath := filepath.Join(os.Getenv("HOME"), "projects/gognee/secrets/openai-api-key.txt")
+		if content, err := ioutil.ReadFile(secretPath); err == nil {
+			apiKey = strings.TrimSpace(string(content))
+		}
+	}
+
+	if apiKey == "" {
+		t.Skip("OPENAI_API_KEY not set; skipping integration tests")
+	}
+
+	// Use temporary file for persistence test
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "persistence_test.db")
+
+	ctx := context.Background()
+
+	// Session 1: Create and populate knowledge graph
+	t.Log("Session 1: Creating knowledge graph...")
+	g1, err := New(Config{
+		OpenAIKey:      apiKey,
+		EmbeddingModel: "text-embedding-3-small",
+		LLMModel:       "gpt-4o-mini",
+		DBPath:         dbPath,
+	})
+	if err != nil {
+		t.Fatalf("Session 1: New failed: %v", err)
+	}
+
+	// Add documents
+	docs := []string{
+		"Go is a statically typed, compiled programming language designed at Google.",
+		"SQLite is an embedded relational database that stores data in a single file.",
+		"gognee is a Go library for building knowledge graphs with AI assistants.",
+	}
+
+	for _, doc := range docs {
+		if err := g1.Add(ctx, doc, AddOptions{Source: "persistence-test"}); err != nil {
+			t.Fatalf("Session 1: Add failed: %v", err)
+		}
+	}
+
+	// Cognify to build knowledge graph and embeddings
+	t.Log("Session 1: Running Cognify...")
+	result, err := g1.Cognify(ctx, CognifyOptions{})
+	if err != nil {
+		t.Fatalf("Session 1: Cognify failed: %v", err)
+	}
+
+	t.Logf("Session 1: Created %d nodes and %d edges", result.NodesCreated, result.EdgesCreated)
+
+	if result.NodesCreated == 0 {
+		t.Fatal("Session 1: Expected nodes to be created")
+	}
+
+	// Search to verify embeddings work
+	t.Log("Session 1: Testing search...")
+	query := "programming language"
+	results1, err := g1.Search(ctx, query, SearchOptions{
+		Type: SearchTypeVector,
+		TopK: 5,
+	})
+	if err != nil {
+		t.Fatalf("Session 1: Search failed: %v", err)
+	}
+
+	if len(results1) == 0 {
+		t.Fatal("Session 1: Search should return results")
+	}
+
+	t.Logf("Session 1: Search returned %d results", len(results1))
+	for i, r := range results1 {
+		t.Logf("  [%d] %s (score: %.4f)", i+1, r.Node.Name, r.Score)
+	}
+
+	// Close session 1
+	if err := g1.Close(); err != nil {
+		t.Fatalf("Session 1: Close failed: %v", err)
+	}
+
+	// Session 2: Reopen the same database WITHOUT re-running Cognify
+	t.Log("Session 2: Reopening database (simulating restart)...")
+	g2, err := New(Config{
+		OpenAIKey:      apiKey,
+		EmbeddingModel: "text-embedding-3-small",
+		LLMModel:       "gpt-4o-mini",
+		DBPath:         dbPath,
+	})
+	if err != nil {
+		t.Fatalf("Session 2: New failed: %v", err)
+	}
+	defer g2.Close()
+
+	// Verify stats show existing data
+	stats, err := g2.Stats()
+	if err != nil {
+		t.Fatalf("Session 2: Stats failed: %v", err)
+	}
+
+	t.Logf("Session 2: Stats after reopen: NodeCount=%d, EdgeCount=%d", stats.NodeCount, stats.EdgeCount)
+
+	if stats.NodeCount == 0 {
+		t.Fatal("Session 2: Nodes should persist across restart")
+	}
+	// Note: EdgeCount may be 0 if LLM didn't extract relationships - that's okay for this test
+
+	// Search WITHOUT running Cognify again - embeddings should be immediately available
+	t.Log("Session 2: Testing search without re-running Cognify...")
+	results2, err := g2.Search(ctx, query, SearchOptions{
+		Type: SearchTypeVector,
+		TopK: 5,
+	})
+	if err != nil {
+		t.Fatalf("Session 2: Search failed: %v", err)
+	}
+
+	if len(results2) == 0 {
+		t.Fatal("Session 2: Search should return results immediately after restart (embeddings should persist)")
+	}
+
+	t.Logf("Session 2: Search returned %d results", len(results2))
+	for i, r := range results2 {
+		t.Logf("  [%d] %s (score: %.4f)", i+1, r.Node.Name, r.Score)
+	}
+
+	// Verify results are similar (same top result)
+	if results1[0].Node.Name != results2[0].Node.Name {
+		t.Logf("Warning: Top result changed after restart (Session1: %s, Session2: %s)",
+			results1[0].Node.Name, results2[0].Node.Name)
+		// Not a fatal error as ranking can vary slightly, but worth noting
+	} else {
+		t.Logf("✓ Top result consistent across restart: %s", results1[0].Node.Name)
+	}
+
+	// Verify we can still add new data in session 2
+	t.Log("Session 2: Adding new document...")
+	newDoc := "Python is a high-level, interpreted programming language."
+	if err := g2.Add(ctx, newDoc, AddOptions{Source: "persistence-test-session2"}); err != nil {
+		t.Fatalf("Session 2: Add failed: %v", err)
+	}
+
+	// Cognify the new document
+	_, err = g2.Cognify(ctx, CognifyOptions{})
+	if err != nil {
+		t.Fatalf("Session 2: Cognify failed: %v", err)
+	}
+
+	// Final search should include both old and new data
+	t.Log("Session 2: Final search including new data...")
+	results3, err := g2.Search(ctx, query, SearchOptions{
+		Type: SearchTypeVector,
+		TopK: 5,
+	})
+	if err != nil {
+		t.Fatalf("Session 2: Final search failed: %v", err)
+	}
+
+	t.Logf("Session 2: Final search returned %d results", len(results3))
+	// Note: Result count may be limited by topK, so we can't strictly require more results
+	// The important thing is that search still works with both old and new data
+
+	t.Log("✓ Persistent vector store test completed successfully")
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

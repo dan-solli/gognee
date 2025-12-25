@@ -178,7 +178,14 @@ func New(cfg Config) (*Gognee, error) {
 	}
 
 	// Initialize VectorStore
-	vectorStore := store.NewMemoryVectorStore()
+	// Use SQLiteVectorStore for persistent databases, MemoryVectorStore for :memory:
+	var vectorStore store.VectorStore
+	if dbPath == ":memory:" {
+		vectorStore = store.NewMemoryVectorStore()
+	} else {
+		// Share the database connection from GraphStore
+		vectorStore = store.NewSQLiteVectorStore(graphStore.DB())
+	}
 
 	// Initialize extractors
 	entityExtractor := extraction.NewEntityExtractor(llmClient)

@@ -192,11 +192,53 @@ Common types are re-exported from the top-level package for convenience:
 - `Node`, `Edge`
 - `SearchTypeVector`, `SearchTypeGraph`, `SearchTypeHybrid` (constants)
 
-## Storage
-
 ### Default Behavior
 
-If `DBPath` is empty or `:memory:`, gognee uses SQLite in-memory storage. This is useful for testing but data is lost when the process exits.
+gognee uses SQLite for both graph storage and vector embeddings. Choose the storage mode with `DBPath`:
+
+- **Persistent Storage** (recommended): `DBPath: "./memory.db"` - Data persists across restarts
+- **In-Memory Storage** (testing/dev): `DBPath: ":memory:"` - Data is cleared when process exits
+
+### Persistence
+
+When using a file-based `DBPath`, both the knowledge graph (nodes and edges) and vector embeddings persist across application restarts. This means:
+
+✅ No need to re-run `Cognify()` after restart
+✅ Instant search availability on startup
+✅ Zero-downtime deployment support
+
+Example workflow:
+
+```go
+// Session 1: Build knowledge graph
+g1, _ := gognee.New(gognee.Config{
+    DBPath: "./memory.db",
+    OpenAIKey: apiKey,
+})
+g1.Add(ctx, "Document 1...", gognee.AddOptions{})
+g1.Cognify(ctx, gognee.CognifyOptions{})
+g1.Close()
+
+// Session 2: Reopen and immediately search (no Cognify needed)
+g2, _ := gognee.New(gognee.Config{
+    DBPath: "./memory.db",  // Same database
+    OpenAIKey: apiKey,
+})
+results, _ := g2.Search(ctx, "query", gognee.SearchOptions{})
+// ✅ Results immediately available - embeddings were persisted
+```
+
+### Migration from v0.6.0 and Earlier
+
+In v0.6.0 and earlier, vector embeddings were stored in memory and lost on restart. If you're upgrading:
+
+- **Existing databases** will work without migration - simply run `Cognify()` once after upgrading to v0.7.0 to populate the persistent embeddings
+- **New databases** get persistent embeddings automatically
+- **In-memory mode** (`:memory:`) behavior is unchanged
+
+## MVP Limitations
+
+This is the MVP (Minimum Viable Product). Known limitations:
 
 ### Persistent Storage
 
@@ -310,14 +352,14 @@ Examples with 30-day half-life:
 
 This is the MVP (Minimum Viable Product). Known limitations:
 
-1. **In-Memory Vector Index**: Embeddings are not persisted. To preserve embeddings across restarts, run `Cognify()` again on startup (with cached documents)
+1. **Linear Vector Search**: Vector search uses a direct-query linear scan. Acceptable for <10K nodes; larger graphs may need ANN indexing
 2. **No Parallelization**: Document processing is sequential. Large batches may take time
 3. **Single LLM Provider**: Only OpenAI is supported
 4. **Basic Chunking**: Token-based chunking without semantic awareness
 
 ### Future Enhancements
 
-- Persistent vector store (SQLite-backed)
+- ANN indexing for vector search (e.g., HNSW)
 - Multiple LLM providers (Anthropic, Ollama, local models)
 - Parallel processing of documents
 - Graph visualization

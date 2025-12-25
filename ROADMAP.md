@@ -329,7 +329,12 @@ type SearchResult struct {
     Score float64  // Cosine similarity
 }
 
-// In-memory implementation for MVP
+// SQLite-backed implementation (v0.7.0+)
+type SQLiteVectorStore struct {
+    db *sql.DB
+}
+
+// In-memory implementation (for :memory: mode)
 type MemoryVectorStore struct {
     vectors map[string][]float32
     mu      sync.RWMutex
@@ -338,7 +343,7 @@ type MemoryVectorStore struct {
 func CosineSimilarity(a, b []float32) float64
 ```
 
-**MVP limitation:** The in-memory vector store does not persist embeddings across restarts. Full "persistent memory" requires either re-running `Cognify()` after restart or implementing a SQLite-backed vector store (see Future Enhancements).
+**Persistence (v0.7.0+):** Vector embeddings are now persisted in SQLite alongside the graph data. Embeddings survive application restarts when using a file-based database path. The in-memory implementation is retained for `:memory:` mode.
 ```
 
 ### Learning Outcomes
@@ -545,10 +550,11 @@ func main() {
 
 ### Future Enhancements (Post-MVP)
 - [ ] Multiple LLM provider support (Anthropic, Ollama)
-- [ ] Persistent vector store (not just in-memory)
+- [x] Persistent vector store (completed in v0.7.0)
+- [ ] ANN indexing for vector search (HNSW, etc.)
 - [ ] Graph visualization
 - [ ] Incremental cognify (only process new text)
-- [ ] Memory decay/forgetting
+- [ ] Memory decay/forgetting (completed in v0.6.1)
 - [ ] Session/context awareness
 
 ---

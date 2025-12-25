@@ -591,3 +591,10 @@ func (s *SQLiteGraphStore) DeleteEdge(ctx context.Context, edgeID string) error 
 func (s *SQLiteGraphStore) Close() error {
 	return s.db.Close()
 }
+
+// DB returns the underlying database connection.
+// This connection is shared with other stores (e.g., SQLiteVectorStore)
+// and must not be closed by consumers.
+func (s *SQLiteGraphStore) DB() *sql.DB {
+	return s.db
+}

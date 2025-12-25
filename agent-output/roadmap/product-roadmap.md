@@ -6,8 +6,7 @@
 
 ## Change Log
 | Date & Time | Change | Rationale |
-|-------------|--------|-----------|
-| 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED |
+|-------------|--------|-----------|| 2025-12-25 | Marked Plan 010 (Memory Decay/Forgetting) as Delivered; v0.9.0 released | Retrospective closed for Plan 010; Epic 7.5 complete with full UAT approval || 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED |
 | 2025-12-24 | Plans 007-010 created for post-MVP epics 7.1, 7.3, 7.4, 7.5 | User requested backlog planning; Skipped 7.2 and 7.6 |
 | 2025-12-24 23:30 | Created product roadmap; marked v0.6.0 as Released | Retrospective closed for Plan 006 (Phase 6 Integration); MVP delivered |
 
@@ -108,14 +107,21 @@ So that I can integrate knowledge graph memory into my application with a single
 |---------|-------|------|--------|--------|
 | 009 | Incremental Cognify | 7.4 | Critic Approved | v0.8.0 |
 
-### v0.9.0 Release - Memory Management
-**Target Date**: TBD  
-**Status**: Planning
-**Strategic Goal**: Enable bounded knowledge graph growth
+### v0.9.0 Release Summary
+| Plan ID | Title | UAT Status | Committed | Released |
+|---------|-------|------------|----------|----------|
+| 010 | Memory Decay / Forgetting | ✅ Approved | ✅ Yes | ✅ 2025-12-25 |
 
-| Plan ID | Title | Epic | Status | Target |
-|---------|-------|------|--------|--------|
-| 010 | Memory Decay / Forgetting | 7.5 | Critic Approved | v0.9.0 |
+**Release Status**: ✅ RELEASED
+**Blocking Items**: None
+**Release Notes**:
+- Time-based memory decay system with exponential scoring
+- Explicit Prune() API with DryRun and cascade deletion
+- Access reinforcement via automatic timestamp tracking
+- Schema migration adds last_accessed_at and access_count columns
+- DecayingSearcher decorator pattern (no interface changes)
+- Backward compatible (decay OFF by default)
+- Test coverage: 87.1% overall
 
 ### v0.6.0 Release Summary
 | Plan ID | Title | UAT Status | Committed | Released |
@@ -131,6 +137,7 @@ So that I can integrate knowledge graph memory into my application with a single
 ### Previous Releases
 | Version | Date | Plans Included | Status | Notes |
 |---------|------|----------------|--------|-------|
+| v0.6.0 | 2025-12-24 | 006 (Phase 6 Integration) | Released | MVP complete - unified API |
 | v0.5.0 | 2025-12-24 | 005 (Phase 5 Search) | Released | Hybrid search implementation |
 | v0.4.0 | 2025-12-24 | 004 (Phase 4 Storage) | Released | SQLite graph + in-memory vector store |
 | v0.3.0 | 2025-12-24 | 003 (Phase 3 Relations) | Released | Relationship extraction via LLM |
@@ -232,8 +239,9 @@ So that I can update my knowledge graph efficiently without reprocessing everyth
 
 ### Epic 7.5: Memory Decay / Forgetting (Post-MVP)
 **Priority**: P3
-**Status**: Critic Approved (Plan 010)
+**Status**: Delivered
 **Target Release**: v0.9.0
+**Actual Release**: v0.9.0 (2025-12-25)
 
 **User Story**:
 As a developer building a long-lived AI assistant,
@@ -247,6 +255,35 @@ So that the knowledge graph stays relevant and doesn't grow unbounded.
 
 **Dependencies**:
 - v0.6.0 MVP complete
+
+**Acceptance Criteria** (outcome-focused):
+- ✅ Configurable decay parameters (DecayEnabled, DecayHalfLifeDays, DecayBasis)
+- ✅ Exponential decay formula reduces search scores for old nodes
+- ✅ Access reinforcement: frequently searched nodes resist decay
+- ✅ Explicit Prune() API for permanent node deletion
+- ✅ DryRun mode for safe pruning preview
+- ✅ Cascade deletion: edges removed when endpoints pruned
+- ✅ Schema migration adds timestamp tracking columns
+- ✅ Backward compatible (decay OFF by default)
+- ✅ Test coverage ≥80% for new code
+
+**Status Notes**:
+- 2025-12-24: Plan 010 created and approved by critic
+- 2025-12-25: Implementation complete - all 10 milestones delivered
+- 2025-12-25: QA Complete - 87.1% coverage, all 160+ tests pass, GetAllNodes bug fixed
+- 2025-12-25: UAT Complete - 100% value delivery, approved for release
+- 2025-12-25: Retrospective closed - v0.9.0 released
+
+**Delivered Artifacts**:
+- DecayingSearcher decorator (pkg/search)
+- calculateDecay() exponential formula (pkg/gognee)
+- Prune() API with PruneOptions and PruneResult
+- Schema migration (last_accessed_at, access_count columns)
+- UpdateAccessTime() batch operations (pkg/store)
+- GetAllNodes(), DeleteNode(), DeleteEdge() APIs
+- 27+ new unit tests + 2 integration tests
+- README Memory Decay section
+- CHANGELOG v0.9.0 entry
 
 ---
 

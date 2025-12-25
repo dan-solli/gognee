@@ -1216,3 +1216,59 @@ func TestDeleteEdge_RemovesEdge(t *testing.T) {
 		t.Fatalf("Expected 0 edges after delete, got %d", len(edges))
 	}
 }
+
+// TestSQLiteGraphStore_DB tests that the DB() accessor returns a valid connection
+func TestSQLiteGraphStore_DB(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	// Get the DB connection
+	db := store.DB()
+	if db == nil {
+		t.Fatal("DB() should return non-nil connection")
+	}
+
+	// Verify the connection is usable
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM nodes").Scan(&count)
+	if err != nil {
+		t.Fatalf("DB connection should be usable: %v", err)
+	}
+
+	// Should start with 0 nodes in test store
+	if count != 0 {
+		t.Errorf("Expected 0 nodes, got %d", count)
+	}
+
+	// Verify we can share this connection with SQLiteVectorStore
+	vs := NewSQLiteVectorStore(db)
+	if vs == nil {
+		t.Fatal("Should be able to create SQLiteVectorStore with shared connection")
+	}
+
+	// Add a node through GraphStore
+	ctx := context.Background()
+	node := &Node{
+		ID:   "test-node",
+		Name: "Test",
+		Type: "Concept",
+	}
+	if err := store.AddNode(ctx, node); err != nil {
+		t.Fatalf("Failed to add node: %v", err)
+	}
+
+	// Add embedding through VectorStore using the shared connection
+	embedding := []float32{1.0, 0.0, 0.0}
+	if err := vs.Add(ctx, "test-node", embedding); err != nil {
+		t.Fatalf("Failed to add embedding via shared connection: %v", err)
+	}
+
+	// Verify embedding was stored by searching
+	results, err := vs.Search(ctx, embedding, 1)
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != "test-node" {
+		t.Error("Shared connection should allow vector operations")
+	}
+}

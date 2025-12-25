@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-12-25
+
+### Added
+- **Persistent Vector Store** (`pkg/store`)
+  - `SQLiteVectorStore` implementation of `VectorStore` interface
+  - Vector embeddings now persist in SQLite `nodes.embedding` BLOB column
+  - Embeddings survive application restarts without re-running Cognify()
+  - Direct-query search: SELECT all non-NULL embeddings, compute cosine similarity in Go
+  - Dimension validation: mismatched embeddings are skipped during search
+  - Shares database connection with `SQLiteGraphStore` (no separate connection management)
+  - `Close()` is a no-op (connection owned by GraphStore)
+- **SQLiteGraphStore.DB()** accessor method
+  - Returns underlying `*sql.DB` for connection sharing with vector store
+  - Connection lifecycle remains owned by GraphStore
+- **Automatic Storage Mode Selection** (`pkg/gognee`)
+  - Persistent DBPath (file-based): Uses `SQLiteVectorStore`
+  - In-memory DBPath (`:memory:`): Uses `MemoryVectorStore` (backward compatible)
+  - No API changes - mode selected based on Config.DBPath value
+- **Integration Test**: `TestIntegrationPersistentVectorStore`
+  - Validates Add → Cognify → Close → Reopen → Search workflow
+  - Confirms embeddings are immediately searchable after restart
+  - Tests incremental updates (adding new data in second session)
+
+### Changed
+- **gognee.New()** now creates SQLiteVectorStore for persistent databases
+- **Vector storage behavior**: Embeddings persist across restarts when using file-based DBPath
+
+### Technical Details
+- **Serialization**: Embeddings stored as little-endian float32 arrays in BLOB column
+- **Search Performance**: Linear scan O(n) - acceptable for <10K nodes per plan
+- **Dimension Handling**: Search skips embeddings with dimension mismatch (returns 0 similarity)
+- **Connection Sharing**: SQLiteVectorStore shares DB connection from GraphStore
+- **Memory Mode**: `:memory:` databases continue using in-memory vector store (no persistence)
+
+### Migration Notes
+- **Existing v0.6.0 databases**: Run `Cognify()` once after upgrading to populate persistent embeddings
+- **New databases**: Persistent embeddings work automatically
+- **No schema changes needed**: `nodes.embedding` column already existed, now actively used
+
+### Documentation
+- **README.md**: 
+  - Updated "Storage" section with persistence behavior examples
+  - Added migration guide for v0.6.0 users
+  - Removed "In-Memory Vector Index" from MVP limitations
+  - Documented linear search performance characteristics
+- **ROADMAP.md**:
+  - Marked "Persistent vector store" as completed (v0.7.0)
+  - Updated Phase 4 documentation to reflect SQLite vector implementation
+  - Removed MVP limitation note about non-persistent embeddings
+
+### Testing
+- 8 unit tests for SQLiteVectorStore (Add, Search, Delete, persistence, dimension validation)
+- 1 unit test for SQLiteGraphStore.DB() accessor
+- 1 integration test for end-to-end persistence workflow
+- All existing tests pass (backward compatible)
+
 ## [0.9.0] - 2025-12-25
 
 ### Added
