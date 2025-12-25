@@ -11,6 +11,51 @@
 - 🔄 **Deterministic Deduplication**: Same entities across documents resolve to the same node
 - 💾 **Persistent Memory**: Knowledge persists across application restarts
 
+## Importing
+
+gognee is a library package intended to be imported into your Go application. Use the package entrypoint at
+
+```go
+import "github.com/dan-solli/gognee/pkg/gognee"
+```
+
+Minimal import-and-use example:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/dan-solli/gognee/pkg/gognee"
+)
+
+func main() {
+	ctx := context.Background()
+
+	g, err := gognee.New(gognee.Config{
+		DBPath:    "./memory.db",
+		OpenAIKey: os.Getenv("OPENAI_API_KEY"),
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer g.Close()
+
+	// Add text and process
+	_ = g.Add(ctx, "Gognee is a Go knowledge graph memory library.", gognee.AddOptions{})
+	_, _ = g.Cognify(ctx, gognee.CognifyOptions{})
+
+	// Search
+	results, _ := g.Search(ctx, "What do I know about gognee?", gognee.SearchOptions{})
+	fmt.Printf("Found %d results\n", len(results))
+}
+```
+
+Types and convenience values are re-exported from the package (for example `SearchOptions`, `SearchResult`, `SearchTypeHybrid`, `Node`).
+
 ## Quick Start
 
 ### Installation
