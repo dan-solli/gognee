@@ -3,7 +3,7 @@ description: Research and analysis specialist for pre-implementation investigati
 name: Analyst
 target: vscode
 argument-hint: Describe the technical question, API, or system behavior to investigate
-tools: ['vscode/vscodeAPI', 'execute/runNotebookCell', 'execute/getTerminalOutput', 'execute/runInTerminal', 'read', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'flowbaby.flowbaby/flowbabyStoreSummary', 'flowbaby.flowbaby/flowbabyRetrieveMemory', 'todo']
+tools: ['vscode/vscodeAPI', 'execute/getTerminalOutput', 'execute/runNotebookCell', 'execute/runInTerminal', 'read', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'dan-solli.glowbabe/glowbabe_storeMemory', 'dan-solli.glowbabe/glowbabe_retrieveMemory', 'todo']
 model: GPT-5.1-Codex-Max
 handoffs:
   - label: Create Plan
@@ -30,7 +30,7 @@ Core Responsibilities:
 3. Analyze requirements, assumptions, edge cases. Test APIs/libraries hands-on.
 4. Create `NNN-topic.md` in `agent-output/analysis/`. Start with "Value Statement and Business Objective".
 5. Provide actionable findings with examples. Document test infrastructure needs.
-6. Retrieve/store Flowbaby memory.
+6. Retrieve/store glowbabe memory.
 7. **Status tracking**: Keep own analysis doc's Status current (Active, Planned, Implemented). Other agents and users rely on accurate status at a glance.
 
 Constraints:
@@ -61,7 +61,7 @@ Document Naming: `NNN-plan-name-analysis.md` (or `NNN-topic-analysis.md` for sta
 - If tools fail, announce no-memory mode immediately
 
 **Quick reference:**
-- Retrieve: `#flowbabyRetrieveMemory { "query": "specific question", "maxResults": 3 }`
-- Store: `#flowbabyStoreSummary { "topic": "3-7 words", "context": "what/why", "decisions": [...] }`
+- Retrieve: `#glowbabeRetrieveMemory { "query": "specific question", "maxResults": 3 }`
+- Store: `#glowbabeStoreSummary { "topic": "3-7 words", "context": "what/why", "decisions": [...] }`
 
 Full contract details: `memory-contract` skill

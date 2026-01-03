@@ -3,8 +3,8 @@ description: Execution-focused coding agent that implements approved plans.
 name: Implementer
 target: vscode
 argument-hint: Reference the approved plan to implement (e.g., plan 002)
-tools: ['vscode/vscodeAPI', 'execute', 'read', 'edit', 'search', 'web', 'todo']
-model: Claude Opus 4.5
+tools: ['vscode/vscodeAPI', 'execute', 'read', 'edit', 'search', 'web', 'dan-solli.glowbabe/glowbabe_storeMemory', 'dan-solli.glowbabe/glowbabe_retrieveMemory', 'todo']
+model: Claude Sonnet 4.5 (copilot)
 handoffs:
   - label: Request Analysis
     agent: Analyst
@@ -83,7 +83,7 @@ Best design meeting requirements without over-engineering. Pragmatic craft (good
 11. Track deviations. Refuse to proceed without updated guidance.
 12. Validate implementation delivers value statement before complete.
 13. Execute version updates (package.json, CHANGELOG, etc.) when plan includes milestone. Don't defer to DevOps.
-14. Retrieve/store Flowbaby memory.
+14. Retrieve/store glowbabe memory.
 15. **Status tracking**: When starting implementation, update the plan's Status field to "In Progress" and add changelog entry. Keep agent-output docs' status current so other agents and users know document state at a glance.
 
 ## Constraints
@@ -198,7 +198,7 @@ See `TERMINOLOGY.md` for details.
 - If tools fail, announce no-memory mode immediately
 
 **Quick reference:**
-- Retrieve: `#flowbabyRetrieveMemory { "query": "specific question", "maxResults": 3 }`
-- Store: `#flowbabyStoreSummary { "topic": "3-7 words", "context": "what/why", "decisions": [...] }`
+- Retrieve: `#glowbabeRetrieveMemory { "query": "specific question", "maxResults": 3 }`
+- Store: `#glowbabeStoreSummary { "topic": "3-7 words", "context": "what/why", "decisions": [...] }`
 
 Full contract details: `memory-contract` skill

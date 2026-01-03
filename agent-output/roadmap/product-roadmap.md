@@ -7,6 +7,8 @@
 ## Change Log
 | Date & Time | Change | Rationale |
 |-------------|--------|-----------||
+| 2026-01-03 | Plan 011 drafted for Epic 8.1; provenance-first design confirmed | Architecture findings approved; plan ready for Critic review |
+| 2026-01-02 | Created Epic 8.1 (First-Class Memory CRUD) and Release v1.0.0; P0 priority | Glowbabe feature request identifies architecture gap blocking Memory Browser feature (Epic 6.1 in Glowbabe) |
 | 2025-12-25 | Marked Plan 009 (Incremental Cognify) as Delivered; v0.8.0 ready for release | Retrospective closed for Plan 009; UAT approved incremental Cognify with cost/time reduction value delivered |
 | 2025-12-25 | Marked Plan 008 (Edge ID Correctness) as Delivered; v0.7.1 released | Retrospective closed for Plan 008; QA+UAT verified edge endpoint IDs match node IDs correctly |
 | 2025-12-25 | Marked Plan 010 (Memory Decay/Forgetting) as Delivered; v0.9.0 released | Retrospective closed for Plan 010; Epic 7.5 complete with full UAT approval || 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED || 2025-12-25 | Marked Plan 008 as QA Complete | QA executed: unit tests + coverage verified; integration suite warning documented |
@@ -89,7 +91,21 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: None (all planned releases delivered)
+**Current Working Release**: v1.0.0 (Memory CRUD)
+
+### v1.0.0 Release - First-Class Memory CRUD
+**Target Date**: TBD
+**Status**: Planning
+**Strategic Goal**: Enable user-facing memory management with CRUD operations and graph/vector synchronization
+
+| Plan ID | Title | Epic | Status | Committed | Released |
+|---------|-------|------|--------|----------|----------|
+| 011 | First-Class Memory CRUD | 8.1 | Draft | ✗ | ✗ |
+
+**Release Status**: 0 of 1 plans committed
+**Blocking Items**: Plan 011 pending Critic review
+**Release Notes**: (pending)
+**Architecture**: Provenance-first design per [011-memory-crud-architecture-findings.md](architecture/011-memory-crud-architecture-findings.md)
 
 ### v0.7.0 Release Summary
 | Plan ID | Title | UAT Status | Committed | Released |
@@ -190,6 +206,65 @@ So that I can integrate knowledge graph memory into my application with a single
 | v0.3.0 | 2025-12-24 | 003 (Phase 3 Relations) | Released | Relationship extraction via LLM |
 | v0.2.0 | 2025-12-24 | 002 (Phase 2 Entities) | Released | Entity extraction via LLM |
 | v0.1.0 | 2025-12-24 | 001 (Phase 1 Foundation) | Released | Chunking + embeddings |
+
+---
+
+## Release v1.0.0 - Memory Management
+**Target Date**: TBD
+**Status**: Planning
+**Strategic Goal**: Enable first-class memory CRUD operations for user-facing memory management
+
+### Epic 8.1: First-Class Memory CRUD
+**Priority**: P0
+**Status**: Planned
+
+**User Story**:
+As a developer building a memory browser UI (like Glowbabe),
+I want to store, list, retrieve, update, and delete memories as first-class entities with stable IDs,
+So that users can manage their AI assistant's memory through a structured interface.
+
+**Business Value**:
+- **Unblocks Glowbabe Epic 6.1**: Glowbabe cannot build a Memory Browser without this capability
+- **Completes the memory lifecycle**: Current Add→Cognify→Search is one-way; true persistence requires CRUD
+- **Preserves structured data**: Topic, context, decisions, rationale, metadata survive round-trips
+- **Enables user agency**: Users can audit, edit, and delete what the AI "remembers"
+- **Production-ready memory system**: Moves gognee from "knowledge graph library" to "complete memory solution"
+
+**Dependencies**:
+- v0.9.0 complete (all post-MVP enhancements delivered)
+- Requires data model evolution (new MemoryRecord table)
+- Requires node/edge/vector cascade deletion logic
+
+**Acceptance Criteria** (outcome-focused):
+- [ ] **First-class MemoryRecord**: Persisted table with id, topic, context, decisions[], rationale[], metadata, timestamps, version, doc_hash
+- [ ] **AddMemory API**: Store memory record → chunk → embed → cognify; return stable memory_id
+- [ ] **ListMemories API**: Paginated list with offset/limit; optional topic search filter
+- [ ] **GetMemory API**: Retrieve full memory payload by ID including linked node/vector IDs
+- [ ] **UpdateMemory API**: Re-chunk, re-embed, re-cognify on content change; atomic node/vector replacement
+- [ ] **DeleteMemory API**: Remove memory record + cascade delete linked nodes/edges/vectors
+- [ ] **Data linkage**: Nodes/edges/vectors track memory_id for cascade operations
+- [ ] **Search surfaces memory_id**: Results include memory_id so callers can link to browser
+- [ ] **Backward compatibility**: Existing Add/Cognify/Search API continues to work
+- [ ] **Migration path**: Optional hydration of legacy graph nodes to v1 MemoryRecords
+- [ ] **Test coverage ≥80%** for new code
+
+**Constraints**:
+- Library-only (no CLI)
+- No new dependencies beyond SQLite
+- Atomic operations (update/delete must be transactional)
+- decisions/rationale serialized as JSON arrays (versioned schema)
+
+**Resolved Questions**:
+1. ✅ **ListMemories**: Pagination only (offset/limit); full-text search deferred to future release
+2. ✅ **UpdateMemory**: Partial update semantics (patch); backend re-embeds/re-cognifies on content change regardless
+
+**Open Questions** (to resolve during Architect/UAT):
+1. How to handle orphan nodes/edges after memory deletion (nodes shared across memories)?
+
+**Status Notes**:
+- 2026-01-02: Epic created based on Glowbabe feature request (docs/requests/glowbabe-request.md)
+- 2026-01-02: Identified as P0 - blocks primary consumer (Glowbabe Memory Browser)
+- 2026-01-02: Resolved Q1 (pagination only) and Q2 (partial updates); Q3 deferred to Architect/UAT
 
 ---
 
@@ -394,17 +469,24 @@ So that I can understand entity relationships and diagnose extraction problems.
 
 ## Strategic Alignment
 
-**Current Phase**: MVP Complete (6-week delivery from inception to v0.6.0)
+**Current Phase**: Post-MVP Enhancement Complete → Memory CRUD (v1.0.0)
+
+**Active Priority**:
+Epic 8.1 (First-Class Memory CRUD) is P0 because:
+1. **Primary consumer blocked**: Glowbabe's Memory Browser (Epic 6.1) cannot proceed without this
+2. **Architecture evolution**: Current design treats text as ephemeral input; memory management requires treating it as a persistent entity
+3. **Value proposition gap**: "Persistent memory" isn't truly persistent if users can't manage it
 
 **Next Phase Options**:
-1. **Production Hardening**: Address known limitations (persistent vector store, edge ID fix)
-2. **Glowbabe Integration**: Integrate gognee into Glowbabe project (primary use case)
-3. **Provider Diversification**: Add Anthropic/Ollama support for vendor flexibility
+1. ✅ **Production Hardening**: Address known limitations (persistent vector store, edge ID fix) - DELIVERED (v0.7.0-v0.9.0)
+2. 🚀 **Memory CRUD**: First-class memory entities with full lifecycle management - IN PROGRESS
+3. **Provider Diversification**: Add Anthropic/Ollama support for vendor flexibility - DEFERRED
 
 **Recommended Next Steps**:
-1. Integrate gognee into Glowbabe project (validate real-world usage)
-2. Gather production feedback from Glowbabe integration
-3. Prioritize post-MVP epics based on Glowbabe pain points
+1. Create Plan 011 for Epic 8.1 implementation
+2. Architect to review data model (MemoryRecord table, linkage schema)
+3. Coordinate with Glowbabe on API surface requirements
+4. Target v1.0.0 release (semantic version bump reflects API evolution)
 
 **Success Metrics (MVP)**:
 - ✅ Can add text and build knowledge graph
@@ -413,6 +495,13 @@ So that I can understand entity relationships and diagnose extraction problems.
 - ✅ Works on macOS, Linux, Windows (Go cross-platform)
 - ⚠️ < 5MB binary size (not measured, likely met)
 - ✅ < 100ms search latency for small graphs (integration tests show reasonable performance)
+
+**Success Metrics (v1.0.0 - Memory CRUD)**:
+- [ ] Can add, list, get, update, delete memories as first-class entities
+- [ ] Memories preserve structured fields (topic, context, decisions, rationale, metadata)
+- [ ] Glowbabe can build functional Memory Browser using new APIs
+- [ ] Deletion cascades correctly (memory → nodes → edges → vectors)
+- [ ] Update re-indexes atomically without orphaned data
 
 ---
 

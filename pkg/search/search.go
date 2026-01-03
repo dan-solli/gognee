@@ -30,6 +30,10 @@ type SearchResult struct {
 	// GraphDepth indicates the minimum graph distance from the search origin.
 	// 0 for direct vector hits, >0 for nodes discovered via graph expansion.
 	GraphDepth int
+	// MemoryIDs lists memory IDs that reference this node (v1.0.0+).
+	// Sorted by memory updated_at DESC (most recent first).
+	// Empty for legacy nodes (created via Add/Cognify without provenance).
+	MemoryIDs []string
 }
 
 // SearchOptions configures search behavior.
@@ -41,6 +45,9 @@ type SearchOptions struct {
 	// Required for SearchTypeGraph; ignored for SearchTypeVector.
 	// For SearchTypeHybrid, seeds augment vector results.
 	SeedNodeIDs []string
+	// IncludeMemoryIDs enables memory provenance enrichment (v1.0.0+).
+	// Default: true. Set to false to skip provenance lookup for performance.
+	IncludeMemoryIDs *bool
 }
 
 // Searcher defines the interface for knowledge graph search.
