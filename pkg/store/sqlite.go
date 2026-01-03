@@ -28,6 +28,13 @@ func NewSQLiteGraphStore(dbPath string) (*SQLiteGraphStore, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	// Enable foreign key constraints (required for CASCADE)
+	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+
 	store := &SQLiteGraphStore{db: db}
 	if err := store.initSchema(); err != nil {
 		db.Close()
@@ -102,6 +109,75 @@ func (s *SQLiteGraphStore) migrateSchema() error {
 		if err != nil {
 			return fmt.Errorf("failed to add access_count column: %w", err)
 		}
+	}
+
+	// Phase 2: Add memory CRUD tables (v1.0.0)
+	if err := s.migrateMemoryTables(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// migrateMemoryTables adds memory CRUD tables for v1.0.0.
+func (s *SQLiteGraphStore) migrateMemoryTables() error {
+	// Check if memories table exists
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='memories'").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check for memories table: %w", err)
+	}
+
+	// If table exists, assume all memory tables exist
+	if count > 0 {
+		return nil
+	}
+
+	// Create memory tables
+	schema := `
+	CREATE TABLE memories (
+		id TEXT PRIMARY KEY,
+		topic TEXT NOT NULL,
+		context TEXT NOT NULL,
+		decisions_json TEXT,
+		rationale_json TEXT,
+		metadata_json TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		version INTEGER DEFAULT 1,
+		doc_hash TEXT NOT NULL,
+		source TEXT,
+		status TEXT DEFAULT 'complete'
+	);
+
+	CREATE INDEX idx_memories_topic ON memories(topic);
+	CREATE INDEX idx_memories_doc_hash ON memories(doc_hash);
+	CREATE INDEX idx_memories_status ON memories(status);
+
+	CREATE TABLE memory_nodes (
+		memory_id TEXT NOT NULL,
+		node_id TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (memory_id, node_id),
+		FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX idx_memory_nodes_node_id ON memory_nodes(node_id);
+
+	CREATE TABLE memory_edges (
+		memory_id TEXT NOT NULL,
+		edge_id TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (memory_id, edge_id),
+		FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX idx_memory_edges_edge_id ON memory_edges(edge_id);
+	`
+
+	_, err = s.db.Exec(schema)
+	if err != nil {
+		return fmt.Errorf("failed to create memory tables: %w", err)
 	}
 
 	return nil

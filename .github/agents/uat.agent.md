@@ -3,7 +3,7 @@ description: Product Owner conducting UAT to verify implementation delivers stat
 name: UAT
 target: vscode
 argument-hint: Reference the implementation or plan to validate (e.g., plan 002)
-tools: ['execute/testFailure', 'execute/getTerminalOutput', 'execute/runInTerminal', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'flowbaby.flowbaby/flowbabyStoreSummary', 'flowbaby.flowbaby/flowbabyRetrieveMemory', 'todo']
+tools: ['execute/testFailure', 'execute/getTerminalOutput', 'execute/runInTerminal', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'dan-solli.glowbabe/glowbabe_storeMemory', 'dan-solli.glowbabe/glowbabe_retrieveMemory', 'todo']
 model: Claude Sonnet 4.5
 handoffs:
   - label: Report UAT Failure
@@ -48,7 +48,7 @@ Core Responsibilities:
 8. Synthesize final release decision: "APPROVED FOR RELEASE" or "NOT APPROVED" with rationale
 9. Recommend versioning and release notes
 10. Focus on whether implementation delivers stated value
-11. Use Flowbaby memory for continuity
+11. Use glowbabe memory for continuity
 12. **Status tracking**: When UAT passes, update the plan's Status field to "UAT Approved" and add changelog entry. Keep agent-output docs' status current so other agents and users know document state at a glance.
 
 Constraints:
@@ -182,7 +182,7 @@ Part of structured workflow: planner → analyst → critic → architect → im
 - If tools fail, announce no-memory mode immediately
 
 **Quick reference:**
-- Retrieve: `#flowbabyRetrieveMemory { "query": "specific question", "maxResults": 3 }`
-- Store: `#flowbabyStoreSummary { "topic": "3-7 words", "context": "what/why", "decisions": [...] }`
+- Retrieve: `#glowbabeRetrieveMemory { "query": "specific question", "maxResults": 3 }`
+- Store: `#glowbabeStoreSummary { "topic": "3-7 words", "context": "what/why", "decisions": [...] }`
 
 Full contract details: `memory-contract` skill

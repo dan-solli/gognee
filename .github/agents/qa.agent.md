@@ -3,7 +3,7 @@ description: Dedicated QA specialist verifying test coverage and execution befor
 name: QA
 target: vscode
 argument-hint: Reference the implementation or plan to test (e.g., plan 002)
-tools: ['execute/testFailure', 'execute/getTerminalOutput', 'execute/runInTerminal', 'execute/runTests', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'edit/editNotebook', 'search', 'flowbaby.flowbaby/flowbabyStoreSummary', 'flowbaby.flowbaby/flowbabyRetrieveMemory', 'todo']
+tools: ['execute/testFailure', 'execute/getTerminalOutput', 'execute/runInTerminal', 'execute/runTests', 'read/problems', 'read/readFile', 'read/terminalSelection', 'read/terminalLastCommand', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'edit/editNotebook', 'search', 'dan-solli.glowbabe/glowbabe_storeMemory', 'dan-solli.glowbabe/glowbabe_retrieveMemory', 'todo']
 model: GPT-5.2
 handoffs:
   - label: Request Testing Infrastructure
@@ -44,7 +44,7 @@ Core Responsibilities:
 9. Maintain clear QA state: Test Strategy Development → Awaiting Implementation → Testing In Progress → QA Complete/Failed
 10. Verify test effectiveness: validate real workflows, realistic edge cases
 11. Flag when tests pass but implementation risky
-12. Use Flowbaby memory for continuity
+12. Use glowbabe memory for continuity
 13. **Status tracking**: When QA passes, update the plan's Status field to "QA Complete" and add changelog entry. Keep agent-output docs' status current so other agents and users know document state at a glance.
 
 Constraints:
@@ -220,7 +220,7 @@ Create markdown in `agent-output/qa/` matching plan name:
 - If tools fail, announce no-memory mode immediately
 
 **Quick reference:**
-- Retrieve: `#flowbabyRetrieveMemory { "query": "specific question", "maxResults": 3 }`
-- Store: `#flowbabyStoreSummary { "topic": "3-7 words", "context": "what/why", "decisions": [...] }`
+- Retrieve: `#glowbabeRetrieveMemory { "query": "specific question", "maxResults": 3 }`
+- Store: `#glowbabeStoreSummary { "topic": "3-7 words", "context": "what/why", "decisions": [...] }`
 
 Full contract details: `memory-contract` skill

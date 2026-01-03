@@ -4,6 +4,7 @@ package gognee
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/dan-solli/gognee/pkg/llm"
 	"github.com/dan-solli/gognee/pkg/search"
 	"github.com/dan-solli/gognee/pkg/store"
+	"github.com/google/uuid"
 )
 
 // Config holds configuration for the Gognee system
@@ -56,6 +58,7 @@ type Gognee struct {
 	llm               llm.LLMClient
 	graphStore        store.GraphStore
 	vectorStore       store.VectorStore
+	memoryStore       *store.SQLiteMemoryStore
 	searcher          search.Searcher
 	entityExtractor   *extraction.EntityExtractor
 	relationExtractor *extraction.RelationExtractor
@@ -213,6 +216,9 @@ func New(cfg Config) (*Gognee, error) {
 		searcher = baseSearcher
 	}
 
+	// Initialize MemoryStore (shares DB connection with GraphStore)
+	memoryStore := store.NewSQLiteMemoryStore(graphStore.DB())
+
 	return &Gognee{
 		config:            cfg,
 		chunker:           c,
@@ -220,6 +226,7 @@ func New(cfg Config) (*Gognee, error) {
 		llm:               llmClient,
 		graphStore:        graphStore,
 		vectorStore:       vectorStore,
+		memoryStore:       memoryStore,
 		searcher:          searcher,
 		entityExtractor:   entityExtractor,
 		relationExtractor: relationExtractor,
@@ -515,13 +522,19 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 // Search queries the knowledge graph
 func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOptions) ([]search.SearchResult, error) {
 	search.ApplyDefaults(&opts)
+
+	// Apply default for IncludeMemoryIDs (true by default)
+	includeMemoryIDs := true
+	if opts.IncludeMemoryIDs != nil {
+		includeMemoryIDs = *opts.IncludeMemoryIDs
+	}
+
 	results, err := g.searcher.Search(ctx, query, opts)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update access times for returned results (for decay reinforcement)
-	// Only update if we have results
 	if len(results) > 0 {
 		nodeIDs := make([]string, len(results))
 		for i, result := range results {
@@ -529,10 +542,27 @@ func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOpt
 		}
 
 		// Cast to SQLiteGraphStore to access UpdateAccessTime
-		// This is safe because we control the concrete type in New()
 		if sqlStore, ok := g.graphStore.(*store.SQLiteGraphStore); ok {
 			// Best-effort update - don't fail search if access tracking fails
 			_ = sqlStore.UpdateAccessTime(ctx, nodeIDs)
+		}
+
+		// Enrich with memory provenance (batched query, no N+1)
+		if includeMemoryIDs {
+			memoryMap, err := g.memoryStore.GetMemoriesByNodeIDBatched(ctx, nodeIDs)
+			if err != nil {
+				// Log but don't fail - provenance enrichment is optional
+				// In production, could use a logger here
+			} else {
+				// Populate MemoryIDs for each result
+				for i := range results {
+					if memIDs, ok := memoryMap[results[i].NodeID]; ok {
+						results[i].MemoryIDs = memIDs
+					} else {
+						results[i].MemoryIDs = []string{} // Empty for legacy nodes
+					}
+				}
+			}
 		}
 	}
 
@@ -704,4 +734,435 @@ func sanitizeRelation(relation string) string {
 func computeDocumentHash(text string) string {
 	hash := sha256.Sum256([]byte(text))
 	return fmt.Sprintf("%x", hash[:])
+}
+
+// ========================================
+// Memory CRUD APIs (v1.0.0)
+// ========================================
+
+// MemoryInput represents the input for creating a memory.
+type MemoryInput struct {
+	Topic     string
+	Context   string
+	Decisions []string
+	Rationale []string
+	Metadata  map[string]interface{}
+	Source    string
+}
+
+// MemoryResult reports the outcome of memory operations.
+type MemoryResult struct {
+	MemoryID     string
+	NodesCreated int
+	EdgesCreated int
+	NodesDeleted int
+	EdgesDeleted int
+	Errors       []error
+}
+
+// AddMemory creates a new first-class memory with full CRUD support.
+// Uses two-phase model: persist memory record → cognify → link provenance.
+func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResult, error) {
+	result := &MemoryResult{
+		Errors: make([]error, 0),
+	}
+
+	// Validate input
+	if strings.TrimSpace(input.Topic) == "" {
+		return nil, fmt.Errorf("topic cannot be empty")
+	}
+	if strings.TrimSpace(input.Context) == "" {
+		return nil, fmt.Errorf("context cannot be empty")
+	}
+
+	// Compute doc_hash
+	docHash := store.ComputeDocHash(input.Topic, input.Context, input.Decisions, input.Rationale)
+
+	// **Phase 1: Short transaction - persist memory record**
+	// Check for duplicate by doc_hash
+	// For v1.0.0, we'll do a simple query to check existence
+	// If exists, return existing memory_id
+
+	existingQuery := `SELECT id FROM memories WHERE doc_hash = ? LIMIT 1`
+	var existingID string
+	err := g.memoryStore.DB().QueryRowContext(ctx, existingQuery, docHash).Scan(&existingID)
+	if err == nil {
+		// Duplicate found
+		result.MemoryID = existingID
+		return result, nil
+	}
+	// If error is not ErrNoRows, return error
+	if err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to check for duplicate memory: %w", err)
+	}
+
+	// Create memory record with status "pending"
+	memoryID := uuid.New().String()
+	memory := &store.MemoryRecord{
+		ID:        memoryID,
+		Topic:     strings.TrimSpace(input.Topic),
+		Context:   strings.TrimSpace(input.Context),
+		Decisions: input.Decisions,
+		Rationale: input.Rationale,
+		Metadata:  input.Metadata,
+		DocHash:   docHash,
+		Source:    input.Source,
+		Status:    "pending",
+	}
+
+	if err := g.memoryStore.AddMemory(ctx, memory); err != nil {
+		return nil, fmt.Errorf("failed to add memory record: %w", err)
+	}
+
+	result.MemoryID = memoryID
+
+	// **Phase 2: Cognify (outside transaction, idempotent)**
+	// Format text for cognify
+	text := fmt.Sprintf("Topic: %s\n\n%s", input.Topic, input.Context)
+
+	// Track created node/edge IDs
+	createdNodeIDs := make([]string, 0)
+	createdEdgeIDs := make([]string, 0)
+
+	// Chunk the text
+	chunks := g.chunker.Chunk(text)
+
+	// Process each chunk
+	for _, chunk := range chunks {
+		// Extract entities
+		entities, err := g.entityExtractor.Extract(ctx, chunk.Text)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("entity extraction failed for memory %s: %w", memoryID, err))
+			continue
+		}
+
+		// Build entity name->type lookup map
+		entityMap, ambiguous := buildEntityTypeMap(entities)
+
+		// Extract relations
+		triplets, err := g.relationExtractor.Extract(ctx, chunk.Text, entities)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("relation extraction failed for memory %s: %w", memoryID, err))
+			// Continue with entities only
+		}
+
+		// Create nodes for each entity
+		for _, entity := range entities {
+			nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
+			node := &store.Node{
+				ID:          nodeID,
+				Name:        entity.Name,
+				Type:        entity.Type,
+				Description: entity.Description,
+				CreatedAt:   time.Now(),
+				Metadata:    make(map[string]interface{}),
+			}
+
+			// Add to graph store (upsert)
+			if err := g.graphStore.AddNode(ctx, node); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to add node %s: %w", entity.Name, err))
+				continue
+			}
+			createdNodeIDs = append(createdNodeIDs, nodeID)
+			result.NodesCreated++
+
+			// Generate embedding
+			embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
+			if err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to embed node %s: %w", entity.Name, err))
+				continue
+			}
+
+			// Update node with embedding
+			node.Embedding = embedding
+			if err := g.graphStore.AddNode(ctx, node); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding %s: %w", entity.Name, err))
+				continue
+			}
+
+			// Index in vector store
+			if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to index node %s in vector store: %w", entity.Name, err))
+			}
+		}
+
+		// Create edges for each triplet
+		for _, triplet := range triplets {
+			// Look up source and target entity types
+			sourceType, sourceFound := lookupEntityType(triplet.Subject, entityMap, ambiguous)
+			if !sourceFound {
+				continue
+			}
+
+			targetType, targetFound := lookupEntityType(triplet.Object, entityMap, ambiguous)
+			if !targetFound {
+				continue
+			}
+
+			sourceID := generateDeterministicNodeID(triplet.Subject, sourceType)
+			targetID := generateDeterministicNodeID(triplet.Object, targetType)
+
+			edgeID := fmt.Sprintf("%s-%s-%s", sourceID, sanitizeRelation(triplet.Relation), targetID)
+			edge := &store.Edge{
+				ID:        edgeID,
+				SourceID:  sourceID,
+				Relation:  triplet.Relation,
+				TargetID:  targetID,
+				Weight:    1.0,
+				CreatedAt: time.Now(),
+			}
+
+			if err := g.graphStore.AddEdge(ctx, edge); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to add edge: %w", err))
+				continue
+			}
+			createdEdgeIDs = append(createdEdgeIDs, edgeID)
+			result.EdgesCreated++
+		}
+	}
+
+	// **Phase 3: Short transaction - link provenance and mark complete**
+	if err := g.memoryStore.LinkProvenance(ctx, memoryID, createdNodeIDs, createdEdgeIDs); err != nil {
+		return nil, fmt.Errorf("failed to link provenance: %w", err)
+	}
+
+	// Update memory status to "complete"
+	completeStatus := "complete"
+	updates := store.MemoryUpdate{
+		Topic:   &memory.Topic, // Keep same
+		Context: &memory.Context,
+		Status:  &completeStatus,
+	}
+	if err := g.memoryStore.UpdateMemory(ctx, memoryID, updates); err != nil {
+		return nil, fmt.Errorf("failed to mark memory complete: %w", err)
+	}
+
+	return result, nil
+}
+
+// GetMemory retrieves a memory by ID.
+func (g *Gognee) GetMemory(ctx context.Context, id string) (*store.MemoryRecord, error) {
+	return g.memoryStore.GetMemory(ctx, id)
+}
+
+// ListMemories returns paginated memory summaries.
+func (g *Gognee) ListMemories(ctx context.Context, opts store.ListMemoriesOptions) ([]store.MemorySummary, error) {
+	return g.memoryStore.ListMemories(ctx, opts)
+}
+
+// UpdateMemory applies partial updates to a memory and re-cognifies if content changed.
+func (g *Gognee) UpdateMemory(ctx context.Context, id string, updates store.MemoryUpdate) (*MemoryResult, error) {
+	result := &MemoryResult{
+		MemoryID: id,
+		Errors:   make([]error, 0),
+	}
+
+	// Fetch existing memory
+	existing, err := g.memoryStore.GetMemory(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compute new doc_hash
+	topic := existing.Topic
+	context := existing.Context
+	decisions := existing.Decisions
+	rationale := existing.Rationale
+
+	if updates.Topic != nil {
+		topic = *updates.Topic
+	}
+	if updates.Context != nil {
+		context = *updates.Context
+	}
+	if updates.Decisions != nil {
+		decisions = *updates.Decisions
+	}
+	if updates.Rationale != nil {
+		rationale = *updates.Rationale
+	}
+
+	newDocHash := store.ComputeDocHash(topic, context, decisions, rationale)
+
+	// If hash unchanged, just update metadata/timestamps (no re-cognify)
+	if newDocHash == existing.DocHash {
+		if err := g.memoryStore.UpdateMemory(ctx, id, updates); err != nil {
+			return nil, fmt.Errorf("failed to update memory: %w", err)
+		}
+		return result, nil
+	}
+
+	// **Phase 1: Set status to "pending"**
+	pendingUpdate := store.MemoryUpdate{
+		Topic:   &topic,
+		Context: &context,
+		Status:  stringPtr("pending"),
+	}
+	pendingUpdate.Decisions = &decisions
+	pendingUpdate.Rationale = &rationale
+	if updates.Metadata != nil {
+		pendingUpdate.Metadata = updates.Metadata
+	}
+
+	// Update the memory with new content (will recompute hash in store)
+	if err := g.memoryStore.UpdateMemory(ctx, id, pendingUpdate); err != nil {
+		return nil, fmt.Errorf("failed to update memory to pending: %w", err)
+	}
+
+	// **Phase 2: Get old provenance, unlink, and GC candidates**
+	oldNodeIDs, oldEdgeIDs, err := g.memoryStore.GetProvenanceByMemory(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get old provenance: %w", err)
+	}
+
+	if err := g.memoryStore.UnlinkProvenance(ctx, id); err != nil {
+		return nil, fmt.Errorf("failed to unlink old provenance: %w", err)
+	}
+
+	// GC candidates: old artifacts
+	nodesDeleted, edgesDeleted, err := g.memoryStore.GarbageCollectCandidates(ctx, oldNodeIDs, oldEdgeIDs)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Errorf("garbage collection failed: %w", err))
+	}
+	result.NodesDeleted = nodesDeleted
+	result.EdgesDeleted = edgesDeleted
+
+	// **Phase 3: Re-cognify (same as AddMemory Phase 2)**
+	text := fmt.Sprintf("Topic: %s\n\n%s", topic, context)
+	createdNodeIDs := make([]string, 0)
+	createdEdgeIDs := make([]string, 0)
+
+	chunks := g.chunker.Chunk(text)
+	for _, chunk := range chunks {
+		entities, err := g.entityExtractor.Extract(ctx, chunk.Text)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("entity extraction failed: %w", err))
+			continue
+		}
+
+		entityMap, ambiguous := buildEntityTypeMap(entities)
+
+		triplets, err := g.relationExtractor.Extract(ctx, chunk.Text, entities)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("relation extraction failed: %w", err))
+		}
+
+		for _, entity := range entities {
+			nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
+			node := &store.Node{
+				ID:          nodeID,
+				Name:        entity.Name,
+				Type:        entity.Type,
+				Description: entity.Description,
+				CreatedAt:   time.Now(),
+				Metadata:    make(map[string]interface{}),
+			}
+
+			if err := g.graphStore.AddNode(ctx, node); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to add node: %w", err))
+				continue
+			}
+			createdNodeIDs = append(createdNodeIDs, nodeID)
+			result.NodesCreated++
+
+			embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
+			if err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to embed node: %w", err))
+				continue
+			}
+
+			node.Embedding = embedding
+			if err := g.graphStore.AddNode(ctx, node); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding: %w", err))
+				continue
+			}
+
+			if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to index node in vector store: %w", err))
+			}
+		}
+
+		for _, triplet := range triplets {
+			sourceType, sourceFound := lookupEntityType(triplet.Subject, entityMap, ambiguous)
+			if !sourceFound {
+				continue
+			}
+
+			targetType, targetFound := lookupEntityType(triplet.Object, entityMap, ambiguous)
+			if !targetFound {
+				continue
+			}
+
+			sourceID := generateDeterministicNodeID(triplet.Subject, sourceType)
+			targetID := generateDeterministicNodeID(triplet.Object, targetType)
+			edgeID := fmt.Sprintf("%s-%s-%s", sourceID, sanitizeRelation(triplet.Relation), targetID)
+
+			edge := &store.Edge{
+				ID:        edgeID,
+				SourceID:  sourceID,
+				Relation:  triplet.Relation,
+				TargetID:  targetID,
+				Weight:    1.0,
+				CreatedAt: time.Now(),
+			}
+
+			if err := g.graphStore.AddEdge(ctx, edge); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to add edge: %w", err))
+				continue
+			}
+			createdEdgeIDs = append(createdEdgeIDs, edgeID)
+			result.EdgesCreated++
+		}
+	}
+
+	// **Phase 4: Link new provenance and mark complete**
+	if err := g.memoryStore.LinkProvenance(ctx, id, createdNodeIDs, createdEdgeIDs); err != nil {
+		return nil, fmt.Errorf("failed to link new provenance: %w", err)
+	}
+
+	completeUpdate := store.MemoryUpdate{
+		Topic:   &topic,
+		Context: &context,
+		Status:  stringPtr("complete"),
+	}
+	if err := g.memoryStore.UpdateMemory(ctx, id, completeUpdate); err != nil {
+		return nil, fmt.Errorf("failed to mark memory complete: %w", err)
+	}
+
+	return result, nil
+}
+
+// DeleteMemory removes a memory and runs garbage collection on orphaned artifacts.
+func (g *Gognee) DeleteMemory(ctx context.Context, id string) error {
+	// Get provenance before delete
+	nodeIDs, edgeIDs, err := g.memoryStore.GetProvenanceByMemory(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get provenance: %w", err)
+	}
+
+	// Delete memory (CASCADE will remove provenance links)
+	if err := g.memoryStore.DeleteMemory(ctx, id); err != nil {
+		return err
+	}
+
+	// Run GC on candidates
+	_, _, err = g.memoryStore.GarbageCollectCandidates(ctx, nodeIDs, edgeIDs)
+	if err != nil {
+		return fmt.Errorf("garbage collection failed: %w", err)
+	}
+
+	return nil
+}
+
+// GarbageCollect manually triggers garbage collection.
+// Returns counts of deleted nodes and edges.
+func (g *Gognee) GarbageCollect(ctx context.Context) (nodesDeleted, edgesDeleted int, err error) {
+	// For manual GC, we need to identify all orphaned artifacts
+	// This is complex without tracking; for v1.0.0, this is a placeholder
+	return 0, 0, fmt.Errorf("manual garbage collection not yet implemented; use DeleteMemory/UpdateMemory for automatic GC")
+}
+
+// stringPtr returns a pointer to a string (helper for optional fields).
+func stringPtr(s string) *string {
+	return &s
 }

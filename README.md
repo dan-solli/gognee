@@ -484,6 +484,294 @@ Examples with 30-day half-life:
    - Product documentation: 90-180 days
    - Reference knowledge: 365+ days
 
+## Memory Management (v1.0.0+)
+
+gognee v1.0.0 introduces **first-class memory CRUD** - a higher-level abstraction for managing discrete units of knowledge with full lifecycle management and provenance tracking.
+
+### Overview
+
+Instead of using `Add()` + `Cognify()` to process raw text, you can now use **Memory APIs** for structured knowledge management:
+
+- **AddMemory**: Create a memory with topic, context, decisions, rationale
+- **GetMemory**: Retrieve a specific memory by ID
+- **ListMemories**: List all memories with pagination
+- **UpdateMemory**: Modify an existing memory (re-cognifies automatically)
+- **DeleteMemory**: Remove a memory and run garbage collection
+- **Search**: Now includes `MemoryIDs` field showing which memories contributed to each result
+
+**Key Benefits:**
+- 🔖 **Structured Storage**: Memories have explicit fields (topic, context, decisions, rationale)
+- 🔗 **Provenance Tracking**: Know which knowledge artifacts came from which memory
+- ♻️ **Garbage Collection**: Deleting/updating a memory cleans up orphaned nodes/edges automatically
+- 🎯 **Deduplication**: Identical memories (same content) are not re-processed
+- 🔄 **Re-Cognify on Update**: Updating a memory automatically re-extracts entities and relationships
+
+### API Overview
+
+#### MemoryInput
+
+```go
+type MemoryInput struct {
+    Topic     string                 // Required: 3-7 word title
+    Context   string                 // Required: 300-1500 char summary
+    Decisions []string               // Optional: list of decisions made
+    Rationale []string               // Optional: explanations for decisions
+    Metadata  map[string]interface{} // Optional: arbitrary metadata
+    Source    string                 // Optional: source identifier
+}
+```
+
+#### MemoryResult
+
+```go
+type MemoryResult struct {
+    Memory       store.MemoryRecord   // Full memory record
+    NodeIDs      []string             // IDs of extracted nodes
+    EdgeIDs      []string             // IDs of extracted edges
+    NodesCreated int                  // Count of new nodes
+    EdgesCreated int                  // Count of new edges
+}
+```
+
+### Adding a Memory
+
+```go
+memory := gognee.MemoryInput{
+    Topic:   "Phase 4 Storage Layer Implementation",
+    Context: "Implemented SQLite-backed graph store with nodes, edges, and vector storage. Added provenance tracking for memory CRUD operations. Foreign keys enabled for CASCADE deletes.",
+    Decisions: []string{
+        "Use SQLite for both graph and vector storage",
+        "Enable PRAGMA foreign_keys=ON for automatic cascade deletes",
+        "Implement two-phase transaction model for memory updates",
+    },
+    Rationale: []string{
+        "SQLite provides ACID guarantees and simplifies deployment",
+        "Foreign keys ensure provenance integrity without manual cleanup",
+        "Two-phase model prevents long transactions during LLM calls",
+    },
+    Source: "implementation-doc-004",
+}
+
+result, err := g.AddMemory(ctx, memory)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("Created memory %s: %d nodes, %d edges\n",
+    result.Memory.ID,
+    result.NodesCreated,
+    result.EdgesCreated,
+)
+```
+
+**Deduplication:** If a memory with identical content already exists, `AddMemory` returns the existing memory without reprocessing.
+
+### Retrieving Memories
+
+```go
+// Get a specific memory by ID
+memory, err := g.GetMemory(ctx, memoryID)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Memory: %s\n", memory.Topic)
+fmt.Printf("Decisions: %d\n", len(memory.Decisions))
+
+// List all memories with pagination
+memories, err := g.ListMemories(ctx, gognee.ListMemoriesOptions{
+    Limit:  10,
+    Offset: 0,
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, summary := range memories {
+    fmt.Printf("- %s (%s)\n", summary.Topic, summary.ID)
+}
+```
+
+### Updating a Memory
+
+Updating a memory triggers automatic re-cognify:
+
+1. Unlinks old provenance (nodes/edges from previous version)
+2. Runs garbage collection on orphaned artifacts
+3. Re-cognifies with new content
+4. Links new provenance
+
+```go
+updates := gognee.MemoryUpdate{
+    Context: stringPtr("Updated context with new findings..."),
+    Decisions: &[]string{
+        "Decision 1 (updated)",
+        "Decision 2 (new)",
+    },
+}
+
+result, err := g.UpdateMemory(ctx, memoryID, updates)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("Updated: %d old nodes, %d new nodes\n",
+    len(result.OldNodeIDs),
+    result.NodesCreated,
+)
+```
+
+**Important:** Only provide fields you want to update. Omitted fields are preserved from the original memory.
+
+### Deleting a Memory
+
+Deleting a memory removes it and runs garbage collection:
+
+```go
+err := g.DeleteMemory(ctx, memoryID)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Garbage Collection Behavior:**
+- Deletes nodes/edges that **only** belong to this memory
+- Preserves shared nodes/edges (used by other memories or legacy Add/Cognify)
+- Legacy data (from Add/Cognify) is **never** deleted by GC
+
+### Search Integration
+
+Search results now include `MemoryIDs` showing which memories contributed to each node:
+
+```go
+results, err := g.Search(ctx, "storage implementation", gognee.SearchOptions{
+    TopK:              5,
+    IncludeMemoryIDs:  boolPtr(true), // Default: true
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, result := range results {
+    fmt.Printf("Node: %s\n", result.Node.Name)
+    fmt.Printf("From memories: %v\n", result.MemoryIDs)
+}
+```
+
+**Memory IDs** are sorted by `updated_at DESC`, showing the most recent memory first.
+
+### Migration from Legacy Add/Cognify
+
+The legacy `Add()` + `Cognify()` workflow continues to work:
+
+```go
+// Legacy workflow (still supported)
+g.Add(ctx, "Some text...", gognee.AddOptions{})
+g.Cognify(ctx, gognee.CognifyOptions{})
+```
+
+**Differences:**
+
+| Feature | Legacy Add/Cognify | Memory CRUD |
+|---------|-------------------|-------------|
+| **Structured Storage** | No (raw text only) | Yes (topic, decisions, rationale) |
+| **Provenance Tracking** | No | Yes |
+| **Garbage Collection** | No | Yes |
+| **Update Support** | No (must delete + re-add) | Yes (UpdateMemory re-cognifies) |
+| **Deduplication** | Document-level (doc_hash) | Content-level (doc_hash) |
+| **Search Integration** | Results only | Results + MemoryIDs |
+
+**When to use each:**
+
+- **Memory CRUD**: Structured knowledge management, agent memory, decision logs, planning artifacts
+- **Legacy Add/Cognify**: Bulk document ingestion, unstructured text processing
+
+**Interoperability:** Both systems share the same graph store. Nodes/edges created by legacy Add/Cognify are visible in Search, and vice versa. However, legacy artifacts are not tracked by provenance and won't be affected by garbage collection.
+
+### Two-Phase Transaction Model
+
+Memory operations use a two-phase model to avoid long transactions during LLM calls:
+
+**Phase 1 (Transaction):**
+- Persist memory record with `status="pending"`
+- Compute doc_hash for deduplication
+
+**Phase 2 (No Transaction):**
+- Call LLM APIs for entity/relationship extraction
+- Generate embeddings
+
+**Phase 3 (Transaction):**
+- Update graph with nodes/edges
+- Link provenance
+- Set `status="complete"`
+
+This design:
+- ✅ Prevents database locks during slow LLM calls
+- ✅ Allows crash recovery (pending memories can be retried)
+- ✅ Maintains transactional integrity for metadata
+
+### Garbage Collection Details
+
+Garbage collection uses **reference counting** via the `memory_nodes` and `memory_edges` junction tables:
+
+```sql
+-- Check if a node is orphaned
+SELECT COUNT(*) FROM memory_nodes WHERE node_id = ?
+-- If count = 0, node is safe to delete
+```
+
+**Preserved Artifacts:**
+- Nodes/edges with `COUNT(*) > 0` (shared across memories)
+- Nodes/edges without any provenance records (legacy data)
+
+**Deleted Artifacts:**
+- Nodes/edges with `COUNT(*) = 0` after unlinking
+
+**Foreign Key Cascade:** Deleting a memory automatically deletes its provenance records via `ON DELETE CASCADE`.
+
+### Helper Functions
+
+```go
+// Helper for optional string fields
+func stringPtr(s string) *string {
+    return &s
+}
+
+// Helper for optional bool fields
+func boolPtr(b bool) *bool {
+    return &b
+}
+```
+
+### Example: Agent Memory Loop
+
+```go
+// Agent stores a decision
+memory, _ := g.AddMemory(ctx, gognee.MemoryInput{
+    Topic:   "API Design Decision",
+    Context: "Chose REST over GraphQL for simplicity...",
+    Decisions: []string{"Use REST API"},
+    Rationale: []string{"Team familiarity", "Lower complexity"},
+})
+
+// Later: Search recalls the decision
+results, _ := g.Search(ctx, "API design approach", gognee.SearchOptions{})
+for _, r := range results {
+    fmt.Printf("Found in memories: %v\n", r.MemoryIDs)
+    // Retrieve full memory for context
+    mem, _ := g.GetMemory(ctx, r.MemoryIDs[0])
+    fmt.Printf("Decision: %s\n", mem.Decisions[0])
+}
+
+// Update the decision with new findings
+g.UpdateMemory(ctx, memory.Memory.ID, gognee.MemoryUpdate{
+    Rationale: &[]string{
+        "Team familiarity",
+        "Lower complexity",
+        "Better caching support (discovered)",
+    },
+})
+```
+
 ## MVP Limitations
 
 This is the MVP (Minimum Viable Product). Known limitations:

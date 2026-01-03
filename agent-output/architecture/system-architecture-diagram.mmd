@@ -1,0 +1,38 @@
+%% gognee architecture diagram (current state)
+%% Last Updated: 2026-01-02
+
+flowchart LR
+  Client[Downstream app (e.g., Glowbabe)] --> Gognee[pkg/gognee: Gognee facade]
+
+  Gognee --> Add[Add(): buffer docs]
+  Gognee --> Cognify[Cognify(): pipeline]
+  Gognee --> Search[Search(): hybrid]
+  Gognee --> Prune[Prune(): delete stale]
+
+  Cognify --> Chunker[pkg/chunker]
+  Cognify --> LLM[pkg/llm: LLMClient]
+  Cognify --> Extract[pkg/extraction: entities+relations]
+  Cognify --> Embed[pkg/embeddings: EmbeddingClient]
+  Cognify --> GraphStore[pkg/store: SQLiteGraphStore]
+  Cognify --> VectorStore[pkg/store: VectorStore]
+
+  GraphStore --> SQLite[(SQLite DB)]
+  SQLite --> Nodes[nodes table\n(id,name,type,desc,embedding,metadata,created_at...)]
+  SQLite --> Edges[edges table\n(id,source_id,relation,target_id,...)]
+  SQLite --> ProcDocs[processed_documents\n(hash,source,processed_at,chunk_count)]
+
+  VectorStore -->|:memory:| MemVS[MemoryVectorStore]
+  VectorStore -->|file DB| SQLiteVS[SQLiteVectorStore\n(uses nodes.embedding)]
+  SQLiteVS --> SQLite
+
+  Search --> QueryEmbed[Embed query]
+  QueryEmbed --> VectorStore
+  Search --> GraphExpand[Graph expansion]
+  GraphExpand --> GraphStore
+
+  Search --> DecayWrap{Decay enabled?}
+  DecayWrap -->|yes| Decaying[pkg/search: DecayingSearcher]
+  DecayWrap -->|no| BaseSearch[pkg/search: HybridSearcher]
+
+  Decaying --> GraphStore
+  BaseSearch --> GraphStore

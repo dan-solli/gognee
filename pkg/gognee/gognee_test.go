@@ -1170,3 +1170,465 @@ func TestEdgeIDAmbiguousEntity(t *testing.T) {
 		t.Error("Expected ambiguity-related error for skipped edge")
 	}
 }
+
+// ==================================================
+// Memory CRUD API Tests (Plan 011)
+// ==================================================
+
+// TestAddMemory_Success validates the AddMemory API with mocked LLM.
+func TestAddMemory_Success(t *testing.T) {
+	ctx := context.Background()
+
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Inject mocks
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{
+				{Name: "Storage Layer", Type: "System", Description: "SQLite-backed graph store"},
+				{Name: "Provenance", Type: "Concept", Description: "Tracking memory to artifact mapping"},
+			},
+		},
+		RelationResponses: [][]extraction.Triplet{
+			{
+				{Subject: "Storage Layer", Relation: "IMPLEMENTS", Object: "Provenance"},
+			},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	// Add memory
+	input := MemoryInput{
+		Topic:     "Phase 4 Implementation",
+		Context:   "Implemented SQLite graph store with provenance tracking",
+		Decisions: []string{"Use SQLite", "Enable foreign keys"},
+		Rationale: []string{"ACID guarantees", "Cascade deletes"},
+		Metadata:  map[string]interface{}{"plan": "004"},
+		Source:    "implementation-doc",
+	}
+
+	result, err := g.AddMemory(ctx, input)
+	if err != nil {
+		t.Fatalf("AddMemory failed: %v", err)
+	}
+
+	// Validate result
+	if result.MemoryID == "" {
+		t.Error("Memory ID not generated")
+	}
+	if result.NodesCreated != 2 {
+		t.Errorf("NodesCreated: got %d, want 2", result.NodesCreated)
+	}
+	if result.EdgesCreated != 1 {
+		t.Errorf("EdgesCreated: got %d, want 1", result.EdgesCreated)
+	}
+
+	// Verify memory is retrievable and has correct data
+	retrieved, err := g.GetMemory(ctx, result.MemoryID)
+	if err != nil {
+		t.Fatalf("GetMemory failed: %v", err)
+	}
+	if retrieved.Topic != input.Topic {
+		t.Errorf("Retrieved topic mismatch: got %s, want %s", retrieved.Topic, input.Topic)
+	}
+	if retrieved.Status != "complete" {
+		t.Errorf("Status should be 'complete', got %s", retrieved.Status)
+	}
+	if len(retrieved.Decisions) != 2 {
+		t.Errorf("Decisions count: got %d, want 2", len(retrieved.Decisions))
+	}
+}
+
+// TestAddMemory_Deduplication validates that duplicate memories are detected.
+func TestAddMemory_Deduplication(t *testing.T) {
+	ctx := context.Background()
+
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{{Name: "Test", Type: "Concept", Description: "Test entity"}},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	input := MemoryInput{
+		Topic:   "Test Memory",
+		Context: "Test context",
+	}
+
+	// Add first memory
+	result1, err := g.AddMemory(ctx, input)
+	if err != nil {
+		t.Fatalf("AddMemory 1 failed: %v", err)
+	}
+
+	// Add duplicate (same content)
+	result2, err := g.AddMemory(ctx, input)
+	if err != nil {
+		t.Fatalf("AddMemory 2 failed: %v", err)
+	}
+
+	// Should return existing memory
+	if result1.MemoryID != result2.MemoryID {
+		t.Errorf("Expected same memory ID for duplicate, got %s and %s", result1.MemoryID, result2.MemoryID)
+	}
+	if result2.NodesCreated != 0 {
+		t.Errorf("Duplicate should not create nodes, got %d", result2.NodesCreated)
+	}
+}
+
+// TestListMemories validates pagination.
+func TestListMemories(t *testing.T) {
+	ctx := context.Background()
+
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	mockLLM := &MockLLMClient{}
+	mockEmbed := &MockEmbeddingClient{}
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	// Add multiple memories
+	for i := 0; i < 5; i++ {
+		input := MemoryInput{
+			Topic:   "Memory " + string(rune('A'+i)),
+			Context: "Context " + string(rune('A'+i)),
+		}
+		_, err := g.AddMemory(ctx, input)
+		if err != nil {
+			t.Fatalf("AddMemory %d failed: %v", i, err)
+		}
+	}
+
+	// List with default options
+	results, err := g.ListMemories(ctx, store.ListMemoriesOptions{})
+	if err != nil {
+		t.Fatalf("ListMemories failed: %v", err)
+	}
+	if len(results) != 5 {
+		t.Errorf("Expected 5 memories, got %d", len(results))
+	}
+
+	// List with limit
+	results, err = g.ListMemories(ctx, store.ListMemoriesOptions{Limit: 2})
+	if err != nil {
+		t.Fatalf("ListMemories with limit failed: %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("Expected 2 memories with limit, got %d", len(results))
+	}
+
+	// List with offset
+	results, err = g.ListMemories(ctx, store.ListMemoriesOptions{Limit: 2, Offset: 2})
+	if err != nil {
+		t.Fatalf("ListMemories with offset failed: %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("Expected 2 memories with offset, got %d", len(results))
+	}
+}
+
+// TestUpdateMemory validates re-cognify and provenance update.
+func TestUpdateMemory(t *testing.T) {
+	ctx := context.Background()
+
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			// First AddMemory
+			{{Name: "Original", Type: "Concept", Description: "Original entity"}},
+			// UpdateMemory
+			{{Name: "Updated", Type: "Concept", Description: "Updated entity"}},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	// Add initial memory
+	input := MemoryInput{
+		Topic:   "Test",
+		Context: "Original context",
+	}
+	result, err := g.AddMemory(ctx, input)
+	if err != nil {
+		t.Fatalf("AddMemory failed: %v", err)
+	}
+	memoryID := result.MemoryID
+
+	// Update memory
+	newContext := "Updated context"
+	updates := store.MemoryUpdate{
+		Context: &newContext,
+	}
+	updateResult, err := g.UpdateMemory(ctx, memoryID, updates)
+	if err != nil {
+		t.Fatalf("UpdateMemory failed: %v", err)
+	}
+
+	// Validate update result
+	if updateResult.MemoryID != memoryID {
+		t.Errorf("MemoryID mismatch: got %s, want %s", updateResult.MemoryID, memoryID)
+	}
+	// Retrieve updated memory to verify changes
+	updated, err := g.GetMemory(ctx, memoryID)
+	if err != nil {
+		t.Fatalf("GetMemory after update failed: %v", err)
+	}
+	if updated.Context != newContext {
+		t.Errorf("Context not updated: got %s, want %s", updated.Context, newContext)
+	}
+	if updated.Version < 2 {
+		t.Errorf("Version not incremented: got %d, want >= 2", updated.Version)
+	}
+	if updateResult.NodesCreated == 0 {
+		t.Error("Expected re-cognify to create nodes")
+	}
+}
+
+// TestDeleteMemory validates deletion and garbage collection.
+func TestDeleteMemory(t *testing.T) {
+	ctx := context.Background()
+
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{{Name: "ToDelete", Type: "Concept", Description: "Entity to delete"}},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	// Add memory
+	input := MemoryInput{
+		Topic:   "Test",
+		Context: "Test context",
+	}
+	result, err := g.AddMemory(ctx, input)
+	if err != nil {
+		t.Fatalf("AddMemory failed: %v", err)
+	}
+	memoryID := result.MemoryID
+
+	// Delete memory
+	err = g.DeleteMemory(ctx, memoryID)
+	if err != nil {
+		t.Fatalf("DeleteMemory failed: %v", err)
+	}
+
+	// Verify memory is gone
+	_, err = g.GetMemory(ctx, memoryID)
+	if err == nil {
+		t.Error("Expected error when retrieving deleted memory")
+	}
+}
+
+// TestDeleteMemory_PreservesSharedNodes validates GC preserves shared nodes.
+func TestDeleteMemory_PreservesSharedNodes(t *testing.T) {
+	ctx := context.Background()
+
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			// Memory 1
+			{
+				{Name: "Shared", Type: "Concept", Description: "Shared entity"},
+				{Name: "Unique1", Type: "Concept", Description: "Unique to memory 1"},
+			},
+			// Memory 2
+			{
+				{Name: "Shared", Type: "Concept", Description: "Shared entity"},
+				{Name: "Unique2", Type: "Concept", Description: "Unique to memory 2"},
+			},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+
+	// Add two memories sharing a node
+	input1 := MemoryInput{Topic: "Memory 1", Context: "Context 1"}
+	result1, err := g.AddMemory(ctx, input1)
+	if err != nil {
+		t.Fatalf("AddMemory 1 failed: %v", err)
+	}
+
+	input2 := MemoryInput{Topic: "Memory 2", Context: "Context 2"}
+	_, err = g.AddMemory(ctx, input2)
+	if err != nil {
+		t.Fatalf("AddMemory 2 failed: %v", err)
+	}
+
+	// Delete memory 1
+	err = g.DeleteMemory(ctx, result1.MemoryID)
+	if err != nil {
+		t.Fatalf("DeleteMemory failed: %v", err)
+	}
+
+	// Verify shared node still exists (referenced by memory 2)
+	sharedNodeID := generateDeterministicNodeID("Shared", "Concept")
+	sharedNode, err := g.graphStore.GetNode(ctx, sharedNodeID)
+	if err != nil {
+		t.Fatalf("GetNode failed: %v", err)
+	}
+	if sharedNode == nil {
+		t.Error("Shared node was incorrectly deleted")
+	}
+
+	// Verify memory 2's unique node still exists
+	unique2NodeID := generateDeterministicNodeID("Unique2", "Concept")
+	unique2Node, err := g.graphStore.GetNode(ctx, unique2NodeID)
+	if err != nil {
+		t.Fatalf("GetNode failed: %v", err)
+	}
+	if unique2Node == nil {
+		t.Error("Memory 2's unique node was incorrectly deleted")
+	}
+}
+
+// TestSearch_MemoryIDsEnrichment validates search provenance enrichment.
+func TestSearch_MemoryIDsEnrichment(t *testing.T) {
+	ctx := context.Background()
+
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	mockLLM := &MockLLMClient{
+		EntityResponses: [][]extraction.Entity{
+			{{Name: "SearchEntity", Type: "Concept", Description: "Entity for search"}},
+		},
+	}
+	mockEmbed := &MockEmbeddingClient{}
+	g.llm = mockLLM
+	g.embeddings = mockEmbed
+	g.entityExtractor = extraction.NewEntityExtractor(mockLLM)
+	g.relationExtractor = extraction.NewRelationExtractor(mockLLM)
+	// Recreate searcher with mock embeddings to avoid OpenAI calls
+	g.searcher = search.NewHybridSearcher(mockEmbed, g.vectorStore, g.graphStore)
+
+	// Add memory
+	input := MemoryInput{
+		Topic:   "Search Test",
+		Context: "Test search enrichment",
+	}
+	result, err := g.AddMemory(ctx, input)
+	if err != nil {
+		t.Fatalf("AddMemory failed: %v", err)
+	}
+	memoryID := result.MemoryID
+
+	// Search with default options (MemoryIDs enabled)
+	searchResults, err := g.Search(ctx, "search", SearchOptions{
+		Type: SearchTypeVector,
+		TopK: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if len(searchResults) == 0 {
+		t.Fatal("Expected search results")
+	}
+
+	// Verify MemoryIDs are populated
+	foundMemoryID := false
+	for _, sr := range searchResults {
+		if len(sr.MemoryIDs) > 0 {
+			foundMemoryID = true
+			if sr.MemoryIDs[0] == memoryID {
+				break
+			}
+		}
+	}
+	if !foundMemoryID {
+		t.Error("Expected search results to include MemoryIDs")
+	}
+
+	// Search with MemoryIDs disabled
+	includeMemoryIDs := false
+	searchResults2, err := g.Search(ctx, "search", SearchOptions{
+		Type:             SearchTypeVector,
+		TopK:             10,
+		IncludeMemoryIDs: &includeMemoryIDs,
+	})
+	if err != nil {
+		t.Fatalf("Search with IncludeMemoryIDs=false failed: %v", err)
+	}
+
+	// Verify MemoryIDs are not populated
+	for _, sr := range searchResults2 {
+		if len(sr.MemoryIDs) > 0 {
+			t.Error("Expected no MemoryIDs when IncludeMemoryIDs=false")
+		}
+	}
+}
+
+// TestGarbageCollect_Placeholder validates the placeholder GC method.
+func TestGarbageCollect_Placeholder(t *testing.T) {
+	ctx := context.Background()
+
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Call placeholder GC
+	nodesDeleted, edgesDeleted, err := g.GarbageCollect(ctx)
+
+	// Should return error (not yet implemented)
+	if err == nil {
+		t.Error("Expected error from placeholder GarbageCollect")
+	}
+	if nodesDeleted != 0 || edgesDeleted != 0 {
+		t.Errorf("Expected (0,0) from placeholder, got (%d,%d)", nodesDeleted, edgesDeleted)
+	}
+}
