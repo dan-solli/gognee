@@ -3,7 +3,7 @@
 **Plan ID**: 012  
 **Target Release**: v1.0.1 (patch)  
 **Epic Alignment**: Bug fix / Usability improvement  
-**Status**: UAT Approved  
+**Status**: Released (v1.0.1)  
 **Created**: 2026-01-04  
 
 ## Changelog

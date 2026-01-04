@@ -2,7 +2,7 @@
 
 **Plan Reference**: [agent-output/planning/012-entity-type-validation-resilience-plan.md](../planning/012-entity-type-validation-resilience-plan.md)  
 **Date**: 2026-01-04  
-**Status**: Complete - Ready for QA
+**Status**: Released (v1.0.1)
 
 ---
 
