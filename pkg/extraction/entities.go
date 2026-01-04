@@ -4,6 +4,7 @@ package extraction
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/dan-solli/gognee/pkg/llm"
 )
@@ -17,6 +18,7 @@ type Entity struct {
 
 // Valid entity types from the roadmap
 var validEntityTypes = map[string]bool{
+	// Original 7 types
 	"Person":     true,
 	"Concept":    true,
 	"System":     true,
@@ -24,6 +26,16 @@ var validEntityTypes = map[string]bool{
 	"Event":      true,
 	"Technology": true,
 	"Pattern":    true,
+	// Additional 9 types (added in v1.0.1)
+	"Problem":      true,
+	"Goal":         true,
+	"Location":     true,
+	"Organization": true,
+	"Document":     true,
+	"Process":      true,
+	"Requirement":  true,
+	"Feature":      true,
+	"Task":         true,
 }
 
 // entityExtractionPrompt is the prompt template for entity extraction
@@ -31,7 +43,7 @@ const entityExtractionPrompt = `You are a knowledge graph construction assistant
 
 Extract all meaningful entities from this text. For each entity, provide:
 - name: The entity name
-- type: One of [Person, Concept, System, Decision, Event, Technology, Pattern]
+- type: One of [Person, Concept, System, Decision, Event, Technology, Pattern, Problem, Goal, Location, Organization, Document, Process, Requirement, Feature, Task]
 - description: Brief description (1 sentence)
 
 Text:
@@ -80,9 +92,10 @@ func (e *EntityExtractor) Extract(ctx context.Context, text string) ([]Entity, e
 			return nil, fmt.Errorf("entity at index %d (%s) has empty description", i, entity.Name)
 		}
 
-		// Validate type against allowlist
+		// Normalize unknown types to Concept with warning
 		if !validEntityTypes[entity.Type] {
-			return nil, fmt.Errorf("entity at index %d (%s) has invalid type: %s (must be one of: Person, Concept, System, Decision, Event, Technology, Pattern)", i, entity.Name, entity.Type)
+			log.Printf("gognee: entity %q has unrecognized type %q, normalizing to Concept", entity.Name, entity.Type)
+			entities[i].Type = "Concept"
 		}
 	}
 
