@@ -544,3 +544,75 @@ func TestMemoryStore_DuplicateDetection(t *testing.T) {
 	// But at store level, they'll have different IDs
 	// The dedup check happens in gognee.AddMemory via SQL query
 }
+
+// TestMemoryStore_CountMemories tests the CountMemories method.
+func TestMemoryStore_CountMemories(t *testing.T) {
+	ctx := context.Background()
+
+	// Create in-memory store
+	graphStore, err := NewSQLiteGraphStore(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create graph store: %v", err)
+	}
+	defer graphStore.Close()
+
+	memStore := NewSQLiteMemoryStore(graphStore.DB())
+
+	// Test empty count
+	count, err := memStore.CountMemories(ctx)
+	if err != nil {
+		t.Fatalf("CountMemories (empty) failed: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("Expected 0 memories, got %d", count)
+	}
+
+	// Add some memories
+	for i := 0; i < 5; i++ {
+		memory := &MemoryRecord{
+			Topic:     "Test Memory " + string(rune('A'+i)),
+			Context:   "Test context",
+			Decisions: []string{"Decision"},
+			DocHash:   ComputeDocHash("Test Memory "+string(rune('A'+i)), "Test context", []string{"Decision"}, nil),
+			Source:    "test",
+			Status:    "complete",
+		}
+		err = memStore.AddMemory(ctx, memory)
+		if err != nil {
+			t.Fatalf("AddMemory %d failed: %v", i, err)
+		}
+	}
+
+	// Count should be 5
+	count, err = memStore.CountMemories(ctx)
+	if err != nil {
+		t.Fatalf("CountMemories (with records) failed: %v", err)
+	}
+	if count != 5 {
+		t.Errorf("Expected 5 memories, got %d", count)
+	}
+
+	// Delete one memory
+	memories, err := memStore.ListMemories(ctx, ListMemoriesOptions{Limit: 1})
+	if err != nil {
+		t.Fatalf("ListMemories failed: %v", err)
+	}
+	if len(memories) == 0 {
+		t.Fatal("Expected at least one memory")
+	}
+
+	err = memStore.DeleteMemory(ctx, memories[0].ID)
+	if err != nil {
+		t.Fatalf("DeleteMemory failed: %v", err)
+	}
+
+	// Count should be 4
+	count, err = memStore.CountMemories(ctx)
+	if err != nil {
+		t.Fatalf("CountMemories (after delete) failed: %v", err)
+	}
+	if count != 4 {
+		t.Errorf("Expected 4 memories, got %d", count)
+	}
+}
+

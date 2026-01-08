@@ -446,6 +446,9 @@ func TestStats(t *testing.T) {
 	if stats.BufferedDocs != 0 {
 		t.Fatalf("Initial BufferedDocs: got %d, want 0", stats.BufferedDocs)
 	}
+	if stats.MemoryCount != 0 {
+		t.Fatalf("Initial MemoryCount: got %d, want 0", stats.MemoryCount)
+	}
 
 	// Add and check buffered count
 	g.Add(ctx, "test", AddOptions{})
@@ -455,6 +458,23 @@ func TestStats(t *testing.T) {
 	}
 	if stats.BufferedDocs != 1 {
 		t.Fatalf("BufferedDocs after Add: got %d, want 1", stats.BufferedDocs)
+	}
+
+	// Add a memory and verify count
+	_, err = g.AddMemory(ctx, MemoryInput{
+		Topic:   "Test Memory",
+		Context: "Test context",
+	})
+	if err != nil {
+		t.Fatalf("AddMemory failed: %v", err)
+	}
+
+	stats, err = g.Stats()
+	if err != nil {
+		t.Fatalf("Stats after AddMemory failed: %v", err)
+	}
+	if stats.MemoryCount != 1 {
+		t.Fatalf("MemoryCount after AddMemory: got %d, want 1", stats.MemoryCount)
 	}
 }
 

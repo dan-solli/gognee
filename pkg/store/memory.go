@@ -75,6 +75,9 @@ type MemoryStore interface {
 
 	// GetMemoriesByNodeID returns all memory IDs that reference a given node.
 	GetMemoriesByNodeID(ctx context.Context, nodeID string) ([]string, error)
+
+	// CountMemories returns the total number of memories in the store.
+	CountMemories(ctx context.Context) (int64, error)
 }
 
 // SQLiteMemoryStore implements MemoryStore using SQLite.
@@ -518,6 +521,18 @@ func (s *SQLiteMemoryStore) GetMemoriesByNodeID(ctx context.Context, nodeID stri
 	}
 
 	return memoryIDs, nil
+}
+
+// CountMemories returns the total number of memories in the store.
+// Uses an indexed query for O(1) performance.
+func (s *SQLiteMemoryStore) CountMemories(ctx context.Context) (int64, error) {
+	var count int64
+	query := "SELECT COUNT(*) FROM memories"
+	err := s.db.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count memories: %w", err)
+	}
+	return count, nil
 }
 
 // GetMemoriesByNodeIDBatched returns memory IDs for multiple nodes in a single query.

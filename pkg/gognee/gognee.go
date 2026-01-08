@@ -108,6 +108,7 @@ type CognifyResult struct {
 type Stats struct {
 	NodeCount     int64
 	EdgeCount     int64
+	MemoryCount   int64
 	BufferedDocs  int
 	LastCognified time.Time
 }
@@ -588,9 +589,15 @@ func (g *Gognee) Stats() (Stats, error) {
 		return Stats{}, fmt.Errorf("failed to get edge count: %w", err)
 	}
 
+	memoryCount, err := g.memoryStore.CountMemories(ctx)
+	if err != nil {
+		return Stats{}, fmt.Errorf("failed to get memory count: %w", err)
+	}
+
 	return Stats{
 		NodeCount:     nodeCount,
 		EdgeCount:     edgeCount,
+		MemoryCount:   memoryCount,
 		BufferedDocs:  len(g.buffer),
 		LastCognified: g.lastCognified,
 	}, nil
@@ -948,6 +955,11 @@ func (g *Gognee) GetMemory(ctx context.Context, id string) (*store.MemoryRecord,
 // ListMemories returns paginated memory summaries.
 func (g *Gognee) ListMemories(ctx context.Context, opts store.ListMemoriesOptions) ([]store.MemorySummary, error) {
 	return g.memoryStore.ListMemories(ctx, opts)
+}
+
+// CountMemories returns the total number of memories in the store.
+func (g *Gognee) CountMemories(ctx context.Context) (int64, error) {
+	return g.memoryStore.CountMemories(ctx)
 }
 
 // UpdateMemory applies partial updates to a memory and re-cognifies if content changed.
