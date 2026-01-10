@@ -818,6 +818,8 @@ type MemoryInput struct {
 	Rationale []string
 	Metadata  map[string]interface{}
 	Source    string
+	// TraceEnabled enables timing instrumentation (Plan 015)
+	TraceEnabled bool
 }
 
 // MemoryResult reports the outcome of memory operations.
@@ -828,6 +830,8 @@ type MemoryResult struct {
 	NodesDeleted int
 	EdgesDeleted int
 	Errors       []error
+	// Trace contains timing data when TraceEnabled is true (Plan 015)
+	Trace        *OperationTrace
 }
 
 // AddMemory creates a new first-class memory with full CRUD support.
@@ -835,6 +839,13 @@ type MemoryResult struct {
 func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResult, error) {
 	result := &MemoryResult{
 		Errors: make([]error, 0),
+	}
+
+	// Initialize trace if enabled (Plan 015 M2)
+	var trace *OperationTrace
+	if input.TraceEnabled {
+		trace = newTrace()
+		result.Trace = trace
 	}
 
 	// Validate input
@@ -887,6 +898,8 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 	result.MemoryID = memoryID
 
 	// **Phase 2: Cognify (outside transaction, idempotent)**
+	cognifyTimer := newSpanTimer("cognify", trace, input.TraceEnabled)
+
 	// Format text for cognify
 	text := fmt.Sprintf("Topic: %s\n\n%s", input.Topic, input.Context)
 
@@ -990,6 +1003,12 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 			result.EdgesCreated++
 		}
 	}
+
+	// Finish cognify timer
+	cognifyTimer.finish(true, nil, map[string]int64{
+		"nodesCreated": int64(result.NodesCreated),
+		"edgesCreated": int64(result.EdgesCreated),
+	})
 
 	// **Phase 3: Short transaction - link provenance and mark complete**
 	if err := g.memoryStore.LinkProvenance(ctx, memoryID, createdNodeIDs, createdEdgeIDs); err != nil {
