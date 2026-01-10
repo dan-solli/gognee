@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-01-22
+
+### Added
+
+#### Performance Instrumentation (Plan 015)
+
+- **Timing spans**: `OperationTrace` and `Span` structs for detailed performance analysis
+- **TraceEnabled option**: Opt-in tracing in `CognifyOptions`, `SearchOptions`, `MemoryInput` (default: `false`)
+- **Cognify spans**: Instrumented chunking, entity extraction, relation extraction, embedding, graph/vector writes
+- **Search spans**: Instrumented vector search with result counts
+- **Minimal overhead**: <1ms when tracing disabled (verified by benchmarks)
+- **Offline benchmark suite**: 6 deterministic benchmarks using fake embedding/LLM clients:
+  - `BenchmarkCognify_Empty/100Memories/1000Memories`
+  - `BenchmarkSearch_Empty/100Memories/1000Memories`
+- **Baseline performance**: Cognify ~80µs, Search ~6-8µs (in-memory SQLite, fake clients)
+
+**API Changes:**
+- `CognifyOptions.TraceEnabled bool` (default `false`)
+- `CognifyResult.Trace *OperationTrace` (nil when TraceEnabled=false)
+- `SearchOptions.TraceEnabled bool` (default `false`)
+- `SearchResponse.Trace *OperationTrace` (nil when TraceEnabled=false)
+- `MemoryInput.TraceEnabled bool` (default `false`)
+- `MemoryResult.Trace *OperationTrace` (nil when TraceEnabled=false)
+
+**Trace Structure:**
+- `OperationTrace.Spans []Span` - Array of timing spans
+- `Span.Name string` - Stage name (e.g., "chunk", "embed", "extract")
+- `Span.DurationMs int64` - Elapsed milliseconds
+- `Span.OK bool` - Success indicator
+- `Span.Error string` - Error message if failed
+- `Span.Counters map[string]int64` - Stage-specific metrics (chunkCount, nodeUpserts, etc.)
+
 ## [1.0.2] - 2026-01-08
 
 ### Added
