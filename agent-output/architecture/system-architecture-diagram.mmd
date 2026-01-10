@@ -16,10 +16,17 @@ flowchart LR
   Cognify --> GraphStore[pkg/store: SQLiteGraphStore]
   Cognify --> VectorStore[pkg/store: VectorStore]
 
+  Gognee --> MemCRUD[Memory CRUD\n(AddMemory/Get/List/Update/Delete)]
+  MemCRUD --> MemoryStore[pkg/store: SQLiteMemoryStore]
+
   GraphStore --> SQLite[(SQLite DB)]
   SQLite --> Nodes[nodes table\n(id,name,type,desc,embedding,metadata,created_at...)]
   SQLite --> Edges[edges table\n(id,source_id,relation,target_id,...)]
   SQLite --> ProcDocs[processed_documents\n(hash,source,processed_at,chunk_count)]
+
+  SQLite --> Memories[memories\n(id,topic,context,decisions,rationale,metadata,created_at...)]
+  SQLite --> MemNodes[memory_nodes\n(memory_id,node_id,created_at)]
+  SQLite --> MemEdges[memory_edges\n(memory_id,edge_id,created_at)]
 
   VectorStore -->|:memory:| MemVS[MemoryVectorStore]
   VectorStore -->|file DB| SQLiteVS[SQLiteVectorStore\n(uses nodes.embedding)]

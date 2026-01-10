@@ -16,6 +16,7 @@
 |------|---------|---------|---------|
 | 2025-12-24 | Planner → Critic | Review for clarity, completeness, architectural alignment | Initial critique |
 | 2025-12-24 | Planner → Critic | Re-review after Cognee-alignment adjustments | Updated critique with addressed findings |
+| 2026-01-10 | Planner → Critic | Post-implementation clarity/alignment check | M3 addressed (dual find methods documented); L2 addressed (weight default documented) |
 
 ---
 
@@ -133,18 +134,11 @@ The scope avoids gold-plating by documenting the in-memory vector store limitati
 ---
 
 #### M3 — ROADMAP Interface Divergence (FindNodesByName)
+**Status:** ✅ ADDRESSED
 
-**Status:** OPEN
+**Issue:** ROADMAP specified single-return `FindNodeByName`; plan used multi-return `FindNodesByName` for Cognee parity.
 
-**Issue:** ROADMAP specifies `FindNodeByName(ctx, name) (*Node, error)` (single return). Plan uses `FindNodesByName` (multi-return) for Cognee parity.
-
-**Impact:** Implementers following ROADMAP literally will see mismatch.
-
-**Recommendation:** Either:
-1. Update ROADMAP Phase 4 interface to reflect the new signature, OR
-2. Provide both: `FindNodesByName` (multi-match) + convenience `FindNodeByName` that errors on ambiguity.
-
-Plan documents divergence; ROADMAP update is cleaner.
+**Resolution:** Plan now documents both: multi-match `FindNodesByName` plus a convenience `FindNodeByName` that errors on ambiguity. Residual: ROADMAP doc still mentions single-return; update ROADMAP when convenient to avoid mismatch.
 
 ---
 
@@ -173,12 +167,11 @@ Plan documents divergence; ROADMAP update is cleaner.
 ---
 
 #### L2 — Edge Weight Default Value Not Used
-
-**Status:** OPEN (Informational)
+**Status:** ✅ ADDRESSED (Informational)
 
 **Issue:** `Edge.Weight` exists but no milestone task uses or tests it.
 
-**Recommendation:** Add note: "Edge weight is reserved for future search ranking (Phase 5); default to 1.0 for now."
+**Resolution:** Plan now notes Weight defaults to 1.0 and is reserved for Phase 5 ranking.
 
 ---
 
@@ -252,4 +245,5 @@ Plan documents divergence; ROADMAP update is cleaner.
 |----------|------|---------|-------------------|--------------|--------|
 | Initial | 2025-12-24 | First review | — | M1, M2, L1, L2, L3 | OPEN |
 | Rev 1 | 2025-12-24 | Updated after Cognee-alignment | M1, M2 | M3, M4 | OPEN |
+| Rev 2 | 2026-01-10 | Post-implementation check; noted dual find methods and weight default | M3, L2 | — | OPEN |
 

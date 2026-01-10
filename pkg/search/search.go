@@ -48,6 +48,9 @@ type SearchOptions struct {
 	// IncludeMemoryIDs enables memory provenance enrichment (v1.0.0+).
 	// Default: true. Set to false to skip provenance lookup for performance.
 	IncludeMemoryIDs *bool
+	// TraceEnabled enables detailed timing instrumentation for performance analysis.
+	// Default: false (off by default to minimize overhead).
+	TraceEnabled bool
 }
 
 // Searcher defines the interface for knowledge graph search.

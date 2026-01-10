@@ -1,6 +1,6 @@
 ---
 name: memory-contract
-description: Unified Memory Contract for Flowbaby integration. Defines when and how to retrieve and store memory. Load at session start - memory is core to agent reasoning, not optional.
+description: Unified Memory Contract for glowbabe integration. Defines when and how to retrieve and store memory. Load at session start - memory is core to agent reasoning, not optional.
 license: MIT
 metadata:
   author: groupzer0
@@ -9,7 +9,7 @@ metadata:
 
 # Unified Memory Contract
 
-Using Flowbaby tools (`flowbabyStoreSummary` and `flowbabyRetrieveMemory`) is **mandatory**.
+Using glowbabe tools (`glowbabeStoreSummary` and `glowbabeRetrieveMemory`) is **mandatory**.
 
 ---
 
@@ -74,7 +74,7 @@ Store at **value boundaries**—when you've created something worth preserving. 
 
 **Fallback minimum:** If you haven't stored in 5 turns, store now regardless.
 
-**Always end storage with:** "Saved progress to Flowbaby memory."
+**Always end storage with:** "Saved progress to glowbabe memory."
 
 ---
 
@@ -104,11 +104,11 @@ Store at **value boundaries**—when you've created something worth preserving. 
 
 ## No-Memory Fallback
 
-If `flowbabyRetrieveMemory` or `flowbabyStoreSummary` calls fail or are rejected:
+If `glowbabeRetrieveMemory` or `glowbabeStoreSummary` calls fail or are rejected:
 
-1. **Announce immediately:** "Flowbaby memory is unavailable; operating in no-memory mode."
+1. **Announce immediately:** "glowbabe memory is unavailable; operating in no-memory mode."
 2. **Compensate:** Record decisions in output documents with extra detail.
-3. **Remind at end:** "Memory was unavailable. Consider initializing Flowbaby for cross-session continuity."
+3. **Remind at end:** "Memory was unavailable. Consider initializing glowbabe for cross-session continuity."
 
 ---
 
@@ -117,7 +117,7 @@ If `flowbabyRetrieveMemory` or `flowbabyStoreSummary` calls fail or are rejected
 ### Retrieval
 
 ```json
-#flowbabyRetrieveMemory {
+#glowbabeRetrieveMemory {
   "query": "Specific question or hypothesis about prior context",
   "maxResults": 3
 }
@@ -126,7 +126,7 @@ If `flowbabyRetrieveMemory` or `flowbabyStoreSummary` calls fail or are rejected
 ### Storage
 
 ```json
-#flowbabyStoreSummary {
+#glowbabeStoreSummary {
   "topic": "3–7 word title",
   "context": "300–1500 chars: what happened, why, constraints, dead ends",
   "decisions": ["Decision 1", "Decision 2"],

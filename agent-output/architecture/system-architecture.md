@@ -1,13 +1,14 @@
 # gognee - System Architecture
 
-**Last Updated**: 2026-01-02
+**Last Updated**: 2026-01-10
 **Architecture Owner**: Architect mode agent
-**Status**: Current state documented; Epic 8.1 assessed (planning gated)
+**Status**: Current state documented; reconciled against implemented Memory CRUD
 
 ## Changelog
 | Date | Change | Rationale |
 |------|--------|-----------|
 | 2026-01-02 | Created initial system architecture doc and diagram | Repo had plans/implementations but no architecture SSOT; required before Epic 8.1 planning |
+| 2026-01-10 | Reconciled architecture vs. implemented Memory CRUD (v1.0.0+) and follow-up releases | Architecture docs must reflect what IS, not what was planned |
 
 ## Purpose
 `gognee` is an importable Go library that provides persistent knowledge-graph-backed memory for AI assistants. It is designed to be embedded into downstream apps (notably Glowbabe).
@@ -27,6 +28,9 @@
 - **Graph**: `pkg/store` `SQLiteGraphStore` implements `GraphStore` over SQLite.
   - Tables: `nodes`, `edges`, `processed_documents`.
   - Nodes store: name/type/description/metadata + `embedding` BLOB.
+- **Memories (first-class CRUD)**: `pkg/store` `SQLiteMemoryStore` implements `MemoryStore`.
+  - Tables: `memories`, `memory_nodes`, `memory_edges`.
+  - Purpose: persist structured memory payloads and provenance links to derived nodes/edges.
 - **Vector**: `pkg/store` provides `VectorStore`.
   - In `:memory:` mode: `MemoryVectorStore`.
   - In file DB mode: `SQLiteVectorStore` (stores embeddings in `nodes.embedding`; linear-scan cosine similarity in Go).
@@ -56,6 +60,13 @@
 - Optional decay scoring (based on access or creation time).
 - Access reinforcement: node access timestamps updated on retrieval (currently implemented by casting to `*SQLiteGraphStore` for best-effort batch update).
 
+### Memory CRUD (v1.0.0+)
+- `AddMemory(input)`: persists a MemoryRecord, cognifies it, and links provenance (memory → nodes/edges).
+- `ListMemories(opts)`: pagination-oriented listing over MemoryRecords.
+- `GetMemory(id)`: returns a MemoryRecord.
+- `UpdateMemory(id, updates)`: updates payload, re-cognifies, updates provenance, and triggers GC.
+- `DeleteMemory(id)`: removes provenance links and deletes unreferenced artifacts via GC, then deletes the MemoryRecord.
+
 ### Prune(opts)
 - Evaluates nodes against decay criteria and/or max age.
 - Deletes nodes and cascades edge deletions (store-level delete helpers).
@@ -66,6 +77,8 @@
 - `nodes`: entity nodes + optional embedding BLOB; includes access tracking columns (`last_accessed_at`, `access_count`) via schema migration.
 - `edges`: relations between nodes.
 - `processed_documents`: document hash cache used for incremental processing.
+- `memories`: first-class memory payloads (topic/context/decisions/rationale/metadata).
+- `memory_nodes`, `memory_edges`: provenance tables linking MemoryRecords to derived artifacts.
 
 ### Non-Persisted
 - Add buffer is memory-only until Cognify.
@@ -80,11 +93,10 @@
 - **Minimal dependency surface**: Go stdlib + SQLite.
 
 ## Problem Areas / Design Debt
-- **No first-class memory records**: the system persists derived graph artifacts but not the original structured memory payload.
-- **Provenance gap**: derived nodes/edges are not attributable to a specific input document/memory.
+- **Partial API cohesion**: `SQLiteGraphStore` contains capabilities used via concrete casts that are not part of `GraphStore`.
+- **Attribution vs. aggregation**: shared nodes/edges are upserted/aggregated across memories; delete/update correctness is at the artifact-existence level, but “subtracting” contributions (e.g., descriptions) is not modeled.
 - **Transactional boundaries**: CRUD-like operations on derived graph data are not modeled as atomic units at the API/store boundary.
-- **Interface drift**: `SQLiteGraphStore` contains methods used via concrete casts (e.g., `DB()`, `UpdateAccessTime`, delete helpers) that are not part of `GraphStore`.
-- **Shared artifacts**: deterministic node/edge IDs imply nodes/edges are shared across inputs; delete/update semantics require reference tracking to avoid data loss.
+- **Performance ceiling (vector search)**: SQLiteVectorStore uses linear scan cosine similarity in Go; may require indexing/approximate search if corpus grows.
 
 ## Decisions (Architectural)
 
@@ -100,15 +112,16 @@
 - **Choice**: time-based decay implemented as `DecayingSearcher` wrapping existing searcher.
 - **Consequence**: avoids interface churn; enables feature flags.
 
-## Roadmap Readiness: Epic 8.1 (First-Class Memory CRUD)
-Epic 8.1 introduces a new *entity type* in the domain model: a stable, user-facing **MemoryRecord** (topic/context/decisions/rationale/metadata) with browse/edit/delete.
+### D-004: First-class memories with provenance-first semantics
+- **Choice**: implement MemoryRecord persistence plus provenance mapping tables (`memory_nodes`, `memory_edges`) to enable safe delete/update and GC.
+- **Alternatives**: per-memory subgraph duplication; memory-centric search graph.
+- **Consequence**: delete/update is correct for artifact existence; content-level “contribution subtraction” remains future work.
 
-This epic is **not implemented yet**. Architectural requirements and constraints are captured in:
+## Roadmap Readiness: First-Class Memory CRUD (Implemented)
+First-class memory CRUD is implemented (v1.0.0+) and is now architectural fact. The original architectural constraints are captured in:
 - `agent-output/architecture/011-memory-crud-architecture-findings.md`
 
-Key readiness notes:
-- Must add persistence for original memory payloads (new table).
-- Must add provenance mapping from memory → derived nodes/edges.
-- Must provide transactional update/delete semantics.
-- Must define shared-node deletion behavior (reference counting vs per-memory subgraph).
-- Decision (2026-01-03): pursue provenance-first design (provenance tables + refcounts) as the primary path for Epic 8.1.
+Remaining readiness / hardening opportunities:
+- Add integration tests for end-to-end CRUD with real LLMs under an `integration` gate.
+- Consider an explicit GC API (manual GC trigger) if downstreams need it.
+- Consider improvements to vector search performance as corpus scales.

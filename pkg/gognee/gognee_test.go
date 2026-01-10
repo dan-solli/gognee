@@ -557,12 +557,12 @@ func TestSearchWithMockedDependencies(t *testing.T) {
 	ctx := context.Background()
 
 	// Without cognifying, search should return empty but not error.
-	results, err := g.Search(ctx, "something", search.SearchOptions{})
+	response, err := g.Search(ctx, "something", search.SearchOptions{})
 	if err != nil {
 		t.Fatalf("Search failed: %v", err)
 	}
-	if len(results) != 0 {
-		t.Errorf("Expected 0 results on empty graph, got %d", len(results))
+	if len(response.Results) != 0 {
+		t.Errorf("Expected 0 results on empty graph, got %d", len(response.Results))
 	}
 }
 
@@ -1586,7 +1586,7 @@ func TestSearch_MemoryIDsEnrichment(t *testing.T) {
 	memoryID := result.MemoryID
 
 	// Search with default options (MemoryIDs enabled)
-	searchResults, err := g.Search(ctx, "search", SearchOptions{
+	searchResponse, err := g.Search(ctx, "search", SearchOptions{
 		Type: SearchTypeVector,
 		TopK: 10,
 	})
@@ -1594,13 +1594,13 @@ func TestSearch_MemoryIDsEnrichment(t *testing.T) {
 		t.Fatalf("Search failed: %v", err)
 	}
 
-	if len(searchResults) == 0 {
+	if len(searchResponse.Results) == 0 {
 		t.Fatal("Expected search results")
 	}
 
 	// Verify MemoryIDs are populated
 	foundMemoryID := false
-	for _, sr := range searchResults {
+	for _, sr := range searchResponse.Results {
 		if len(sr.MemoryIDs) > 0 {
 			foundMemoryID = true
 			if sr.MemoryIDs[0] == memoryID {
@@ -1614,7 +1614,7 @@ func TestSearch_MemoryIDsEnrichment(t *testing.T) {
 
 	// Search with MemoryIDs disabled
 	includeMemoryIDs := false
-	searchResults2, err := g.Search(ctx, "search", SearchOptions{
+	searchResponse2, err := g.Search(ctx, "search", SearchOptions{
 		Type:             SearchTypeVector,
 		TopK:             10,
 		IncludeMemoryIDs: &includeMemoryIDs,
@@ -1624,7 +1624,7 @@ func TestSearch_MemoryIDsEnrichment(t *testing.T) {
 	}
 
 	// Verify MemoryIDs are not populated
-	for _, sr := range searchResults2 {
+	for _, sr := range searchResponse2.Results {
 		if len(sr.MemoryIDs) > 0 {
 			t.Error("Expected no MemoryIDs when IncludeMemoryIDs=false")
 		}

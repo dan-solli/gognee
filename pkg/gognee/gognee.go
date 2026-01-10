@@ -90,6 +90,11 @@ type CognifyOptions struct {
 	// Overrides SkipProcessed when true.
 	// Use after changing chunker settings or to rebuild the knowledge graph.
 	Force bool
+
+	// TraceEnabled enables detailed timing instrumentation for performance analysis.
+	// Default: false (off by default to minimize overhead).
+	// When enabled, timing spans are collected and returned in CognifyResult.Trace.
+	TraceEnabled bool
 }
 
 // CognifyResult reports the outcome of a Cognify() operation
@@ -102,6 +107,13 @@ type CognifyResult struct {
 	EdgesCreated       int
 	EdgesSkipped       int     // Count of edges skipped due to entity lookup failure or ambiguity
 	Errors             []error // Includes details of skipped edges ("skipped edge" in message)
+	Trace              *OperationTrace // Timing data (populated when CognifyOptions.TraceEnabled is true)
+}
+
+// SearchResponse wraps search results with optional timing trace
+type SearchResponse struct {
+	Results []search.SearchResult // The search results
+	Trace   *OperationTrace       // Timing data (populated when SearchOptions.TraceEnabled is true)
 }
 
 // Stats reports basic telemetry about the knowledge graph
@@ -349,6 +361,13 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 		Errors: make([]error, 0),
 	}
 
+	// Initialize trace if enabled
+	var trace *OperationTrace
+	if opts.TraceEnabled {
+		trace = newTrace()
+		result.Trace = trace
+	}
+
 	// No-op if buffer is empty
 	if len(g.buffer) == 0 {
 		return result, nil
@@ -388,7 +407,9 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 		result.DocumentsProcessed++
 
 		// Chunk the text
+		chunkTimer := newSpanTimer("chunk", trace, opts.TraceEnabled)
 		chunks := g.chunker.Chunk(doc.Text)
+		chunkTimer.finish(true, nil, map[string]int64{"chunkCount": int64(len(chunks))})
 
 		// Process each chunk
 		for _, chunk := range chunks {
@@ -396,8 +417,10 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 			docChunkCount++
 
 			// Extract entities
+			extractTimer := newSpanTimer("extract", trace, opts.TraceEnabled)
 			entities, err := g.entityExtractor.Extract(ctx, chunk.Text)
 			if err != nil {
+				extractTimer.finish(false, err, nil)
 				result.ChunksFailed++
 				result.Errors = append(result.Errors, fmt.Errorf("entity extraction failed for chunk %s: %w", chunk.ID, err))
 				continue
@@ -409,12 +432,23 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 			// Extract relations
 			triplets, err := g.relationExtractor.Extract(ctx, chunk.Text, entities)
 			if err != nil {
+				extractTimer.finish(false, err, nil)
 				result.ChunksFailed++
 				result.Errors = append(result.Errors, fmt.Errorf("relation extraction failed for chunk %s: %w", chunk.ID, err))
 				// Continue with entities only if relations fail
+			} else {
+				extractTimer.finish(true, nil, map[string]int64{
+					"entityCount":   int64(len(entities)),
+					"relationCount": int64(len(triplets)),
+				})
 			}
 
 			// Create nodes for each entity
+			graphWriteTimer := newSpanTimer("write-graph", trace, opts.TraceEnabled)
+			embedTimer := newSpanTimer("embed", trace, opts.TraceEnabled)
+			vectorWriteTimer := newSpanTimer("write-vector", trace, opts.TraceEnabled)
+
+			nodesAdded := 0
 			for _, entity := range entities {
 				nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
 				node := &store.Node{
@@ -432,6 +466,7 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 					continue
 				}
 				result.NodesCreated++
+				nodesAdded++
 
 				// Generate embedding for the node
 				embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
@@ -453,7 +488,11 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 				}
 			}
 
+			embedTimer.finish(true, nil, map[string]int64{"embeddingCount": int64(len(entities))})
+			vectorWriteTimer.finish(true, nil, map[string]int64{"nodeUpserts": int64(nodesAdded)})
+
 			// Create edges for each triplet
+			edgesAdded := 0
 			for _, triplet := range triplets {
 				// Look up source entity type
 				sourceType, sourceFound := lookupEntityType(triplet.Subject, entityMap, ambiguous)
@@ -501,7 +540,13 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 					continue
 				}
 				result.EdgesCreated++
+				edgesAdded++
 			}
+
+			graphWriteTimer.finish(true, nil, map[string]int64{
+				"nodeUpserts": int64(nodesAdded),
+				"edgeUpserts": int64(edgesAdded),
+			})
 		}
 
 		// Mark document as processed after successful processing (if tracker available)
@@ -521,8 +566,16 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 }
 
 // Search queries the knowledge graph
-func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOptions) ([]search.SearchResult, error) {
+func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOptions) (*SearchResponse, error) {
 	search.ApplyDefaults(&opts)
+
+	// Initialize trace if enabled
+	var trace *OperationTrace
+	var searchTimer *spanTimer
+	if opts.TraceEnabled {
+		trace = newTrace()
+		searchTimer = newSpanTimer("search-vector", trace, true)
+	}
 
 	// Apply default for IncludeMemoryIDs (true by default)
 	includeMemoryIDs := true
@@ -532,7 +585,14 @@ func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOpt
 
 	results, err := g.searcher.Search(ctx, query, opts)
 	if err != nil {
+		if searchTimer != nil {
+			searchTimer.finish(false, err, nil)
+		}
 		return nil, err
+	}
+
+	if searchTimer != nil {
+		searchTimer.finish(true, nil, map[string]int64{"resultsReturned": int64(len(results))})
 	}
 
 	// Update access times for returned results (for decay reinforcement)
@@ -567,7 +627,10 @@ func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOpt
 		}
 	}
 
-	return results, nil
+	return &SearchResponse{
+		Results: results,
+		Trace:   trace,
+	}, nil
 }
 
 // Close releases all resources
