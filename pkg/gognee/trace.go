@@ -34,6 +34,9 @@ type Span struct {
 	// Error contains error message if OK is false (optional)
 	Error string `json:"error,omitempty"`
 
+	// ErrorType classifies the error for metrics (added in Plan 016 M3)
+	ErrorType string `json:"errorType,omitempty"`
+
 	// Counters provides additional metrics for the span (optional)
 	// Example keys: "chunkCount", "nodeUpserts", "edgeUpserts", "resultsReturned"
 	Counters map[string]int64 `json:"counters,omitempty"`
@@ -88,6 +91,7 @@ func (st *spanTimer) finish(ok bool, err error, counters map[string]int64) {
 	}
 	if err != nil {
 		span.Error = err.Error()
+		span.ErrorType = ClassifyError(err) // Classify error for metrics (Plan 016 M3)
 	}
 	st.trace.addSpan(span)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/dan-solli/gognee/pkg/embeddings"
 	"github.com/dan-solli/gognee/pkg/extraction"
 	"github.com/dan-solli/gognee/pkg/llm"
+	"github.com/dan-solli/gognee/pkg/metrics"
 	"github.com/dan-solli/gognee/pkg/search"
 	"github.com/dan-solli/gognee/pkg/store"
 	"github.com/google/uuid"
@@ -64,6 +65,7 @@ type Gognee struct {
 	relationExtractor *extraction.RelationExtractor
 	buffer            []AddedDocument
 	lastCognified     time.Time
+	metricsCollector  metrics.Collector // Optional metrics collector
 }
 
 // AddedDocument represents a document added to the buffer for processing
@@ -148,8 +150,26 @@ type PruneResult struct {
 	NodeIDs        []string // IDs of pruned nodes (for verification)
 }
 
-// New creates a new Gognee instance
+// New creates a new Gognee instance using OpenAI clients
 func New(cfg Config) (*Gognee, error) {
+	// Initialize embeddings client
+	embeddingsClient := embeddings.NewOpenAIClient(cfg.OpenAIKey)
+	if cfg.EmbeddingModel != "" {
+		embeddingsClient.Model = cfg.EmbeddingModel
+	}
+
+	// Initialize LLM client
+	llmClient := llm.NewOpenAILLM(cfg.OpenAIKey)
+	if cfg.LLMModel != "" {
+		llmClient.Model = cfg.LLMModel
+	}
+
+	return NewWithClients(cfg, embeddingsClient, llmClient)
+}
+
+// NewWithClients creates a new Gognee instance with custom embedding and LLM clients.
+// This allows using alternative providers like Ollama for local inference.
+func NewWithClients(cfg Config, embClient embeddings.EmbeddingClient, llmClient llm.LLMClient) (*Gognee, error) {
 	// Apply defaults
 	if cfg.ChunkSize == 0 {
 		cfg.ChunkSize = 512
@@ -174,24 +194,6 @@ func New(cfg Config) (*Gognee, error) {
 	// Apply half-life default after validation
 	if cfg.DecayHalfLifeDays == 0 {
 		cfg.DecayHalfLifeDays = 30
-	}
-
-	// Initialize chunker
-	c := &chunker.Chunker{
-		MaxTokens: cfg.ChunkSize,
-		Overlap:   cfg.ChunkOverlap,
-	}
-
-	// Initialize embeddings client
-	embeddingsClient := embeddings.NewOpenAIClient(cfg.OpenAIKey)
-	if cfg.EmbeddingModel != "" {
-		embeddingsClient.Model = cfg.EmbeddingModel
-	}
-
-	// Initialize LLM client
-	llmClient := llm.NewOpenAILLM(cfg.OpenAIKey)
-	if cfg.LLMModel != "" {
-		llmClient.Model = cfg.LLMModel
 	}
 
 	// Initialize GraphStore
@@ -219,7 +221,7 @@ func New(cfg Config) (*Gognee, error) {
 	relationExtractor := extraction.NewRelationExtractor(llmClient)
 
 	// Initialize searcher
-	baseSearcher := search.NewHybridSearcher(embeddingsClient, vectorStore, graphStore)
+	baseSearcher := search.NewHybridSearcher(embClient, vectorStore, graphStore)
 
 	// Wrap with DecayingSearcher if decay is enabled
 	var searcher search.Searcher
@@ -232,10 +234,16 @@ func New(cfg Config) (*Gognee, error) {
 	// Initialize MemoryStore (shares DB connection with GraphStore)
 	memoryStore := store.NewSQLiteMemoryStore(graphStore.DB())
 
+	// Initialize chunker
+	c := &chunker.Chunker{
+		MaxTokens: cfg.ChunkSize,
+		Overlap:   cfg.ChunkOverlap,
+	}
+
 	return &Gognee{
 		config:            cfg,
 		chunker:           c,
-		embeddings:        embeddingsClient,
+		embeddings:        embClient,
 		llm:               llmClient,
 		graphStore:        graphStore,
 		vectorStore:       vectorStore,
@@ -245,7 +253,14 @@ func New(cfg Config) (*Gognee, error) {
 		relationExtractor: relationExtractor,
 		buffer:            make([]AddedDocument, 0),
 		lastCognified:     time.Time{},
+		metricsCollector:  nil, // Set via WithMetricsCollector
 	}, nil
+}
+
+// WithMetricsCollector sets the metrics collector for this Gognee instance
+func (g *Gognee) WithMetricsCollector(collector metrics.Collector) *Gognee {
+	g.metricsCollector = collector
+	return g
 }
 
 // GetChunker returns the configured chunker
@@ -357,6 +372,8 @@ func (g *Gognee) BufferedCount() int {
 
 // Cognify processes all buffered documents through the extraction pipeline
 func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResult, error) {
+	startTime := time.Now()
+	
 	result := &CognifyResult{
 		Errors: make([]error, 0),
 	}
@@ -562,11 +579,32 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 	g.buffer = make([]AddedDocument, 0)
 	g.lastCognified = time.Now()
 
+	// Record metrics if collector is available
+	if g.metricsCollector != nil {
+		durationMs := time.Since(startTime).Milliseconds()
+		status := "success"
+		if len(result.Errors) > 0 {
+			status = "error"
+		}
+		g.metricsCollector.RecordOperation(ctx, "cognify", status, durationMs)
+		
+		// Record stage timings from trace if available
+		if trace != nil {
+			for _, span := range trace.Spans {
+				g.metricsCollector.RecordStage(ctx, "cognify", span.Name, span.DurationMs)
+				if !span.OK {
+					g.metricsCollector.RecordError(ctx, "cognify", span.ErrorType)
+				}
+			}
+		}
+	}
+
 	return result, nil
 }
 
 // Search queries the knowledge graph
 func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOptions) (*SearchResponse, error) {
+	startTime := time.Now()
 	search.ApplyDefaults(&opts)
 
 	// Initialize trace if enabled
@@ -587,6 +625,12 @@ func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOpt
 	if err != nil {
 		if searchTimer != nil {
 			searchTimer.finish(false, err, nil)
+		}
+		// Record error metrics
+		if g.metricsCollector != nil {
+			durationMs := time.Since(startTime).Milliseconds()
+			g.metricsCollector.RecordOperation(ctx, "search", "error", durationMs)
+			g.metricsCollector.RecordError(ctx, "search", "search_error")
 		}
 		return nil, err
 	}
@@ -623,6 +667,19 @@ func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOpt
 						results[i].MemoryIDs = []string{} // Empty for legacy nodes
 					}
 				}
+			}
+		}
+	}
+
+	// Record success metrics
+	if g.metricsCollector != nil {
+		durationMs := time.Since(startTime).Milliseconds()
+		g.metricsCollector.RecordOperation(ctx, "search", "success", durationMs)
+		
+		// Record stage timings from trace if available
+		if trace != nil {
+			for _, span := range trace.Spans {
+				g.metricsCollector.RecordStage(ctx, "search", span.Name, span.DurationMs)
 			}
 		}
 	}
@@ -837,6 +894,8 @@ type MemoryResult struct {
 // AddMemory creates a new first-class memory with full CRUD support.
 // Uses two-phase model: persist memory record → cognify → link provenance.
 func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResult, error) {
+	startTime := time.Now()
+	
 	result := &MemoryResult{
 		Errors: make([]error, 0),
 	}
@@ -1024,6 +1083,26 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 	}
 	if err := g.memoryStore.UpdateMemory(ctx, memoryID, updates); err != nil {
 		return nil, fmt.Errorf("failed to mark memory complete: %w", err)
+	}
+
+	// Record success metrics
+	if g.metricsCollector != nil {
+		durationMs := time.Since(startTime).Milliseconds()
+		status := "success"
+		if len(result.Errors) > 0 {
+			status = "error"
+		}
+		g.metricsCollector.RecordOperation(ctx, "add_memory", status, durationMs)
+		
+		// Record stage timings from trace if available
+		if trace != nil {
+			for _, span := range trace.Spans {
+				g.metricsCollector.RecordStage(ctx, "add_memory", span.Name, span.DurationMs)
+				if !span.OK {
+					g.metricsCollector.RecordError(ctx, "add_memory", span.ErrorType)
+				}
+			}
+		}
 	}
 
 	return result, nil
