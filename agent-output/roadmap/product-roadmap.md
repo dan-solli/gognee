@@ -91,11 +91,33 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: v1.0.0 (Memory CRUD)
+**Current Working Release**: v1.1.0 (Observability: Prometheus Metrics M1)
+
+### v1.1.0 Release - Observability: Metrics Infrastructure
+**Target Date**: 2026-01-14
+**Actual Release Date**: 2026-01-14
+**Status**: Released ✅
+**Strategic Goal**: Add Prometheus metrics collection to gognee library; enable observability for diagnosing ~50% memory operation failure rate
+
+| Plan ID | Title | Epic | Status | Committed | Released |
+|---------|-------|------|--------|----------|----------|
+| 016 | Observability: Prometheus Metrics & Trace Export (M1) | 7.1 | Delivered | ✅ Yes | ✅ 2026-01-14 |
+
+**Release Status**: ✅ RELEASED
+**Blocking Items**: None
+**Release Notes**:
+- Prometheus metrics collection infrastructure (gognee library)
+- Error classification for diagnosing operation failures by category
+- Build-tag opt-in (`-tags=metrics`) for zero-overhead builds
+- Metrics: `gognee_operations_total`, `gognee_operation_duration_seconds`, `gognee_errors_total`, `gognee_storage_count`
+- Instrumented operations: Cognify, Search, AddMemory
+- Test coverage: 75.8% (metrics build), benchmarks verify <1% overhead for realistic workloads
+- Remaining milestones (M2–M8): HTTP metrics endpoint, trace export, viewer, documentation, etc.
+**Architecture**: Build-tag-driven opt-in via `//go:build metrics` and `//go:build !metrics`
 
 ### v1.0.0 Release - First-Class Memory CRUD
 **Target Date**: TBD
-**Status**: Planning
+**Status**: Planned
 **Strategic Goal**: Enable user-facing memory management with CRUD operations and graph/vector synchronization
 
 | Plan ID | Title | Epic | Status | Committed | Released |
