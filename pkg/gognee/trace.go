@@ -1,6 +1,11 @@
 package gognee
 
-import "time"
+import (
+	"context"
+	"time"
+
+	tracepkg "github.com/dan-solli/gognee/pkg/trace"
+)
 
 // OperationTrace captures timing and performance data for a Cognify or Search operation.
 // This structure is stable and versioned to support downstream consumers.
@@ -99,4 +104,54 @@ func (st *spanTimer) finish(ok bool, err error, counters map[string]int64) {
 // timeNowMs returns current Unix time in milliseconds
 func timeNowMs() int64 {
 	return time.Now().UnixMilli()
+}
+
+// exportTrace writes the trace to the configured exporter if available.
+// This is called after operation completion (Cognify, Search, AddMemory).
+func (g *Gognee) exportTrace(ctx context.Context, operationID, operation string, trace *OperationTrace, startTime time.Time, err error, ids map[string]interface{}) {
+	if g.traceExporter == nil || trace == nil {
+		return // Tracing not enabled
+	}
+
+	status := "success"
+	errorType := ""
+	if err != nil {
+		status = "error"
+		errorType = ClassifyError(err)
+	}
+
+	// Convert OperationTrace spans to tracepkg.SpanRecord
+	spans := make([]tracepkg.SpanRecord, len(trace.Spans))
+	for i, span := range trace.Spans {
+		spans[i] = tracepkg.SpanRecord{
+			Name:       span.Name,
+			DurationMs: span.DurationMs,
+			OK:         span.OK,
+			ErrorType:  span.ErrorType,
+			Counters:   span.Counters,
+		}
+	}
+
+	record := &tracepkg.TraceRecord{
+		Timestamp:   startTime,
+		OperationID: operationID,
+		Operation:   operation,
+		DurationMs:  trace.TotalDurationMs,
+		Status:      status,
+		Spans:       spans,
+		ErrorType:   errorType,
+		IDs:         ids,
+	}
+
+	// Export in background to avoid blocking operation completion
+	go func() {
+		exportCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if exportErr := g.traceExporter.Export(exportCtx, record); exportErr != nil {
+			// Log error but don't fail the operation
+			// TODO: Consider adding error callback or metrics for export failures
+			_ = exportErr
+		}
+	}()
 }

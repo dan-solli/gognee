@@ -16,6 +16,7 @@ import (
 	"github.com/dan-solli/gognee/pkg/metrics"
 	"github.com/dan-solli/gognee/pkg/search"
 	"github.com/dan-solli/gognee/pkg/store"
+	tracepkg "github.com/dan-solli/gognee/pkg/trace"
 	"github.com/google/uuid"
 )
 
@@ -66,6 +67,7 @@ type Gognee struct {
 	buffer            []AddedDocument
 	lastCognified     time.Time
 	metricsCollector  metrics.Collector // Optional metrics collector
+	traceExporter     tracepkg.Exporter // Optional trace exporter (Plan 016 M4)
 }
 
 // AddedDocument represents a document added to the buffer for processing
@@ -107,8 +109,8 @@ type CognifyResult struct {
 	ChunksFailed       int
 	NodesCreated       int
 	EdgesCreated       int
-	EdgesSkipped       int     // Count of edges skipped due to entity lookup failure or ambiguity
-	Errors             []error // Includes details of skipped edges ("skipped edge" in message)
+	EdgesSkipped       int             // Count of edges skipped due to entity lookup failure or ambiguity
+	Errors             []error         // Includes details of skipped edges ("skipped edge" in message)
 	Trace              *OperationTrace // Timing data (populated when CognifyOptions.TraceEnabled is true)
 }
 
@@ -254,12 +256,19 @@ func NewWithClients(cfg Config, embClient embeddings.EmbeddingClient, llmClient 
 		buffer:            make([]AddedDocument, 0),
 		lastCognified:     time.Time{},
 		metricsCollector:  nil, // Set via WithMetricsCollector
+		traceExporter:     nil, // Set via WithTraceExporter (Plan 016 M4)
 	}, nil
 }
 
 // WithMetricsCollector sets the metrics collector for this Gognee instance
 func (g *Gognee) WithMetricsCollector(collector metrics.Collector) *Gognee {
 	g.metricsCollector = collector
+	return g
+}
+
+// WithTraceExporter sets the trace exporter for this Gognee instance (Plan 016 M4)
+func (g *Gognee) WithTraceExporter(exporter tracepkg.Exporter) *Gognee {
+	g.traceExporter = exporter
 	return g
 }
 
@@ -373,7 +382,8 @@ func (g *Gognee) BufferedCount() int {
 // Cognify processes all buffered documents through the extraction pipeline
 func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResult, error) {
 	startTime := time.Now()
-	
+	operationID := uuid.New().String() // Generate operation ID for trace correlation
+
 	result := &CognifyResult{
 		Errors: make([]error, 0),
 	}
@@ -587,7 +597,7 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 			status = "error"
 		}
 		g.metricsCollector.RecordOperation(ctx, "cognify", status, durationMs)
-		
+
 		// Record stage timings from trace if available
 		if trace != nil {
 			for _, span := range trace.Spans {
@@ -599,12 +609,27 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 		}
 	}
 
+	// Export trace if enabled (Plan 016 M4)
+	if trace != nil {
+		var err error
+		if len(result.Errors) > 0 {
+			err = result.Errors[0] // Use first error for classification
+		}
+		g.exportTrace(ctx, operationID, "cognify", trace, startTime, err, map[string]interface{}{
+			"documentsProcessed": result.DocumentsProcessed,
+			"documentsSkipped":   result.DocumentsSkipped,
+			"nodesCreated":       result.NodesCreated,
+			"edgesCreated":       result.EdgesCreated,
+		})
+	}
+
 	return result, nil
 }
 
 // Search queries the knowledge graph
 func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOptions) (*SearchResponse, error) {
 	startTime := time.Now()
+	operationID := uuid.New().String() // Generate operation ID for trace correlation
 	search.ApplyDefaults(&opts)
 
 	// Initialize trace if enabled
@@ -631,6 +656,12 @@ func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOpt
 			durationMs := time.Since(startTime).Milliseconds()
 			g.metricsCollector.RecordOperation(ctx, "search", "error", durationMs)
 			g.metricsCollector.RecordError(ctx, "search", "search_error")
+		}
+		// Export trace on error (Plan 016 M4)
+		if trace != nil {
+			g.exportTrace(ctx, operationID, "search", trace, startTime, err, map[string]interface{}{
+				"query": "(redacted)", // Don't include query text in trace
+			})
 		}
 		return nil, err
 	}
@@ -675,13 +706,20 @@ func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOpt
 	if g.metricsCollector != nil {
 		durationMs := time.Since(startTime).Milliseconds()
 		g.metricsCollector.RecordOperation(ctx, "search", "success", durationMs)
-		
+
 		// Record stage timings from trace if available
 		if trace != nil {
 			for _, span := range trace.Spans {
 				g.metricsCollector.RecordStage(ctx, "search", span.Name, span.DurationMs)
 			}
 		}
+	}
+
+	// Export trace if enabled (Plan 016 M4)
+	if trace != nil {
+		g.exportTrace(ctx, operationID, "search", trace, startTime, nil, map[string]interface{}{
+			"resultsReturned": len(results),
+		})
 	}
 
 	return &SearchResponse{
@@ -888,14 +926,15 @@ type MemoryResult struct {
 	EdgesDeleted int
 	Errors       []error
 	// Trace contains timing data when TraceEnabled is true (Plan 015)
-	Trace        *OperationTrace
+	Trace *OperationTrace
 }
 
 // AddMemory creates a new first-class memory with full CRUD support.
 // Uses two-phase model: persist memory record → cognify → link provenance.
 func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResult, error) {
 	startTime := time.Now()
-	
+	operationID := uuid.New().String() // Generate operation ID for trace correlation
+
 	result := &MemoryResult{
 		Errors: make([]error, 0),
 	}
@@ -1093,7 +1132,7 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 			status = "error"
 		}
 		g.metricsCollector.RecordOperation(ctx, "add_memory", status, durationMs)
-		
+
 		// Record stage timings from trace if available
 		if trace != nil {
 			for _, span := range trace.Spans {
@@ -1103,6 +1142,19 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 				}
 			}
 		}
+	}
+
+	// Export trace if enabled (Plan 016 M4)
+	if trace != nil {
+		var err error
+		if len(result.Errors) > 0 {
+			err = result.Errors[0]
+		}
+		g.exportTrace(ctx, operationID, "add_memory", trace, startTime, err, map[string]interface{}{
+			"memoryId":     result.MemoryID,
+			"nodesCreated": result.NodesCreated,
+			"edgesCreated": result.EdgesCreated,
+		})
 	}
 
 	return result, nil

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-01-14
+
+### Added
+- **File-Based Trace Export (Plan 016 M4)**: Operations (Cognify, Search, AddMemory) can now export trace records to JSON Lines files with automatic rotation
+  - `pkg/trace` package with `Exporter` interface and `FileTraceExporter` implementation
+  - Trace records sanitized (no user payloads, API keys, or memory content)
+  - Build tag `//go:build tracing` for opt-in compilation
+  - `WithTraceExporter()` method to wire trace exporter
+  - Export includes operation ID, operation type, duration, status, per-stage timing, error types, and operation-specific IDs
+  - Rotation triggers when file exceeds configurable size (default 10MB)
+  - Keeps last N rotated files (default 5)
+
+### Documentation
+- Build tags documented: `-tags tracing` enables trace export, `-tags notracing` excludes for minimal binaries
+
 ## [1.0.1] - 2026-01-04
 
 ### Fixed

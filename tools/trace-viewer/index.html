@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gognee Trace Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 24px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: #2c3e50;
+        }
+
+        .file-input-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #ecf0f1;
+            border-radius: 4px;
+        }
+
+        #file-input {
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            padding: 16px;
+            background: #3498db;
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-card.error {
+            background: #e74c3c;
+        }
+
+        .stat-card.success {
+            background: #27ae60;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .filters-section {
+            margin-bottom: 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid #bdc3c7;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: #ecf0f1;
+        }
+
+        .filter-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .traces-list {
+            border-top: 2px solid #ecf0f1;
+        }
+
+        .trace-item {
+            border-bottom: 1px solid #ecf0f1;
+            padding: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .trace-item:hover {
+            background: #f8f9fa;
+        }
+
+        .trace-item.expanded {
+            background: #e8f4f8;
+        }
+
+        .trace-header {
+            display: grid;
+            grid-template-columns: auto 1fr auto auto auto;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .trace-operation {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .trace-timestamp {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        .trace-duration {
+            font-size: 14px;
+            padding: 4px 8px;
+            background: #3498db;
+            color: white;
+            border-radius: 3px;
+        }
+
+        .trace-status {
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .trace-status.success {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+
+        .trace-status.error {
+            background: #fadbd8;
+            color: #e74c3c;
+        }
+
+        .trace-details {
+            display: none;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #d5dbe0;
+        }
+
+        .trace-item.expanded .trace-details {
+            display: block;
+        }
+
+        .spans-grid {
+            display: grid;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .span-row {
+            display: grid;
+            grid-template-columns: 150px 1fr 100px 80px;
+            gap: 12px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            align-items: center;
+        }
+
+        .span-name {
+            font-weight: 500;
+        }
+
+        .span-bar-container {
+            position: relative;
+            height: 24px;
+            background: #ecf0f1;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .span-bar {
+            position: absolute;
+            height: 100%;
+            background: #3498db;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .span-bar.error {
+            background: #e74c3c;
+        }
+
+        .span-duration {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-align: right;
+        }
+
+        .span-status {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-align: center;
+        }
+
+        .span-status.ok {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+
+        .span-status.failed {
+            background: #fadbd8;
+            color: #e74c3c;
+        }
+
+        .error-info {
+            margin-top: 12px;
+            padding: 12px;
+            background: #fadbd8;
+            border-left: 4px solid #e74c3c;
+            border-radius: 4px;
+        }
+
+        .error-type {
+            font-weight: 600;
+            color: #c0392b;
+            margin-bottom: 4px;
+        }
+
+        .ids-section {
+            margin-top: 12px;
+            padding: 12px;
+            background: #e8f4f8;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .ids-section strong {
+            display: block;
+            margin-bottom: 6px;
+            color: #2c3e50;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: #95a5a6;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Gognee Trace Viewer</h1>
+        
+        <div class="file-input-section">
+            <label for="file-input"><strong>Load Trace File:</strong></label>
+            <input type="file" id="file-input" accept=".jsonl,.json">
+        </div>
+
+        <div class="stats-section" id="stats" style="display: none;"></div>
+
+        <div class="filters-section" id="filters" style="display: none;"></div>
+
+        <div class="traces-list" id="traces-list">
+            <div class="empty-state">
+                <div class="empty-state-icon">📁</div>
+                <p>Select a trace file (.jsonl) to begin analysis</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allTraces = [];
+        let filteredTraces = [];
+        let activeFilters = {
+            operation: null,
+            status: null
+        };
+
+        document.getElementById('file-input').addEventListener('change', handleFileSelect);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                parseTraces(content);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseTraces(content) {
+            const lines = content.trim().split('\n');
+            allTraces = [];
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const trace = JSON.parse(line);
+                    allTraces.push(trace);
+                } catch (e) {
+                    console.error('Failed to parse line:', line, e);
+                }
+            }
+
+            filteredTraces = [...allTraces];
+            renderStats();
+            renderFilters();
+            renderTraces();
+        }
+
+        function renderStats() {
+            const stats = document.getElementById('stats');
+            stats.style.display = 'grid';
+
+            const totalOps = allTraces.length;
+            const successOps = allTraces.filter(t => t.status === 'success').length;
+            const errorOps = allTraces.filter(t => t.status === 'error').length;
+            const avgDuration = totalOps > 0 
+                ? (allTraces.reduce((sum, t) => sum + t.durationMs, 0) / totalOps).toFixed(0) 
+                : 0;
+            
+            const durations = allTraces.map(t => t.durationMs).sort((a, b) => a - b);
+            const p50 = durations[Math.floor(durations.length * 0.5)] || 0;
+            const p95 = durations[Math.floor(durations.length * 0.95)] || 0;
+            const p99 = durations[Math.floor(durations.length * 0.99)] || 0;
+
+            stats.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">Total Operations</div>
+                    <div class="stat-value">${totalOps}</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-label">Successful</div>
+                    <div class="stat-value">${successOps}</div>
+                </div>
+                <div class="stat-card error">
+                    <div class="stat-label">Failed</div>
+                    <div class="stat-value">${errorOps}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Duration</div>
+                    <div class="stat-value">${avgDuration}ms</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">P50 / P95 / P99</div>
+                    <div class="stat-value" style="font-size: 16px;">${p50} / ${p95} / ${p99}ms</div>
+                </div>
+            `;
+        }
+
+        function renderFilters() {
+            const filters = document.getElementById('filters');
+            filters.style.display = 'flex';
+
+            const operations = [...new Set(allTraces.map(t => t.operation))];
+            
+            filters.innerHTML = `
+                <button class="filter-btn ${activeFilters.status === 'error' ? 'active' : ''}" 
+                        onclick="toggleFilter('status', 'error')">
+                    Errors Only
+                </button>
+                <button class="filter-btn ${activeFilters.status === 'success' ? 'active' : ''}" 
+                        onclick="toggleFilter('status', 'success')">
+                    Success Only
+                </button>
+                ${operations.map(op => `
+                    <button class="filter-btn ${activeFilters.operation === op ? 'active' : ''}" 
+                            onclick="toggleFilter('operation', '${op}')">
+                        ${op}
+                    </button>
+                `).join('')}
+                <button class="filter-btn" onclick="clearFilters()">Clear Filters</button>
+            `;
+        }
+
+        function toggleFilter(type, value) {
+            if (activeFilters[type] === value) {
+                activeFilters[type] = null;
+            } else {
+                activeFilters[type] = value;
+            }
+            applyFilters();
+        }
+
+        function clearFilters() {
+            activeFilters = { operation: null, status: null };
+            applyFilters();
+        }
+
+        function applyFilters() {
+            filteredTraces = allTraces.filter(trace => {
+                if (activeFilters.operation && trace.operation !== activeFilters.operation) {
+                    return false;
+                }
+                if (activeFilters.status && trace.status !== activeFilters.status) {
+                    return false;
+                }
+                return true;
+            });
+            renderFilters();
+            renderTraces();
+        }
+
+        function renderTraces() {
+            const list = document.getElementById('traces-list');
+            
+            if (filteredTraces.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>No traces match the current filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = filteredTraces.map((trace, index) => {
+                const maxDuration = Math.max(...trace.spans.map(s => s.durationMs));
+                
+                return `
+                    <div class="trace-item" onclick="toggleTrace(${index})">
+                        <div class="trace-header">
+                            <span class="trace-operation">${trace.operation}</span>
+                            <span class="trace-timestamp">${new Date(trace.timestamp).toLocaleString()}</span>
+                            <span class="trace-duration">${trace.durationMs}ms</span>
+                            <span class="trace-status ${trace.status}">${trace.status}</span>
+                            <span class="trace-operation">${trace.operationId.slice(0, 8)}...</span>
+                        </div>
+                        
+                        <div class="trace-details">
+                            ${trace.errorType ? `
+                                <div class="error-info">
+                                    <div class="error-type">Error Type: ${trace.errorType}</div>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="spans-grid">
+                                ${trace.spans.map(span => `
+                                    <div class="span-row">
+                                        <span class="span-name">${span.name}</span>
+                                        <div class="span-bar-container">
+                                            <div class="span-bar ${span.ok ? '' : 'error'}" 
+                                                 style="width: ${(span.durationMs / maxDuration * 100)}%">
+                                            </div>
+                                        </div>
+                                        <span class="span-duration">${span.durationMs}ms</span>
+                                        <span class="span-status ${span.ok ? 'ok' : 'failed'}">
+                                            ${span.ok ? 'OK' : 'Failed'}
+                                        </span>
+                                    </div>
+                                    ${!span.ok && span.errorType ? `
+                                        <div style="margin-left: 162px; margin-top: -4px; margin-bottom: 8px; font-size: 12px; color: #e74c3c;">
+                                            ⚠ ${span.errorType}
+                                        </div>
+                                    ` : ''}
+                                    ${span.counters && Object.keys(span.counters).length > 0 ? `
+                                        <div style="margin-left: 162px; margin-top: -4px; margin-bottom: 8px; font-size: 12px; color: #7f8c8d;">
+                                            ${Object.entries(span.counters).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                                        </div>
+                                    ` : ''}
+                                `).join('')}
+                            </div>
+                            
+                            ${trace.ids && Object.keys(trace.ids).length > 0 ? `
+                                <div class="ids-section">
+                                    <strong>Operation IDs:</strong>
+                                    <code>${JSON.stringify(trace.ids, null, 2)}</code>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleTrace(index) {
+            const items = document.querySelectorAll('.trace-item');
+            items[index].classList.toggle('expanded');
+        }
+    </script>
+</body>
+</html>
