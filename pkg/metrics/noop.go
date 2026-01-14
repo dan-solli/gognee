@@ -2,15 +2,34 @@
 
 package metrics
 
-import "context"
+import (
+	"context"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // NoopCollector is a no-op implementation when metrics are disabled.
 // This file is only compiled when the 'metrics' build tag is NOT present.
 type NoopCollector struct{}
 
+// MetricsCollector is a type alias to NoopCollector when metrics are disabled.
+// This allows code to reference *MetricsCollector without build tags.
+type MetricsCollector = NoopCollector
+
 // NewNoopCollector creates a no-op collector
 func NewNoopCollector() *NoopCollector {
 	return &NoopCollector{}
+}
+
+// NewCollector returns nil when metrics are disabled.
+// Callers must nil-check before use.
+func NewCollector() *MetricsCollector {
+	return nil
+}
+
+// Registry returns nil when metrics are disabled
+func (n *NoopCollector) Registry() *prometheus.Registry {
+	return nil
 }
 
 // RecordOperation does nothing when metrics are disabled
