@@ -11,6 +11,7 @@
 | Date | Handoff | Request | Summary |
 |------|---------|---------|---------|
 | 2026-01-19 | User → Implementer | "Plan has been approved. Proceed with implementation;" | Implemented M7-M10 for v1.4.0 comprehensive read/write optimization |
+| 2026-01-15 | User → Implementer | "There are a bunch of reported problems in vscode." | Discovered and fixed compilation errors in integration tests post-release |
 
 ## Implementation Summary
 
@@ -301,3 +302,43 @@ None. All changes are internal optimizations with identical external API behavio
 
 ## Migration Notes
 No migration required. Changes are transparent to callers.
+
+## Post-Release Hotfix (2026-01-15)
+
+**Issue Discovery**: User reported VS Code errors not caught by QA/UAT. Investigation revealed compilation errors in integration tests and linter warnings.
+
+**Root Cause**: Integration tests have `//go:build integration` tag, so they weren't compiled during regular `go test ./...` runs. QA/UAT focused on unit tests and functional validation, missing compilation check for tagged tests.
+
+**Errors Fixed** (commit 6f2797f):
+
+1. **SearchResponse Type Errors** (19 instances across integration tests):
+   - **Issue**: Tests treated `*SearchResponse` as `[]SearchResult`, causing compilation errors
+   - **Root Cause**: Search() returns `*SearchResponse{Results: []SearchResult, Trace: *OperationTrace}`
+   - **Fix**: Changed `results, err := g.Search(...)` to `resp, err := g.Search(...); results := resp.Results`
+   - **Files**: integration_test.go, gognee_integration_test.go
+
+2. **Unused go.mod Dependencies** (9 packages):
+   - **Issue**: Orphaned dependencies from modernc.org/sqlite → mattn/go-sqlite3 migration (v1.2.0)
+   - **Fix**: Ran `go mod tidy` to remove unused transitive deps
+   - **Packages Removed**: modernc.org/{sqlite,libc,mathutil,memory}, github.com/{dustin/go-humanize,mattn/go-isatty,ncruces/go-strftime,remyoudompheng/bigfft}, golang.org/x/exp
+
+3. **Empty Error Branch** (staticcheck SA9003):
+   - **Issue**: `if err := g.vectorStore.Delete(...); err != nil { /* empty */ }` in Prune()
+   - **Fix**: Changed to `_ = g.vectorStore.Delete(...)` with comment explaining intentional error ignore
+   - **File**: pkg/gognee/gognee.go:894
+
+4. **Benchmark Error Checks** (3 instances):
+   - **Issue**: `g.Add()` error returns not checked in benchmark setup (errcheck linter warning)
+   - **Fix**: Added error checks: `if err := g.Add(...); err != nil { b.Fatalf(...) }`
+   - **File**: pkg/gognee/benchmark_test.go
+
+**Verification**:
+- ✅ `go build ./...` - all packages compile
+- ✅ `go test ./... -count=1` - all unit tests pass (204 tests)
+- ✅ `go test -tags=integration -c` - integration tests compile successfully
+- ✅ `go vet ./...` - no staticcheck warnings
+- ✅ `go mod tidy` - dependencies cleaned
+
+**Impact**: No functional changes. All fixes are code quality improvements (compilation errors in tagged tests, linter warnings, unused deps). Unit test suite was already passing.
+
+**Lesson Learned**: QA should explicitly compile tagged test files even if not executing them. Add to QA checklist: `go test -tags=integration -c ./...` to catch compilation errors in integration tests.
