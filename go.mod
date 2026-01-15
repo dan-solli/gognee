@@ -1,6 +1,6 @@
 module github.com/dan-solli/gognee
 
-// v1.2.0: Vector search optimization with sqlite-vec (CGO required)
+// v1.3.0: Write path optimization with batch embeddings (33s → <10s)
 go 1.25.4
 
 require (

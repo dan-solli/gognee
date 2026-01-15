@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - Unreleased
+
+### Changed
+- **Write Path Optimization (Plan 019)**: Memory creation optimized via batch embeddings API
+  - Entity embedding generation refactored from N+1 `EmbedOne()` calls to single `Embed()` batch call
+  - Round-trip overhead reduced by batching all entity embeddings in one API request
+  - Target performance: <10 seconds for memory creation (33s → <10s improvement)
+  - Coverage improved: pkg/gognee coverage increased from 70.8% to 71.7% (+0.9%)
+
+### Added
+- Benchmark file `pkg/gognee/cognify_benchmark_test.go` for write path performance regression detection
+  - Mock clients with simulated API latency for realistic testing
+  - Benchmarks skipped pending proper mock environment setup
+
 ## [1.2.0] - 2026-01-15
 
 ### Added

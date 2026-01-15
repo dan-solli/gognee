@@ -1,0 +1,1812 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>gognee: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/dan-solli/gognee/pkg/gognee/decay.go (100.0%)</option>
+				
+				<option value="file1">github.com/dan-solli/gognee/pkg/gognee/errors.go (100.0%)</option>
+				
+				<option value="file2">github.com/dan-solli/gognee/pkg/gognee/gognee.go (71.7%)</option>
+				
+				<option value="file3">github.com/dan-solli/gognee/pkg/gognee/trace.go (48.4%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package gognee
+
+import (
+        "math"
+        "time"
+)
+
+// calculateDecay computes the exponential decay multiplier for a node based on its age.
+// Uses the formula: score_multiplier = 0.5^(age_days / half_life_days)
+//
+// Parameters:
+//   - nodeAge: The age of the node (time since creation or last access)
+//   - halfLifeDays: The number of days after which the score is halved
+//
+// Returns:
+//   - A multiplier between 0 and 1 to apply to the node's search score
+//   - Returns 1.0 for negative ages (defensive)
+//   - Returns 1.0 for zero half-life (defensive)
+func calculateDecay(nodeAge time.Duration, halfLifeDays int) float64 <span class="cov8" title="1">{
+        // Handle edge cases
+        if nodeAge &lt; 0 </span><span class="cov8" title="1">{
+                return 1.0 // No decay for negative age (shouldn't happen but be defensive)
+        }</span>
+        <span class="cov8" title="1">if halfLifeDays &lt;= 0 </span><span class="cov8" title="1">{
+                return 1.0 // No decay for zero/negative half-life
+        }</span>
+
+        // Convert nodeAge to days (float64 for precision)
+        <span class="cov8" title="1">ageDays := nodeAge.Hours() / 24.0
+
+        // Apply exponential decay formula: 0.5^(age_days / half_life_days)
+        exponent := ageDays / float64(halfLifeDays)
+        multiplier := math.Pow(0.5, exponent)
+
+        return multiplier</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package gognee
+
+import (
+        "context"
+        "errors"
+        "net"
+        "strings"
+)
+
+// Error type constants for classification
+const (
+        ErrTypeNetwork    = "network"
+        ErrTypeTimeout    = "timeout"
+        ErrTypeLLM        = "llm"
+        ErrTypeDatabase   = "database"
+        ErrTypeValidation = "validation"
+        ErrTypeUnknown    = "unknown"
+)
+
+// ClassifyError inspects an error and returns its type classification.
+// This enables grouping errors by category in metrics and traces.
+func ClassifyError(err error) string <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
+                return ""
+        }</span>
+
+        <span class="cov8" title="1">errStr := err.Error()
+        errStrLower := strings.ToLower(errStr)
+
+        // Check for timeout errors
+        if errors.Is(err, context.DeadlineExceeded) || strings.Contains(errStrLower, "timeout") || strings.Contains(errStrLower, "deadline exceeded") </span><span class="cov8" title="1">{
+                return ErrTypeTimeout
+        }</span>
+
+        // Check for network errors
+        <span class="cov8" title="1">var netErr *net.OpError
+        if errors.As(err, &amp;netErr) </span><span class="cov8" title="1">{
+                return ErrTypeNetwork
+        }</span>
+        <span class="cov8" title="1">if strings.Contains(errStrLower, "connection refused") ||
+                strings.Contains(errStrLower, "connection reset") ||
+                strings.Contains(errStrLower, "no such host") ||
+                strings.Contains(errStrLower, "network is unreachable") ||
+                strings.Contains(errStrLower, "dial tcp") ||
+                strings.Contains(errStrLower, "eof") </span><span class="cov8" title="1">{
+                return ErrTypeNetwork
+        }</span>
+
+        // Check for LLM/API errors (OpenAI specific)
+        <span class="cov8" title="1">if strings.Contains(errStrLower, "api error") ||
+                strings.Contains(errStrLower, "rate limit") ||
+                strings.Contains(errStrLower, "invalid response") ||
+                strings.Contains(errStrLower, "embedding") ||
+                strings.Contains(errStrLower, "openai") ||
+                strings.Contains(errStrLower, "model") &amp;&amp; strings.Contains(errStrLower, "not found") </span><span class="cov8" title="1">{
+                return ErrTypeLLM
+        }</span>
+
+        // Check for database errors (SQLite specific)
+        <span class="cov8" title="1">if strings.Contains(errStrLower, "sql") ||
+                strings.Contains(errStrLower, "database") ||
+                strings.Contains(errStrLower, "constraint") ||
+                strings.Contains(errStrLower, "unique") &amp;&amp; strings.Contains(errStrLower, "failed") </span><span class="cov8" title="1">{
+                return ErrTypeDatabase
+        }</span>
+
+        // Check for validation errors
+        <span class="cov8" title="1">if strings.Contains(errStrLower, "validation") ||
+                strings.Contains(errStrLower, "invalid") ||
+                strings.Contains(errStrLower, "required") ||
+                strings.Contains(errStrLower, "cannot be empty") ||
+                strings.Contains(errStrLower, "must be") </span><span class="cov8" title="1">{
+                return ErrTypeValidation
+        }</span>
+
+        // Default to unknown
+        <span class="cov8" title="1">return ErrTypeUnknown</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Package gognee provides a knowledge graph memory system for AI assistants
+package gognee
+
+import (
+        "context"
+        "crypto/sha256"
+        "database/sql"
+        "fmt"
+        "strings"
+        "time"
+
+        "github.com/dan-solli/gognee/pkg/chunker"
+        "github.com/dan-solli/gognee/pkg/embeddings"
+        "github.com/dan-solli/gognee/pkg/extraction"
+        "github.com/dan-solli/gognee/pkg/llm"
+        "github.com/dan-solli/gognee/pkg/metrics"
+        "github.com/dan-solli/gognee/pkg/search"
+        "github.com/dan-solli/gognee/pkg/store"
+        tracepkg "github.com/dan-solli/gognee/pkg/trace"
+        "github.com/google/uuid"
+)
+
+// Config holds configuration for the Gognee system
+type Config struct {
+        // OpenAI API key for embeddings and LLM
+        OpenAIKey string
+
+        // Embedding model (default: "text-embedding-3-small")
+        EmbeddingModel string
+
+        // LLM model for entity extraction (default: "gpt-4o-mini")
+        LLMModel string
+
+        // Chunk size in tokens (default: 512)
+        ChunkSize int
+
+        // Chunk overlap in tokens (default: 50)
+        ChunkOverlap int
+
+        // DBPath is the path to the SQLite database file.
+        // If empty or ":memory:", an in-memory database is used.
+        DBPath string
+
+        // DecayEnabled enables time-based memory decay scoring (default: false)
+        DecayEnabled bool
+
+        // DecayHalfLifeDays is the number of days after which a node's score is halved (default: 30)
+        DecayHalfLifeDays int
+
+        // DecayBasis determines decay calculation: "access" (last access time) or "creation" (creation time)
+        // Default: "access"
+        DecayBasis string
+}
+
+// Gognee is the main entry point for the memory system
+type Gognee struct {
+        config            Config
+        chunker           *chunker.Chunker
+        embeddings        embeddings.EmbeddingClient
+        llm               llm.LLMClient
+        graphStore        store.GraphStore
+        vectorStore       store.VectorStore
+        memoryStore       *store.SQLiteMemoryStore
+        searcher          search.Searcher
+        entityExtractor   *extraction.EntityExtractor
+        relationExtractor *extraction.RelationExtractor
+        buffer            []AddedDocument
+        lastCognified     time.Time
+        metricsCollector  metrics.Collector // Optional metrics collector
+        traceExporter     tracepkg.Exporter // Optional trace exporter (Plan 016 M4)
+}
+
+// AddedDocument represents a document added to the buffer for processing
+type AddedDocument struct {
+        Text    string
+        Source  string
+        AddedAt time.Time
+}
+
+// AddOptions configures the Add() method
+type AddOptions struct {
+        Source string
+}
+
+// CognifyOptions configures the Cognify() method
+type CognifyOptions struct {
+        // SkipProcessed enables incremental mode, skipping previously processed documents.
+        // Default: true (incremental by default). Use pointer to distinguish unset from explicit false.
+        // When true, documents are identified by content hash (SHA-256).
+        // Documents with matching hash are skipped unless Force is true.
+        SkipProcessed *bool
+
+        // Force reprocesses all documents regardless of cached state.
+        // Overrides SkipProcessed when true.
+        // Use after changing chunker settings or to rebuild the knowledge graph.
+        Force bool
+
+        // TraceEnabled enables detailed timing instrumentation for performance analysis.
+        // Default: false (off by default to minimize overhead).
+        // When enabled, timing spans are collected and returned in CognifyResult.Trace.
+        TraceEnabled bool
+}
+
+// CognifyResult reports the outcome of a Cognify() operation
+type CognifyResult struct {
+        DocumentsProcessed int // Documents actually processed (chunked + extracted)
+        DocumentsSkipped   int // Documents skipped due to incremental caching
+        ChunksProcessed    int
+        ChunksFailed       int
+        NodesCreated       int
+        EdgesCreated       int
+        EdgesSkipped       int             // Count of edges skipped due to entity lookup failure or ambiguity
+        Errors             []error         // Includes details of skipped edges ("skipped edge" in message)
+        Trace              *OperationTrace // Timing data (populated when CognifyOptions.TraceEnabled is true)
+}
+
+// SearchResponse wraps search results with optional timing trace
+type SearchResponse struct {
+        Results []search.SearchResult // The search results
+        Trace   *OperationTrace       // Timing data (populated when SearchOptions.TraceEnabled is true)
+}
+
+// Stats reports basic telemetry about the knowledge graph
+type Stats struct {
+        NodeCount     int64
+        EdgeCount     int64
+        MemoryCount   int64
+        BufferedDocs  int
+        LastCognified time.Time
+}
+
+// PruneOptions configures the Prune() method
+type PruneOptions struct {
+        // MaxAgeDays prunes nodes older than this many days (based on decay basis).
+        // If zero, this criterion is not used.
+        MaxAgeDays int
+
+        // MinDecayScore prunes nodes with decay score below this threshold.
+        // If zero, this criterion is not used.
+        // Score is calculated using current decay settings.
+        MinDecayScore float64
+
+        // DryRun reports what would be pruned without actually deleting.
+        DryRun bool
+}
+
+// PruneResult reports the outcome of a Prune() operation
+type PruneResult struct {
+        NodesEvaluated int      // Total number of nodes considered
+        NodesPruned    int      // Number of nodes deleted
+        EdgesPruned    int      // Number of edges deleted (via cascade)
+        NodeIDs        []string // IDs of pruned nodes (for verification)
+}
+
+// New creates a new Gognee instance using OpenAI clients
+func New(cfg Config) (*Gognee, error) <span class="cov8" title="1">{
+        // Initialize embeddings client
+        embeddingsClient := embeddings.NewOpenAIClient(cfg.OpenAIKey)
+        if cfg.EmbeddingModel != "" </span><span class="cov8" title="1">{
+                embeddingsClient.Model = cfg.EmbeddingModel
+        }</span>
+
+        // Initialize LLM client
+        <span class="cov8" title="1">llmClient := llm.NewOpenAILLM(cfg.OpenAIKey)
+        if cfg.LLMModel != "" </span><span class="cov8" title="1">{
+                llmClient.Model = cfg.LLMModel
+        }</span>
+
+        <span class="cov8" title="1">return NewWithClients(cfg, embeddingsClient, llmClient)</span>
+}
+
+// NewWithClients creates a new Gognee instance with custom embedding and LLM clients.
+// This allows using alternative providers like Ollama for local inference.
+func NewWithClients(cfg Config, embClient embeddings.EmbeddingClient, llmClient llm.LLMClient) (*Gognee, error) <span class="cov8" title="1">{
+        // Apply defaults
+        if cfg.ChunkSize == 0 </span><span class="cov8" title="1">{
+                cfg.ChunkSize = 512
+        }</span>
+        <span class="cov8" title="1">if cfg.ChunkOverlap == 0 </span><span class="cov8" title="1">{
+                cfg.ChunkOverlap = 50
+        }</span>
+        <span class="cov8" title="1">if cfg.DecayBasis == "" </span><span class="cov8" title="1">{
+                cfg.DecayBasis = "access"
+        }</span>
+
+        // Validate decay configuration (before applying half-life default)
+        <span class="cov8" title="1">if cfg.DecayEnabled </span><span class="cov8" title="1">{
+                if cfg.DecayHalfLifeDays &lt; 0 </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("DecayHalfLifeDays must be positive, got %d", cfg.DecayHalfLifeDays)
+                }</span>
+                <span class="cov8" title="1">if cfg.DecayBasis != "access" &amp;&amp; cfg.DecayBasis != "creation" </span><span class="cov8" title="1">{
+                        return nil, fmt.Errorf("DecayBasis must be 'access' or 'creation', got %q", cfg.DecayBasis)
+                }</span>
+        }
+
+        // Apply half-life default after validation
+        <span class="cov8" title="1">if cfg.DecayHalfLifeDays == 0 </span><span class="cov8" title="1">{
+                cfg.DecayHalfLifeDays = 30
+        }</span>
+
+        // Initialize GraphStore
+        <span class="cov8" title="1">dbPath := cfg.DBPath
+        if dbPath == "" </span><span class="cov8" title="1">{
+                dbPath = ":memory:"
+        }</span>
+        <span class="cov8" title="1">graphStore, err := store.NewSQLiteGraphStore(dbPath)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to initialize graph store: %w", err)
+        }</span>
+
+        // Initialize VectorStore
+        // Use SQLiteVectorStore for persistent databases, MemoryVectorStore for :memory:
+        <span class="cov8" title="1">var vectorStore store.VectorStore
+        if dbPath == ":memory:" </span><span class="cov8" title="1">{
+                vectorStore = store.NewMemoryVectorStore()
+        }</span> else<span class="cov0" title="0"> {
+                // Share the database connection from GraphStore
+                vectorStore = store.NewSQLiteVectorStore(graphStore.DB())
+        }</span>
+
+        // Initialize extractors
+        <span class="cov8" title="1">entityExtractor := extraction.NewEntityExtractor(llmClient)
+        relationExtractor := extraction.NewRelationExtractor(llmClient)
+
+        // Initialize searcher
+        baseSearcher := search.NewHybridSearcher(embClient, vectorStore, graphStore)
+
+        // Wrap with DecayingSearcher if decay is enabled
+        var searcher search.Searcher
+        if cfg.DecayEnabled </span><span class="cov8" title="1">{
+                searcher = search.NewDecayingSearcher(baseSearcher, graphStore, cfg.DecayEnabled, cfg.DecayHalfLifeDays, cfg.DecayBasis)
+        }</span> else<span class="cov8" title="1"> {
+                searcher = baseSearcher
+        }</span>
+
+        // Initialize MemoryStore (shares DB connection with GraphStore)
+        <span class="cov8" title="1">memoryStore := store.NewSQLiteMemoryStore(graphStore.DB())
+
+        // Initialize chunker
+        c := &amp;chunker.Chunker{
+                MaxTokens: cfg.ChunkSize,
+                Overlap:   cfg.ChunkOverlap,
+        }
+
+        return &amp;Gognee{
+                config:            cfg,
+                chunker:           c,
+                embeddings:        embClient,
+                llm:               llmClient,
+                graphStore:        graphStore,
+                vectorStore:       vectorStore,
+                memoryStore:       memoryStore,
+                searcher:          searcher,
+                entityExtractor:   entityExtractor,
+                relationExtractor: relationExtractor,
+                buffer:            make([]AddedDocument, 0),
+                lastCognified:     time.Time{},
+                metricsCollector:  nil, // Set via WithMetricsCollector
+                traceExporter:     nil, // Set via WithTraceExporter (Plan 016 M4)
+        }, nil</span>
+}
+
+// WithMetricsCollector sets the metrics collector for this Gognee instance
+func (g *Gognee) WithMetricsCollector(collector metrics.Collector) *Gognee <span class="cov0" title="0">{
+        g.metricsCollector = collector
+        return g
+}</span>
+
+// WithTraceExporter sets the trace exporter for this Gognee instance (Plan 016 M4)
+func (g *Gognee) WithTraceExporter(exporter tracepkg.Exporter) *Gognee <span class="cov0" title="0">{
+        g.traceExporter = exporter
+        return g
+}</span>
+
+// GetChunker returns the configured chunker
+func (g *Gognee) GetChunker() *chunker.Chunker <span class="cov8" title="1">{
+        return g.chunker
+}</span>
+
+// GetEmbeddings returns the configured embeddings client
+func (g *Gognee) GetEmbeddings() embeddings.EmbeddingClient <span class="cov8" title="1">{
+        return g.embeddings
+}</span>
+
+// GetLLM returns the configured LLM client
+func (g *Gognee) GetLLM() llm.LLMClient <span class="cov8" title="1">{
+        return g.llm
+}</span>
+
+// GetGraphStore returns the configured graph store
+func (g *Gognee) GetGraphStore() store.GraphStore <span class="cov8" title="1">{
+        return g.graphStore
+}</span>
+
+// GetVectorStore returns the configured vector store
+func (g *Gognee) GetVectorStore() store.VectorStore <span class="cov8" title="1">{
+        return g.vectorStore
+}</span>
+
+// normalizeEntityName applies normalization for entity lookup matching.
+// Normalization: ToLower() + TrimSpace() + collapse internal whitespace
+func normalizeEntityName(name string) string <span class="cov8" title="1">{
+        // Trim leading/trailing whitespace
+        normalized := strings.TrimSpace(name)
+        // Convert to lowercase for case-insensitive matching
+        normalized = strings.ToLower(normalized)
+        // Collapse internal whitespace
+        fields := strings.Fields(normalized)
+        return strings.Join(fields, " ")
+}</span>
+
+// buildEntityTypeMap creates a map from normalized entity names to their types.
+// Returns the map and a set of ambiguous names (names that map to multiple types).
+func buildEntityTypeMap(entities []extraction.Entity) (map[string]string, map[string]bool) <span class="cov8" title="1">{
+        entityMap := make(map[string]string)
+        typeCounts := make(map[string]map[string]bool) // normalized name -&gt; set of types
+
+        for _, entity := range entities </span><span class="cov8" title="1">{
+                normalized := normalizeEntityName(entity.Name)
+                if normalized == "" </span><span class="cov0" title="0">{
+                        continue</span> // Skip empty names
+                }
+
+                // Track all types seen for this normalized name
+                <span class="cov8" title="1">if typeCounts[normalized] == nil </span><span class="cov8" title="1">{
+                        typeCounts[normalized] = make(map[string]bool)
+                }</span>
+                <span class="cov8" title="1">typeCounts[normalized][entity.Type] = true</span>
+        }
+
+        // Build entity map, marking ambiguous names
+        <span class="cov8" title="1">ambiguous := make(map[string]bool)
+        for normalized, types := range typeCounts </span><span class="cov8" title="1">{
+                if len(types) &gt; 1 </span><span class="cov8" title="1">{
+                        // Multiple types for same name = ambiguous
+                        ambiguous[normalized] = true
+                }</span> else<span class="cov8" title="1"> {
+                        // Single type - safe to use
+                        for typ := range types </span><span class="cov8" title="1">{
+                                entityMap[normalized] = typ
+                                break</span>
+                        }
+                }
+        }
+
+        <span class="cov8" title="1">return entityMap, ambiguous</span>
+}
+
+// lookupEntityType looks up the entity type by name using the entity map.
+// Returns empty string if not found or ambiguous.
+func lookupEntityType(name string, entityMap map[string]string, ambiguous map[string]bool) (string, bool) <span class="cov8" title="1">{
+        normalized := normalizeEntityName(name)
+
+        if ambiguous[normalized] </span><span class="cov8" title="1">{
+                return "", false // Ambiguous - multiple types
+        }</span>
+
+        <span class="cov8" title="1">typ, found := entityMap[normalized]
+        return typ, found</span>
+}
+
+// Add buffers text for processing via Cognify()
+func (g *Gognee) Add(ctx context.Context, text string, opts AddOptions) error <span class="cov8" title="1">{
+        if strings.TrimSpace(text) == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("text cannot be empty")
+        }</span>
+
+        <span class="cov8" title="1">doc := AddedDocument{
+                Text:    text,
+                Source:  opts.Source,
+                AddedAt: time.Now(),
+        }
+        g.buffer = append(g.buffer, doc)
+        return nil</span>
+}
+
+// BufferedCount returns the number of documents currently in the buffer
+func (g *Gognee) BufferedCount() int <span class="cov8" title="1">{
+        return len(g.buffer)
+}</span>
+
+// Cognify processes all buffered documents through the extraction pipeline
+func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResult, error) <span class="cov8" title="1">{
+        startTime := time.Now()
+        operationID := uuid.New().String() // Generate operation ID for trace correlation
+
+        result := &amp;CognifyResult{
+                Errors: make([]error, 0),
+        }
+
+        // Initialize trace if enabled
+        var trace *OperationTrace
+        if opts.TraceEnabled </span><span class="cov0" title="0">{
+                trace = newTrace()
+                result.Trace = trace
+        }</span>
+
+        // No-op if buffer is empty
+        <span class="cov8" title="1">if len(g.buffer) == 0 </span><span class="cov8" title="1">{
+                return result, nil
+        }</span>
+
+        // Apply default for SkipProcessed (incremental by default)
+        <span class="cov8" title="1">skipProcessed := true
+        if opts.SkipProcessed != nil </span><span class="cov0" title="0">{
+                skipProcessed = *opts.SkipProcessed
+        }</span>
+
+        // Try to get DocumentTracker interface from graphStore (optional)
+        // If not available, incremental mode is disabled
+        <span class="cov8" title="1">tracker, _ := g.graphStore.(store.DocumentTracker)
+
+        // Process each document
+        for _, doc := range g.buffer </span><span class="cov8" title="1">{
+                // Compute document hash for identity
+                hash := computeDocumentHash(doc.Text)
+
+                // Check if document is already processed (incremental mode)
+                // Only if tracker is available and incremental mode is enabled
+                if tracker != nil &amp;&amp; skipProcessed &amp;&amp; !opts.Force </span><span class="cov8" title="1">{
+                        processed, err := tracker.IsDocumentProcessed(ctx, hash)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return nil, fmt.Errorf("failed to check document processed status: %w", err)
+                        }</span>
+
+                        <span class="cov8" title="1">if processed </span><span class="cov0" title="0">{
+                                result.DocumentsSkipped++
+                                continue</span> // Skip this document
+                        }
+                }
+
+                // Track chunks for this document
+                <span class="cov8" title="1">docChunkCount := 0
+                result.DocumentsProcessed++
+
+                // Chunk the text
+                chunkTimer := newSpanTimer("chunk", trace, opts.TraceEnabled)
+                chunks := g.chunker.Chunk(doc.Text)
+                chunkTimer.finish(true, nil, map[string]int64{"chunkCount": int64(len(chunks))})
+
+                // Process each chunk
+                for _, chunk := range chunks </span><span class="cov8" title="1">{
+                        result.ChunksProcessed++
+                        docChunkCount++
+
+                        // Extract entities
+                        extractTimer := newSpanTimer("extract", trace, opts.TraceEnabled)
+                        entities, err := g.entityExtractor.Extract(ctx, chunk.Text)
+                        if err != nil </span><span class="cov8" title="1">{
+                                extractTimer.finish(false, err, nil)
+                                result.ChunksFailed++
+                                result.Errors = append(result.Errors, fmt.Errorf("entity extraction failed for chunk %s: %w", chunk.ID, err))
+                                continue</span>
+                        }
+
+                        // Build entity name-&gt;type lookup map before processing triplets
+                        <span class="cov8" title="1">entityMap, ambiguous := buildEntityTypeMap(entities)
+
+                        // Extract relations
+                        triplets, err := g.relationExtractor.Extract(ctx, chunk.Text, entities)
+                        if err != nil </span><span class="cov0" title="0">{
+                                extractTimer.finish(false, err, nil)
+                                result.ChunksFailed++
+                                result.Errors = append(result.Errors, fmt.Errorf("relation extraction failed for chunk %s: %w", chunk.ID, err))
+                                // Continue with entities only if relations fail
+                        }</span> else<span class="cov8" title="1"> {
+                                extractTimer.finish(true, nil, map[string]int64{
+                                        "entityCount":   int64(len(entities)),
+                                        "relationCount": int64(len(triplets)),
+                                })
+                        }</span>
+
+                        // Create nodes for each entity
+                        <span class="cov8" title="1">graphWriteTimer := newSpanTimer("write-graph", trace, opts.TraceEnabled)
+                        embedTimer := newSpanTimer("embed", trace, opts.TraceEnabled)
+                        vectorWriteTimer := newSpanTimer("write-vector", trace, opts.TraceEnabled)
+
+                        // Collect all entity texts for batch embedding (Plan 019: M1)
+                        var textsToEmbed []string
+                        var entityIndices []int
+                        for i, entity := range entities </span><span class="cov8" title="1">{
+                                text := strings.TrimSpace(entity.Name + " " + entity.Description)
+                                if text != "" </span><span class="cov8" title="1">{
+                                        textsToEmbed = append(textsToEmbed, text)
+                                        entityIndices = append(entityIndices, i)
+                                }</span>
+                        }
+
+                        // Batch embed all entities in single API call (Plan 019: M2)
+                        <span class="cov8" title="1">var embeddings [][]float32
+                        var embedErr error
+                        if len(textsToEmbed) &gt; 0 </span><span class="cov8" title="1">{
+                                embeddings, embedErr = g.embeddings.Embed(ctx, textsToEmbed)
+                                if embedErr != nil </span><span class="cov8" title="1">{
+                                        embedTimer.finish(false, embedErr, nil)
+                                        result.ChunksFailed++
+                                        result.Errors = append(result.Errors, fmt.Errorf("batch embedding failed for chunk %s: %w", chunk.ID, embedErr))
+                                        // Continue without embeddings - nodes will be created but not indexed
+                                }</span> else<span class="cov8" title="1"> {
+                                        embedTimer.finish(true, nil, map[string]int64{"embeddingCount": int64(len(embeddings))})
+                                }</span>
+                        }
+
+                        // Create nodes and assign embeddings (Plan 019: M3)
+                        <span class="cov8" title="1">nodesAdded := 0
+                        for i, entity := range entities </span><span class="cov8" title="1">{
+                                nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
+                                node := &amp;store.Node{
+                                        ID:          nodeID,
+                                        Name:        entity.Name,
+                                        Type:        entity.Type,
+                                        Description: entity.Description,
+                                        CreatedAt:   time.Now(),
+                                        Metadata:    make(map[string]interface{}),
+                                }
+
+                                // Add to graph store
+                                if err := g.graphStore.AddNode(ctx, node); err != nil </span><span class="cov8" title="1">{
+                                        result.Errors = append(result.Errors, fmt.Errorf("failed to add node %s: %w", entity.Name, err))
+                                        continue</span>
+                                }
+                                <span class="cov8" title="1">result.NodesCreated++
+                                nodesAdded++
+
+                                // Find embedding for this entity from batch results
+                                var embedding []float32
+                                if embedErr == nil </span><span class="cov8" title="1">{
+                                        // Find index in entityIndices that corresponds to this entity
+                                        for j, entityIdx := range entityIndices </span><span class="cov8" title="1">{
+                                                if entityIdx == i &amp;&amp; j &lt; len(embeddings) </span><span class="cov8" title="1">{
+                                                        embedding = embeddings[j]
+                                                        break</span>
+                                                }
+                                        }
+                                }
+
+                                // Update node with embedding if available
+                                <span class="cov8" title="1">if embedding != nil </span><span class="cov8" title="1">{
+                                        node.Embedding = embedding
+                                        if err := g.graphStore.AddNode(ctx, node); err != nil </span><span class="cov0" title="0">{
+                                                result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding %s: %w", entity.Name, err))
+                                                continue</span>
+                                        }
+
+                                        // Index in vector store
+                                        <span class="cov8" title="1">if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil </span><span class="cov8" title="1">{
+                                                result.Errors = append(result.Errors, fmt.Errorf("failed to index node %s in vector store: %w", entity.Name, err))
+                                        }</span>
+                                }
+                        }
+
+                        <span class="cov8" title="1">vectorWriteTimer.finish(true, nil, map[string]int64{"nodeUpserts": int64(nodesAdded)})
+
+                        // Create edges for each triplet
+                        edgesAdded := 0
+                        for _, triplet := range triplets </span><span class="cov8" title="1">{
+                                // Look up source entity type
+                                sourceType, sourceFound := lookupEntityType(triplet.Subject, entityMap, ambiguous)
+                                if !sourceFound </span><span class="cov0" title="0">{
+                                        result.EdgesSkipped++
+                                        if ambiguous[normalizeEntityName(triplet.Subject)] </span><span class="cov0" title="0">{
+                                                result.Errors = append(result.Errors, fmt.Errorf("skipped edge %s-%s-%s: subject '%s' is ambiguous (multiple types)",
+                                                        triplet.Subject, triplet.Relation, triplet.Object, triplet.Subject))
+                                        }</span> else<span class="cov0" title="0"> {
+                                                result.Errors = append(result.Errors, fmt.Errorf("skipped edge %s-%s-%s: subject '%s' not found in extracted entities",
+                                                        triplet.Subject, triplet.Relation, triplet.Object, triplet.Subject))
+                                        }</span>
+                                        <span class="cov0" title="0">continue</span>
+                                }
+
+                                // Look up target entity type
+                                <span class="cov8" title="1">targetType, targetFound := lookupEntityType(triplet.Object, entityMap, ambiguous)
+                                if !targetFound </span><span class="cov8" title="1">{
+                                        result.EdgesSkipped++
+                                        if ambiguous[normalizeEntityName(triplet.Object)] </span><span class="cov8" title="1">{
+                                                result.Errors = append(result.Errors, fmt.Errorf("skipped edge %s-%s-%s: object '%s' is ambiguous (multiple types)",
+                                                        triplet.Subject, triplet.Relation, triplet.Object, triplet.Object))
+                                        }</span> else<span class="cov0" title="0"> {
+                                                result.Errors = append(result.Errors, fmt.Errorf("skipped edge %s-%s-%s: object '%s' not found in extracted entities",
+                                                        triplet.Subject, triplet.Relation, triplet.Object, triplet.Object))
+                                        }</span>
+                                        <span class="cov8" title="1">continue</span>
+                                }
+
+                                // Generate edge IDs using correct entity types (FIX: was using empty string)
+                                <span class="cov8" title="1">sourceID := generateDeterministicNodeID(triplet.Subject, sourceType)
+                                targetID := generateDeterministicNodeID(triplet.Object, targetType)
+
+                                edge := &amp;store.Edge{
+                                        ID:        fmt.Sprintf("%s-%s-%s", sourceID, sanitizeRelation(triplet.Relation), targetID),
+                                        SourceID:  sourceID,
+                                        Relation:  triplet.Relation,
+                                        TargetID:  targetID,
+                                        Weight:    1.0,
+                                        CreatedAt: time.Now(),
+                                }
+
+                                if err := g.graphStore.AddEdge(ctx, edge); err != nil </span><span class="cov8" title="1">{
+                                        result.Errors = append(result.Errors, fmt.Errorf("failed to add edge %s-%s-%s: %w", triplet.Subject, triplet.Relation, triplet.Object, err))
+                                        continue</span>
+                                }
+                                <span class="cov8" title="1">result.EdgesCreated++
+                                edgesAdded++</span>
+                        }
+
+                        <span class="cov8" title="1">graphWriteTimer.finish(true, nil, map[string]int64{
+                                "nodeUpserts": int64(nodesAdded),
+                                "edgeUpserts": int64(edgesAdded),
+                        })</span>
+                }
+
+                // Mark document as processed after successful processing (if tracker available)
+                <span class="cov8" title="1">if tracker != nil </span><span class="cov8" title="1">{
+                        if err := tracker.MarkDocumentProcessed(ctx, hash, doc.Source, docChunkCount); err != nil </span><span class="cov0" title="0">{
+                                // Log but don't fail - tracking failure shouldn't break Cognify
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to mark document as processed: %w", err))
+                        }</span>
+                }
+        }
+
+        // Always clear buffer after processing (best-effort semantics)
+        <span class="cov8" title="1">g.buffer = make([]AddedDocument, 0)
+        g.lastCognified = time.Now()
+
+        // Record metrics if collector is available
+        if g.metricsCollector != nil </span><span class="cov0" title="0">{
+                durationMs := time.Since(startTime).Milliseconds()
+                status := "success"
+                if len(result.Errors) &gt; 0 </span><span class="cov0" title="0">{
+                        status = "error"
+                }</span>
+                <span class="cov0" title="0">g.metricsCollector.RecordOperation(ctx, "cognify", status, durationMs)
+
+                // Record stage timings from trace if available
+                if trace != nil </span><span class="cov0" title="0">{
+                        for _, span := range trace.Spans </span><span class="cov0" title="0">{
+                                g.metricsCollector.RecordStage(ctx, "cognify", span.Name, span.DurationMs)
+                                if !span.OK </span><span class="cov0" title="0">{
+                                        g.metricsCollector.RecordError(ctx, "cognify", span.ErrorType)
+                                }</span>
+                        }
+                }
+        }
+
+        // Export trace if enabled (Plan 016 M4)
+        <span class="cov8" title="1">if trace != nil </span><span class="cov0" title="0">{
+                var err error
+                if len(result.Errors) &gt; 0 </span><span class="cov0" title="0">{
+                        err = result.Errors[0] // Use first error for classification
+                }</span>
+                <span class="cov0" title="0">g.exportTrace(ctx, operationID, "cognify", trace, startTime, err, map[string]interface{}{
+                        "documentsProcessed": result.DocumentsProcessed,
+                        "documentsSkipped":   result.DocumentsSkipped,
+                        "nodesCreated":       result.NodesCreated,
+                        "edgesCreated":       result.EdgesCreated,
+                })</span>
+        }
+
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+// Search queries the knowledge graph
+func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOptions) (*SearchResponse, error) <span class="cov8" title="1">{
+        startTime := time.Now()
+        operationID := uuid.New().String() // Generate operation ID for trace correlation
+        search.ApplyDefaults(&amp;opts)
+
+        // Initialize trace if enabled
+        var trace *OperationTrace
+        var searchTimer *spanTimer
+        if opts.TraceEnabled </span><span class="cov0" title="0">{
+                trace = newTrace()
+                searchTimer = newSpanTimer("search-vector", trace, true)
+        }</span>
+
+        // Apply default for IncludeMemoryIDs (true by default)
+        <span class="cov8" title="1">includeMemoryIDs := true
+        if opts.IncludeMemoryIDs != nil </span><span class="cov8" title="1">{
+                includeMemoryIDs = *opts.IncludeMemoryIDs
+        }</span>
+
+        <span class="cov8" title="1">results, err := g.searcher.Search(ctx, query, opts)
+        if err != nil </span><span class="cov0" title="0">{
+                if searchTimer != nil </span><span class="cov0" title="0">{
+                        searchTimer.finish(false, err, nil)
+                }</span>
+                // Record error metrics
+                <span class="cov0" title="0">if g.metricsCollector != nil </span><span class="cov0" title="0">{
+                        durationMs := time.Since(startTime).Milliseconds()
+                        g.metricsCollector.RecordOperation(ctx, "search", "error", durationMs)
+                        g.metricsCollector.RecordError(ctx, "search", "search_error")
+                }</span>
+                // Export trace on error (Plan 016 M4)
+                <span class="cov0" title="0">if trace != nil </span><span class="cov0" title="0">{
+                        g.exportTrace(ctx, operationID, "search", trace, startTime, err, map[string]interface{}{
+                                "query": "(redacted)", // Don't include query text in trace
+                        })
+                }</span>
+                <span class="cov0" title="0">return nil, err</span>
+        }
+
+        <span class="cov8" title="1">if searchTimer != nil </span><span class="cov0" title="0">{
+                searchTimer.finish(true, nil, map[string]int64{"resultsReturned": int64(len(results))})
+        }</span>
+
+        // Update access times for returned results (for decay reinforcement)
+        <span class="cov8" title="1">if len(results) &gt; 0 </span><span class="cov8" title="1">{
+                nodeIDs := make([]string, len(results))
+                for i, result := range results </span><span class="cov8" title="1">{
+                        nodeIDs[i] = result.NodeID
+                }</span>
+
+                // Cast to SQLiteGraphStore to access UpdateAccessTime
+                <span class="cov8" title="1">if sqlStore, ok := g.graphStore.(*store.SQLiteGraphStore); ok </span><span class="cov8" title="1">{
+                        // Best-effort update - don't fail search if access tracking fails
+                        _ = sqlStore.UpdateAccessTime(ctx, nodeIDs)
+                }</span>
+
+                // Enrich with memory provenance (batched query, no N+1)
+                <span class="cov8" title="1">if includeMemoryIDs </span><span class="cov8" title="1">{
+                        memoryMap, err := g.memoryStore.GetMemoriesByNodeIDBatched(ctx, nodeIDs)
+                        if err != nil </span>{<span class="cov0" title="0">
+                                // Log but don't fail - provenance enrichment is optional
+                                // In production, could use a logger here
+                        }</span> else<span class="cov8" title="1"> {
+                                // Populate MemoryIDs for each result
+                                for i := range results </span><span class="cov8" title="1">{
+                                        if memIDs, ok := memoryMap[results[i].NodeID]; ok </span><span class="cov8" title="1">{
+                                                results[i].MemoryIDs = memIDs
+                                        }</span> else<span class="cov0" title="0"> {
+                                                results[i].MemoryIDs = []string{} // Empty for legacy nodes
+                                        }</span>
+                                }
+                        }
+                }
+        }
+
+        // Record success metrics
+        <span class="cov8" title="1">if g.metricsCollector != nil </span><span class="cov0" title="0">{
+                durationMs := time.Since(startTime).Milliseconds()
+                g.metricsCollector.RecordOperation(ctx, "search", "success", durationMs)
+
+                // Record stage timings from trace if available
+                if trace != nil </span><span class="cov0" title="0">{
+                        for _, span := range trace.Spans </span><span class="cov0" title="0">{
+                                g.metricsCollector.RecordStage(ctx, "search", span.Name, span.DurationMs)
+                        }</span>
+                }
+        }
+
+        // Export trace if enabled (Plan 016 M4)
+        <span class="cov8" title="1">if trace != nil </span><span class="cov0" title="0">{
+                g.exportTrace(ctx, operationID, "search", trace, startTime, nil, map[string]interface{}{
+                        "resultsReturned": len(results),
+                })
+        }</span>
+
+        <span class="cov8" title="1">return &amp;SearchResponse{
+                Results: results,
+                Trace:   trace,
+        }, nil</span>
+}
+
+// Close releases all resources
+func (g *Gognee) Close() error <span class="cov8" title="1">{
+        g.buffer = make([]AddedDocument, 0)
+        return g.graphStore.Close()
+}</span>
+
+// Stats returns basic telemetry
+func (g *Gognee) Stats() (Stats, error) <span class="cov8" title="1">{
+        ctx := context.Background()
+        nodeCount, err := g.graphStore.NodeCount(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return Stats{}, fmt.Errorf("failed to get node count: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">edgeCount, err := g.graphStore.EdgeCount(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return Stats{}, fmt.Errorf("failed to get edge count: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">memoryCount, err := g.memoryStore.CountMemories(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return Stats{}, fmt.Errorf("failed to get memory count: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return Stats{
+                NodeCount:     nodeCount,
+                EdgeCount:     edgeCount,
+                MemoryCount:   memoryCount,
+                BufferedDocs:  len(g.buffer),
+                LastCognified: g.lastCognified,
+        }, nil</span>
+}
+
+// Prune removes old or low-scoring nodes from the knowledge graph.
+// Edges connected to pruned nodes are also deleted (cascade).
+// Use DryRun to preview what would be pruned without actually deleting.
+func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, error) <span class="cov8" title="1">{
+        result := &amp;PruneResult{
+                NodeIDs: make([]string, 0),
+        }
+
+        // Get all nodes for evaluation
+        sqlStore, ok := g.graphStore.(*store.SQLiteGraphStore)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("prune requires SQLiteGraphStore")
+        }</span>
+
+        // Query all nodes
+        <span class="cov8" title="1">allNodes, err := sqlStore.GetAllNodes(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get nodes: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">result.NodesEvaluated = len(allNodes)
+
+        // Evaluate each node for pruning
+        now := time.Now()
+        nodesToPrune := make([]string, 0)
+
+        for _, node := range allNodes </span><span class="cov8" title="1">{
+                shouldPrune := false
+
+                // Check MaxAgeDays criterion
+                if opts.MaxAgeDays &gt; 0 </span><span class="cov8" title="1">{
+                        var age time.Duration
+                        if g.config.DecayBasis == "access" &amp;&amp; node.LastAccessedAt != nil </span><span class="cov0" title="0">{
+                                age = now.Sub(*node.LastAccessedAt)
+                        }</span> else<span class="cov8" title="1"> {
+                                age = now.Sub(node.CreatedAt)
+                        }</span>
+
+                        <span class="cov8" title="1">ageDays := int(age.Hours() / 24)
+                        if ageDays &gt; opts.MaxAgeDays </span><span class="cov8" title="1">{
+                                shouldPrune = true
+                        }</span>
+                }
+
+                // Check MinDecayScore criterion
+                <span class="cov8" title="1">if opts.MinDecayScore &gt; 0 &amp;&amp; g.config.DecayEnabled </span><span class="cov0" title="0">{
+                        var age time.Duration
+                        if g.config.DecayBasis == "access" &amp;&amp; node.LastAccessedAt != nil </span><span class="cov0" title="0">{
+                                age = now.Sub(*node.LastAccessedAt)
+                        }</span> else<span class="cov0" title="0"> {
+                                age = now.Sub(node.CreatedAt)
+                        }</span>
+
+                        <span class="cov0" title="0">decayScore := calculateDecay(age, g.config.DecayHalfLifeDays)
+                        if decayScore &lt; opts.MinDecayScore </span><span class="cov0" title="0">{
+                                shouldPrune = true
+                        }</span>
+                }
+
+                <span class="cov8" title="1">if shouldPrune </span><span class="cov8" title="1">{
+                        nodesToPrune = append(nodesToPrune, node.ID)
+                }</span>
+        }
+
+        <span class="cov8" title="1">result.NodesPruned = len(nodesToPrune)
+        result.NodeIDs = nodesToPrune
+
+        // If dry run, stop here
+        if opts.DryRun </span><span class="cov8" title="1">{
+                // Estimate edges that would be pruned
+                for _, nodeID := range nodesToPrune </span><span class="cov8" title="1">{
+                        edges, err := g.graphStore.GetEdges(ctx, nodeID)
+                        if err == nil </span><span class="cov8" title="1">{
+                                result.EdgesPruned += len(edges)
+                        }</span>
+                }
+                <span class="cov8" title="1">return result, nil</span>
+        }
+
+        // Actually prune nodes and edges
+        <span class="cov8" title="1">for _, nodeID := range nodesToPrune </span><span class="cov8" title="1">{
+                // Delete edges first (cascade)
+                edges, err := g.graphStore.GetEdges(ctx, nodeID)
+                if err != nil </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">result.EdgesPruned += len(edges)
+
+                // Delete the edges
+                for _, edge := range edges </span><span class="cov8" title="1">{
+                        if err := sqlStore.DeleteEdge(ctx, edge.ID); err != nil </span><span class="cov0" title="0">{
+                                // Continue on error to prune as much as possible
+                                continue</span>
+                        }
+                }
+
+                // Delete from vector store
+                <span class="cov8" title="1">if err := g.vectorStore.Delete(ctx, nodeID); err != nil </span>{<span class="cov0" title="0">
+                        // Continue on error
+                }</span>
+
+                // Delete the node
+                <span class="cov8" title="1">if err := sqlStore.DeleteNode(ctx, nodeID); err != nil </span><span class="cov0" title="0">{
+                        // Continue on error
+                        continue</span>
+                }
+        }
+
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+// generateDeterministicNodeID creates a deterministic node ID from name and type
+func generateDeterministicNodeID(name, nodeType string) string <span class="cov8" title="1">{
+        // Normalize the name
+        normalized := strings.ToLower(strings.TrimSpace(name))
+        normalized = strings.Join(strings.Fields(normalized), " ") // Collapse spaces
+
+        // Create the key
+        key := normalized + "|" + nodeType
+
+        // Hash with SHA-256
+        hash := sha256.Sum256([]byte(key))
+
+        // Return hex-encoded first 16 bytes (32 chars)
+        return fmt.Sprintf("%x", hash[:16])
+}</span>
+
+// sanitizeRelation converts relation names to safe edge IDs
+func sanitizeRelation(relation string) string <span class="cov8" title="1">{
+        return strings.ToUpper(strings.ReplaceAll(relation, " ", "_"))
+}</span>
+
+// computeDocumentHash computes a SHA-256 hash of document text for identity.
+// Used for document-level deduplication in incremental Cognify.
+// Hash is computed on exact text without normalization to detect any changes.
+func computeDocumentHash(text string) string <span class="cov8" title="1">{
+        hash := sha256.Sum256([]byte(text))
+        return fmt.Sprintf("%x", hash[:])
+}</span>
+
+// ========================================
+// Memory CRUD APIs (v1.0.0)
+// ========================================
+
+// MemoryInput represents the input for creating a memory.
+type MemoryInput struct {
+        Topic     string
+        Context   string
+        Decisions []string
+        Rationale []string
+        Metadata  map[string]interface{}
+        Source    string
+        // TraceEnabled enables timing instrumentation (Plan 015)
+        TraceEnabled bool
+}
+
+// MemoryResult reports the outcome of memory operations.
+type MemoryResult struct {
+        MemoryID     string
+        NodesCreated int
+        EdgesCreated int
+        NodesDeleted int
+        EdgesDeleted int
+        Errors       []error
+        // Trace contains timing data when TraceEnabled is true (Plan 015)
+        Trace *OperationTrace
+}
+
+// AddMemory creates a new first-class memory with full CRUD support.
+// Uses two-phase model: persist memory record → cognify → link provenance.
+func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResult, error) <span class="cov8" title="1">{
+        startTime := time.Now()
+        operationID := uuid.New().String() // Generate operation ID for trace correlation
+
+        result := &amp;MemoryResult{
+                Errors: make([]error, 0),
+        }
+
+        // Initialize trace if enabled (Plan 015 M2)
+        var trace *OperationTrace
+        if input.TraceEnabled </span><span class="cov0" title="0">{
+                trace = newTrace()
+                result.Trace = trace
+        }</span>
+
+        // Validate input
+        <span class="cov8" title="1">if strings.TrimSpace(input.Topic) == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("topic cannot be empty")
+        }</span>
+        <span class="cov8" title="1">if strings.TrimSpace(input.Context) == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("context cannot be empty")
+        }</span>
+
+        // Compute doc_hash
+        <span class="cov8" title="1">docHash := store.ComputeDocHash(input.Topic, input.Context, input.Decisions, input.Rationale)
+
+        // **Phase 1: Short transaction - persist memory record**
+        // Check for duplicate by doc_hash
+        // For v1.0.0, we'll do a simple query to check existence
+        // If exists, return existing memory_id
+
+        existingQuery := `SELECT id FROM memories WHERE doc_hash = ? LIMIT 1`
+        var existingID string
+        err := g.memoryStore.DB().QueryRowContext(ctx, existingQuery, docHash).Scan(&amp;existingID)
+        if err == nil </span><span class="cov8" title="1">{
+                // Duplicate found
+                result.MemoryID = existingID
+                return result, nil
+        }</span>
+        // If error is not ErrNoRows, return error
+        <span class="cov8" title="1">if err != sql.ErrNoRows </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to check for duplicate memory: %w", err)
+        }</span>
+
+        // Create memory record with status "pending"
+        <span class="cov8" title="1">memoryID := uuid.New().String()
+        memory := &amp;store.MemoryRecord{
+                ID:        memoryID,
+                Topic:     strings.TrimSpace(input.Topic),
+                Context:   strings.TrimSpace(input.Context),
+                Decisions: input.Decisions,
+                Rationale: input.Rationale,
+                Metadata:  input.Metadata,
+                DocHash:   docHash,
+                Source:    input.Source,
+                Status:    "pending",
+        }
+
+        if err := g.memoryStore.AddMemory(ctx, memory); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to add memory record: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">result.MemoryID = memoryID
+
+        // **Phase 2: Cognify (outside transaction, idempotent)**
+        cognifyTimer := newSpanTimer("cognify", trace, input.TraceEnabled)
+
+        // Format text for cognify
+        text := fmt.Sprintf("Topic: %s\n\n%s", input.Topic, input.Context)
+
+        // Track created node/edge IDs
+        createdNodeIDs := make([]string, 0)
+        createdEdgeIDs := make([]string, 0)
+
+        // Chunk the text
+        chunks := g.chunker.Chunk(text)
+
+        // Process each chunk
+        for _, chunk := range chunks </span><span class="cov8" title="1">{
+                // Extract entities
+                entities, err := g.entityExtractor.Extract(ctx, chunk.Text)
+                if err != nil </span><span class="cov8" title="1">{
+                        result.Errors = append(result.Errors, fmt.Errorf("entity extraction failed for memory %s: %w", memoryID, err))
+                        continue</span>
+                }
+
+                // Build entity name-&gt;type lookup map
+                <span class="cov8" title="1">entityMap, ambiguous := buildEntityTypeMap(entities)
+
+                // Extract relations
+                triplets, err := g.relationExtractor.Extract(ctx, chunk.Text, entities)
+                if err != nil </span><span class="cov0" title="0">{
+                        result.Errors = append(result.Errors, fmt.Errorf("relation extraction failed for memory %s: %w", memoryID, err))
+                        // Continue with entities only
+                }</span>
+
+                // Create nodes for each entity
+                <span class="cov8" title="1">for _, entity := range entities </span><span class="cov8" title="1">{
+                        nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
+                        node := &amp;store.Node{
+                                ID:          nodeID,
+                                Name:        entity.Name,
+                                Type:        entity.Type,
+                                Description: entity.Description,
+                                CreatedAt:   time.Now(),
+                                Metadata:    make(map[string]interface{}),
+                        }
+
+                        // Add to graph store (upsert)
+                        if err := g.graphStore.AddNode(ctx, node); err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to add node %s: %w", entity.Name, err))
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">createdNodeIDs = append(createdNodeIDs, nodeID)
+                        result.NodesCreated++
+
+                        // Generate embedding
+                        embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
+                        if err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to embed node %s: %w", entity.Name, err))
+                                continue</span>
+                        }
+
+                        // Update node with embedding
+                        <span class="cov8" title="1">node.Embedding = embedding
+                        if err := g.graphStore.AddNode(ctx, node); err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding %s: %w", entity.Name, err))
+                                continue</span>
+                        }
+
+                        // Index in vector store
+                        <span class="cov8" title="1">if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to index node %s in vector store: %w", entity.Name, err))
+                        }</span>
+                }
+
+                // Create edges for each triplet
+                <span class="cov8" title="1">for _, triplet := range triplets </span><span class="cov8" title="1">{
+                        // Look up source and target entity types
+                        sourceType, sourceFound := lookupEntityType(triplet.Subject, entityMap, ambiguous)
+                        if !sourceFound </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">targetType, targetFound := lookupEntityType(triplet.Object, entityMap, ambiguous)
+                        if !targetFound </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">sourceID := generateDeterministicNodeID(triplet.Subject, sourceType)
+                        targetID := generateDeterministicNodeID(triplet.Object, targetType)
+
+                        edgeID := fmt.Sprintf("%s-%s-%s", sourceID, sanitizeRelation(triplet.Relation), targetID)
+                        edge := &amp;store.Edge{
+                                ID:        edgeID,
+                                SourceID:  sourceID,
+                                Relation:  triplet.Relation,
+                                TargetID:  targetID,
+                                Weight:    1.0,
+                                CreatedAt: time.Now(),
+                        }
+
+                        if err := g.graphStore.AddEdge(ctx, edge); err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to add edge: %w", err))
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">createdEdgeIDs = append(createdEdgeIDs, edgeID)
+                        result.EdgesCreated++</span>
+                }
+        }
+
+        // Finish cognify timer
+        <span class="cov8" title="1">cognifyTimer.finish(true, nil, map[string]int64{
+                "nodesCreated": int64(result.NodesCreated),
+                "edgesCreated": int64(result.EdgesCreated),
+        })
+
+        // **Phase 3: Short transaction - link provenance and mark complete**
+        if err := g.memoryStore.LinkProvenance(ctx, memoryID, createdNodeIDs, createdEdgeIDs); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to link provenance: %w", err)
+        }</span>
+
+        // Update memory status to "complete"
+        <span class="cov8" title="1">completeStatus := "complete"
+        updates := store.MemoryUpdate{
+                Topic:   &amp;memory.Topic, // Keep same
+                Context: &amp;memory.Context,
+                Status:  &amp;completeStatus,
+        }
+        if err := g.memoryStore.UpdateMemory(ctx, memoryID, updates); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to mark memory complete: %w", err)
+        }</span>
+
+        // Record success metrics
+        <span class="cov8" title="1">if g.metricsCollector != nil </span><span class="cov0" title="0">{
+                durationMs := time.Since(startTime).Milliseconds()
+                status := "success"
+                if len(result.Errors) &gt; 0 </span><span class="cov0" title="0">{
+                        status = "error"
+                }</span>
+                <span class="cov0" title="0">g.metricsCollector.RecordOperation(ctx, "add_memory", status, durationMs)
+
+                // Record stage timings from trace if available
+                if trace != nil </span><span class="cov0" title="0">{
+                        for _, span := range trace.Spans </span><span class="cov0" title="0">{
+                                g.metricsCollector.RecordStage(ctx, "add_memory", span.Name, span.DurationMs)
+                                if !span.OK </span><span class="cov0" title="0">{
+                                        g.metricsCollector.RecordError(ctx, "add_memory", span.ErrorType)
+                                }</span>
+                        }
+                }
+        }
+
+        // Export trace if enabled (Plan 016 M4)
+        <span class="cov8" title="1">if trace != nil </span><span class="cov0" title="0">{
+                var err error
+                if len(result.Errors) &gt; 0 </span><span class="cov0" title="0">{
+                        err = result.Errors[0]
+                }</span>
+                <span class="cov0" title="0">g.exportTrace(ctx, operationID, "add_memory", trace, startTime, err, map[string]interface{}{
+                        "memoryId":     result.MemoryID,
+                        "nodesCreated": result.NodesCreated,
+                        "edgesCreated": result.EdgesCreated,
+                })</span>
+        }
+
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+// GetMemory retrieves a memory by ID.
+func (g *Gognee) GetMemory(ctx context.Context, id string) (*store.MemoryRecord, error) <span class="cov8" title="1">{
+        return g.memoryStore.GetMemory(ctx, id)
+}</span>
+
+// ListMemories returns paginated memory summaries.
+func (g *Gognee) ListMemories(ctx context.Context, opts store.ListMemoriesOptions) ([]store.MemorySummary, error) <span class="cov8" title="1">{
+        return g.memoryStore.ListMemories(ctx, opts)
+}</span>
+
+// CountMemories returns the total number of memories in the store.
+func (g *Gognee) CountMemories(ctx context.Context) (int64, error) <span class="cov0" title="0">{
+        return g.memoryStore.CountMemories(ctx)
+}</span>
+
+// UpdateMemory applies partial updates to a memory and re-cognifies if content changed.
+func (g *Gognee) UpdateMemory(ctx context.Context, id string, updates store.MemoryUpdate) (*MemoryResult, error) <span class="cov8" title="1">{
+        result := &amp;MemoryResult{
+                MemoryID: id,
+                Errors:   make([]error, 0),
+        }
+
+        // Fetch existing memory
+        existing, err := g.memoryStore.GetMemory(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Compute new doc_hash
+        <span class="cov8" title="1">topic := existing.Topic
+        context := existing.Context
+        decisions := existing.Decisions
+        rationale := existing.Rationale
+
+        if updates.Topic != nil </span><span class="cov0" title="0">{
+                topic = *updates.Topic
+        }</span>
+        <span class="cov8" title="1">if updates.Context != nil </span><span class="cov8" title="1">{
+                context = *updates.Context
+        }</span>
+        <span class="cov8" title="1">if updates.Decisions != nil </span><span class="cov0" title="0">{
+                decisions = *updates.Decisions
+        }</span>
+        <span class="cov8" title="1">if updates.Rationale != nil </span><span class="cov0" title="0">{
+                rationale = *updates.Rationale
+        }</span>
+
+        <span class="cov8" title="1">newDocHash := store.ComputeDocHash(topic, context, decisions, rationale)
+
+        // If hash unchanged, just update metadata/timestamps (no re-cognify)
+        if newDocHash == existing.DocHash </span><span class="cov0" title="0">{
+                if err := g.memoryStore.UpdateMemory(ctx, id, updates); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to update memory: %w", err)
+                }</span>
+                <span class="cov0" title="0">return result, nil</span>
+        }
+
+        // **Phase 1: Set status to "pending"**
+        <span class="cov8" title="1">pendingUpdate := store.MemoryUpdate{
+                Topic:   &amp;topic,
+                Context: &amp;context,
+                Status:  stringPtr("pending"),
+        }
+        pendingUpdate.Decisions = &amp;decisions
+        pendingUpdate.Rationale = &amp;rationale
+        if updates.Metadata != nil </span><span class="cov0" title="0">{
+                pendingUpdate.Metadata = updates.Metadata
+        }</span>
+
+        // Update the memory with new content (will recompute hash in store)
+        <span class="cov8" title="1">if err := g.memoryStore.UpdateMemory(ctx, id, pendingUpdate); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to update memory to pending: %w", err)
+        }</span>
+
+        // **Phase 2: Get old provenance, unlink, and GC candidates**
+        <span class="cov8" title="1">oldNodeIDs, oldEdgeIDs, err := g.memoryStore.GetProvenanceByMemory(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get old provenance: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if err := g.memoryStore.UnlinkProvenance(ctx, id); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to unlink old provenance: %w", err)
+        }</span>
+
+        // GC candidates: old artifacts
+        <span class="cov8" title="1">nodesDeleted, edgesDeleted, err := g.memoryStore.GarbageCollectCandidates(ctx, oldNodeIDs, oldEdgeIDs)
+        if err != nil </span><span class="cov0" title="0">{
+                result.Errors = append(result.Errors, fmt.Errorf("garbage collection failed: %w", err))
+        }</span>
+        <span class="cov8" title="1">result.NodesDeleted = nodesDeleted
+        result.EdgesDeleted = edgesDeleted
+
+        // **Phase 3: Re-cognify (same as AddMemory Phase 2)**
+        text := fmt.Sprintf("Topic: %s\n\n%s", topic, context)
+        createdNodeIDs := make([]string, 0)
+        createdEdgeIDs := make([]string, 0)
+
+        chunks := g.chunker.Chunk(text)
+        for _, chunk := range chunks </span><span class="cov8" title="1">{
+                entities, err := g.entityExtractor.Extract(ctx, chunk.Text)
+                if err != nil </span><span class="cov0" title="0">{
+                        result.Errors = append(result.Errors, fmt.Errorf("entity extraction failed: %w", err))
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">entityMap, ambiguous := buildEntityTypeMap(entities)
+
+                triplets, err := g.relationExtractor.Extract(ctx, chunk.Text, entities)
+                if err != nil </span><span class="cov0" title="0">{
+                        result.Errors = append(result.Errors, fmt.Errorf("relation extraction failed: %w", err))
+                }</span>
+
+                <span class="cov8" title="1">for _, entity := range entities </span><span class="cov8" title="1">{
+                        nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
+                        node := &amp;store.Node{
+                                ID:          nodeID,
+                                Name:        entity.Name,
+                                Type:        entity.Type,
+                                Description: entity.Description,
+                                CreatedAt:   time.Now(),
+                                Metadata:    make(map[string]interface{}),
+                        }
+
+                        if err := g.graphStore.AddNode(ctx, node); err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to add node: %w", err))
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">createdNodeIDs = append(createdNodeIDs, nodeID)
+                        result.NodesCreated++
+
+                        embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
+                        if err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to embed node: %w", err))
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">node.Embedding = embedding
+                        if err := g.graphStore.AddNode(ctx, node); err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding: %w", err))
+                                continue</span>
+                        }
+
+                        <span class="cov8" title="1">if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to index node in vector store: %w", err))
+                        }</span>
+                }
+
+                <span class="cov8" title="1">for _, triplet := range triplets </span><span class="cov0" title="0">{
+                        sourceType, sourceFound := lookupEntityType(triplet.Subject, entityMap, ambiguous)
+                        if !sourceFound </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov0" title="0">targetType, targetFound := lookupEntityType(triplet.Object, entityMap, ambiguous)
+                        if !targetFound </span><span class="cov0" title="0">{
+                                continue</span>
+                        }
+
+                        <span class="cov0" title="0">sourceID := generateDeterministicNodeID(triplet.Subject, sourceType)
+                        targetID := generateDeterministicNodeID(triplet.Object, targetType)
+                        edgeID := fmt.Sprintf("%s-%s-%s", sourceID, sanitizeRelation(triplet.Relation), targetID)
+
+                        edge := &amp;store.Edge{
+                                ID:        edgeID,
+                                SourceID:  sourceID,
+                                Relation:  triplet.Relation,
+                                TargetID:  targetID,
+                                Weight:    1.0,
+                                CreatedAt: time.Now(),
+                        }
+
+                        if err := g.graphStore.AddEdge(ctx, edge); err != nil </span><span class="cov0" title="0">{
+                                result.Errors = append(result.Errors, fmt.Errorf("failed to add edge: %w", err))
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">createdEdgeIDs = append(createdEdgeIDs, edgeID)
+                        result.EdgesCreated++</span>
+                }
+        }
+
+        // **Phase 4: Link new provenance and mark complete**
+        <span class="cov8" title="1">if err := g.memoryStore.LinkProvenance(ctx, id, createdNodeIDs, createdEdgeIDs); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to link new provenance: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">completeUpdate := store.MemoryUpdate{
+                Topic:   &amp;topic,
+                Context: &amp;context,
+                Status:  stringPtr("complete"),
+        }
+        if err := g.memoryStore.UpdateMemory(ctx, id, completeUpdate); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to mark memory complete: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+// DeleteMemory removes a memory and runs garbage collection on orphaned artifacts.
+func (g *Gognee) DeleteMemory(ctx context.Context, id string) error <span class="cov8" title="1">{
+        // Get provenance before delete
+        nodeIDs, edgeIDs, err := g.memoryStore.GetProvenanceByMemory(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get provenance: %w", err)
+        }</span>
+
+        // Delete memory (CASCADE will remove provenance links)
+        <span class="cov8" title="1">if err := g.memoryStore.DeleteMemory(ctx, id); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Run GC on candidates
+        <span class="cov8" title="1">_, _, err = g.memoryStore.GarbageCollectCandidates(ctx, nodeIDs, edgeIDs)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("garbage collection failed: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GarbageCollect manually triggers garbage collection.
+// Returns counts of deleted nodes and edges.
+func (g *Gognee) GarbageCollect(ctx context.Context) (nodesDeleted, edgesDeleted int, err error) <span class="cov8" title="1">{
+        // For manual GC, we need to identify all orphaned artifacts
+        // This is complex without tracking; for v1.0.0, this is a placeholder
+        return 0, 0, fmt.Errorf("manual garbage collection not yet implemented; use DeleteMemory/UpdateMemory for automatic GC")
+}</span>
+
+// stringPtr returns a pointer to a string (helper for optional fields).
+func stringPtr(s string) *string <span class="cov8" title="1">{
+        return &amp;s
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package gognee
+
+import (
+        "context"
+        "time"
+
+        tracepkg "github.com/dan-solli/gognee/pkg/trace"
+)
+
+// OperationTrace captures timing and performance data for a Cognify or Search operation.
+// This structure is stable and versioned to support downstream consumers.
+type OperationTrace struct {
+        // Spans contains timing data for each stage of the operation
+        Spans []Span `json:"spans"`
+
+        // TotalDurationMs is the total elapsed time for the operation in milliseconds
+        TotalDurationMs int64 `json:"totalDurationMs"`
+}
+
+// Span represents a single timed stage within an operation.
+// Stage names are stable and documented:
+//   - "chunk": Text chunking
+//   - "embed": Embedding generation
+//   - "extract": Entity/relationship extraction
+//   - "write-graph": Graph database writes
+//   - "write-vector": Vector store writes
+//   - "search-vector": Vector similarity search
+//   - "search-expand": Graph traversal/expansion
+type Span struct {
+        // Name identifies the operation stage (see Span documentation for stable names)
+        Name string `json:"name"`
+
+        // DurationMs is the elapsed time for this span in milliseconds
+        DurationMs int64 `json:"durationMs"`
+
+        // OK indicates whether the span completed successfully
+        OK bool `json:"ok"`
+
+        // Error contains error message if OK is false (optional)
+        Error string `json:"error,omitempty"`
+
+        // ErrorType classifies the error for metrics (added in Plan 016 M3)
+        ErrorType string `json:"errorType,omitempty"`
+
+        // Counters provides additional metrics for the span (optional)
+        // Example keys: "chunkCount", "nodeUpserts", "edgeUpserts", "resultsReturned"
+        Counters map[string]int64 `json:"counters,omitempty"`
+}
+
+// newTrace creates a new OperationTrace with empty spans
+func newTrace() *OperationTrace <span class="cov8" title="1">{
+        return &amp;OperationTrace{
+                Spans: make([]Span, 0),
+        }
+}</span>
+
+// addSpan appends a completed span to the trace
+func (t *OperationTrace) addSpan(span Span) <span class="cov8" title="1">{
+        t.Spans = append(t.Spans, span)
+        t.TotalDurationMs += span.DurationMs
+}</span>
+
+// spanTimer is a helper for measuring span duration
+type spanTimer struct {
+        name    string
+        start   int64 // Unix time in milliseconds
+        trace   *OperationTrace
+        enabled bool
+}
+
+// newSpanTimer creates a timer for a named span
+func newSpanTimer(name string, trace *OperationTrace, enabled bool) *spanTimer <span class="cov8" title="1">{
+        if !enabled || trace == nil </span><span class="cov8" title="1">{
+                return &amp;spanTimer{enabled: false}
+        }</span>
+        <span class="cov8" title="1">return &amp;spanTimer{
+                name:    name,
+                start:   timeNowMs(),
+                trace:   trace,
+                enabled: true,
+        }</span>
+}
+
+// finish completes the span and records it to the trace
+func (st *spanTimer) finish(ok bool, err error, counters map[string]int64) <span class="cov8" title="1">{
+        if !st.enabled </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">duration := timeNowMs() - st.start
+        span := Span{
+                Name:       st.name,
+                DurationMs: duration,
+                OK:         ok,
+                Counters:   counters,
+        }
+        if err != nil </span><span class="cov8" title="1">{
+                span.Error = err.Error()
+                span.ErrorType = ClassifyError(err) // Classify error for metrics (Plan 016 M3)
+        }</span>
+        <span class="cov8" title="1">st.trace.addSpan(span)</span>
+}
+
+// timeNowMs returns current Unix time in milliseconds
+func timeNowMs() int64 <span class="cov8" title="1">{
+        return time.Now().UnixMilli()
+}</span>
+
+// exportTrace writes the trace to the configured exporter if available.
+// This is called after operation completion (Cognify, Search, AddMemory).
+func (g *Gognee) exportTrace(ctx context.Context, operationID, operation string, trace *OperationTrace, startTime time.Time, err error, ids map[string]interface{}) <span class="cov0" title="0">{
+        if g.traceExporter == nil || trace == nil </span><span class="cov0" title="0">{
+                return // Tracing not enabled
+        }</span>
+
+        <span class="cov0" title="0">status := "success"
+        errorType := ""
+        if err != nil </span><span class="cov0" title="0">{
+                status = "error"
+                errorType = ClassifyError(err)
+        }</span>
+
+        // Convert OperationTrace spans to tracepkg.SpanRecord
+        <span class="cov0" title="0">spans := make([]tracepkg.SpanRecord, len(trace.Spans))
+        for i, span := range trace.Spans </span><span class="cov0" title="0">{
+                spans[i] = tracepkg.SpanRecord{
+                        Name:       span.Name,
+                        DurationMs: span.DurationMs,
+                        OK:         span.OK,
+                        ErrorType:  span.ErrorType,
+                        Counters:   span.Counters,
+                }
+        }</span>
+
+        <span class="cov0" title="0">record := &amp;tracepkg.TraceRecord{
+                Timestamp:   startTime,
+                OperationID: operationID,
+                Operation:   operation,
+                DurationMs:  trace.TotalDurationMs,
+                Status:      status,
+                Spans:       spans,
+                ErrorType:   errorType,
+                IDs:         ids,
+        }
+
+        // Export in background to avoid blocking operation completion
+        go func() </span><span class="cov0" title="0">{
+                exportCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+                defer cancel()
+
+                if exportErr := g.traceExporter.Export(exportCtx, record); exportErr != nil </span><span class="cov0" title="0">{
+                        // Log error but don't fail the operation
+                        // TODO: Consider adding error callback or metrics for export failures
+                        _ = exportErr
+                }</span>
+        }()
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

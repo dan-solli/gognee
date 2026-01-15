@@ -475,8 +475,35 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 			embedTimer := newSpanTimer("embed", trace, opts.TraceEnabled)
 			vectorWriteTimer := newSpanTimer("write-vector", trace, opts.TraceEnabled)
 
+			// Collect all entity texts for batch embedding (Plan 019: M1)
+			var textsToEmbed []string
+			var entityIndices []int
+			for i, entity := range entities {
+				text := strings.TrimSpace(entity.Name + " " + entity.Description)
+				if text != "" {
+					textsToEmbed = append(textsToEmbed, text)
+					entityIndices = append(entityIndices, i)
+				}
+			}
+
+			// Batch embed all entities in single API call (Plan 019: M2)
+			var embeddings [][]float32
+			var embedErr error
+			if len(textsToEmbed) > 0 {
+				embeddings, embedErr = g.embeddings.Embed(ctx, textsToEmbed)
+				if embedErr != nil {
+					embedTimer.finish(false, embedErr, nil)
+					result.ChunksFailed++
+					result.Errors = append(result.Errors, fmt.Errorf("batch embedding failed for chunk %s: %w", chunk.ID, embedErr))
+					// Continue without embeddings - nodes will be created but not indexed
+				} else {
+					embedTimer.finish(true, nil, map[string]int64{"embeddingCount": int64(len(embeddings))})
+				}
+			}
+
+			// Create nodes and assign embeddings (Plan 019: M3)
 			nodesAdded := 0
-			for _, entity := range entities {
+			for i, entity := range entities {
 				nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
 				node := &store.Node{
 					ID:          nodeID,
@@ -495,27 +522,33 @@ func (g *Gognee) Cognify(ctx context.Context, opts CognifyOptions) (*CognifyResu
 				result.NodesCreated++
 				nodesAdded++
 
-				// Generate embedding for the node
-				embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
-				if err != nil {
-					result.Errors = append(result.Errors, fmt.Errorf("failed to embed node %s: %w", entity.Name, err))
-					continue
+				// Find embedding for this entity from batch results
+				var embedding []float32
+				if embedErr == nil {
+					// Find index in entityIndices that corresponds to this entity
+					for j, entityIdx := range entityIndices {
+						if entityIdx == i && j < len(embeddings) {
+							embedding = embeddings[j]
+							break
+						}
+					}
 				}
 
-				// Update node with embedding
-				node.Embedding = embedding
-				if err := g.graphStore.AddNode(ctx, node); err != nil {
-					result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding %s: %w", entity.Name, err))
-					continue
-				}
+				// Update node with embedding if available
+				if embedding != nil {
+					node.Embedding = embedding
+					if err := g.graphStore.AddNode(ctx, node); err != nil {
+						result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding %s: %w", entity.Name, err))
+						continue
+					}
 
-				// Index in vector store
-				if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil {
-					result.Errors = append(result.Errors, fmt.Errorf("failed to index node %s in vector store: %w", entity.Name, err))
+					// Index in vector store
+					if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil {
+						result.Errors = append(result.Errors, fmt.Errorf("failed to index node %s in vector store: %w", entity.Name, err))
+					}
 				}
 			}
 
-			embedTimer.finish(true, nil, map[string]int64{"embeddingCount": int64(len(entities))})
 			vectorWriteTimer.finish(true, nil, map[string]int64{"nodeUpserts": int64(nodesAdded)})
 
 			// Create edges for each triplet
