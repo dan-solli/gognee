@@ -1,5 +1,3 @@
-//go:build tracing
-
 package trace
 
 import (
@@ -11,6 +9,19 @@ import (
 	"sort"
 	"sync"
 )
+
+// NoopExporter is used when filePath is empty - silently discards traces
+type NoopExporter struct{}
+
+// Export does nothing for noop exporter
+func (n *NoopExporter) Export(ctx context.Context, record *TraceRecord) error {
+	return nil
+}
+
+// Close does nothing for noop exporter
+func (n *NoopExporter) Close() error {
+	return nil
+}
 
 // FileExporter exports traces to a JSON Lines file with automatic rotation.
 type FileExporter struct {
@@ -42,8 +53,14 @@ func WithMaxRotatedFiles(count int) FileExporterOption {
 }
 
 // NewFileExporter creates a file-based trace exporter.
+// If filePath is empty, returns a no-op exporter that silently discards traces.
 // The file is opened immediately and rotation is checked on each Export.
 func NewFileExporter(filePath string, opts ...FileExporterOption) (Exporter, error) {
+	// Return noop exporter if no path specified
+	if filePath == "" {
+		return &NoopExporter{}, nil
+	}
+
 	fe := &FileExporter{
 		filePath:        filePath,
 		maxSizeBytes:    10 * 1024 * 1024, // 10MB default

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "modernc.org/sqlite" // SQLite driver
+	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
 // SQLiteGraphStore implements GraphStore using SQLite as the backend.
@@ -23,7 +23,10 @@ type SQLiteGraphStore struct {
 // The dbPath can be a file path or ":memory:" for an in-memory database.
 // Creates tables and indexes if they don't exist.
 func NewSQLiteGraphStore(dbPath string) (*SQLiteGraphStore, error) {
-	db, err := sql.Open("sqlite", dbPath)
+	// Initialize sqlite-vec for all future connections
+	EnableSQLiteVec()
+
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -82,6 +85,20 @@ func (s *SQLiteGraphStore) initSchema() error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_processed_documents_source ON processed_documents(source);
+
+	-- vec0 virtual table for indexed vector search (sqlite-vec)
+	CREATE VIRTUAL TABLE IF NOT EXISTS vec_nodes USING vec0(
+		embedding float[1536]
+	);
+
+	-- ID mapping table: correlates vec_nodes.rowid with nodes.id (string UUIDs)
+	CREATE TABLE IF NOT EXISTS vec_node_ids (
+		rowid INTEGER PRIMARY KEY,
+		node_id TEXT NOT NULL UNIQUE,
+		FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_vec_node_ids_node_id ON vec_node_ids(node_id);
 	`
 
 	_, err := s.db.Exec(schema)

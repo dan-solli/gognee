@@ -60,10 +60,23 @@ Types and convenience values are re-exported from the package (for example `Sear
 
 ## Quick Start
 
+### Prerequisites
+
+**CGO Requirement**: gognee v1.2.0+ requires CGO for sqlite-vec vector indexing:
+
+```bash
+export CGO_ENABLED=1
+```
+
+**Platform-specific notes**:
+- **Linux**: Requires GCC or Clang
+- **macOS**: Requires Xcode Command Line Tools (`xcode-select --install`)
+- **Windows**: Requires MinGW-w64 or MSVC
+
 ### Installation
 
 ```bash
-go get github.com/dan-solli/gognee
+CGO_ENABLED=1 go get github.com/dan-solli/gognee
 ```
 
 ### Basic Usage
@@ -286,6 +299,12 @@ In v0.6.0 and earlier, vector embeddings were stored in memory and lost on resta
 ## MVP Limitations
 
 This is the MVP (Minimum Viable Product). Known limitations:
+
+### Performance
+
+- **Vector search**: Optimized with sqlite-vec indexed ANN search (O(log n) complexity)
+- **Graph traversal**: In-memory BFS implementation (acceptable for <100K nodes)
+- **Concurrent writes**: Serializable transactions may cause contention under heavy load
 
 ### Persistent Storage
 

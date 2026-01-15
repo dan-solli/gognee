@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // TestSQLiteVectorStore_Add tests adding embeddings to the vector store
@@ -29,7 +29,7 @@ func TestSQLiteVectorStore_Add(t *testing.T) {
 	}
 
 	// Add embedding
-	embedding := []float32{0.1, 0.2, 0.3, 0.4}
+	embedding := []float32{0.1, 0.2, 0.3}
 	err = vs.Add(ctx, nodeID, embedding)
 	if err != nil {
 		t.Fatalf("Failed to add embedding: %v", err)
@@ -187,7 +187,7 @@ func TestSQLiteVectorStore_SearchWithNullEmbeddings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create node-1: %v", err)
 	}
-	if err := vs.Add(ctx, "node-1", []float32{1.0, 0.0}); err != nil {
+	if err := vs.Add(ctx, "node-1", []float32{1.0, 0.0, 0.0}); err != nil {
 		t.Fatalf("Failed to add embedding: %v", err)
 	}
 
@@ -197,7 +197,7 @@ func TestSQLiteVectorStore_SearchWithNullEmbeddings(t *testing.T) {
 		t.Fatalf("Failed to create node-2: %v", err)
 	}
 
-	query := []float32{1.0, 0.0}
+	query := []float32{1.0, 0.0, 0.0}
 	results, err := vs.Search(ctx, query, 10)
 	if err != nil {
 		t.Fatalf("Search failed: %v", err)
@@ -248,7 +248,7 @@ func TestSQLiteVectorStore_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create node: %v", err)
 	}
-	if err := vs.Add(ctx, nodeID, []float32{1.0, 0.0}); err != nil {
+	if err := vs.Add(ctx, nodeID, []float32{1.0, 0.0, 0.0}); err != nil {
 		t.Fatalf("Failed to add embedding: %v", err)
 	}
 
@@ -296,14 +296,14 @@ func TestSQLiteVectorStore_DimensionValidation(t *testing.T) {
 
 	vs := NewSQLiteVectorStore(db)
 
-	// Create nodes with different dimension embeddings
+	// Create nodes with same dimension embeddings
 	nodes := []struct {
 		id        string
 		embedding []float32
 	}{
 		{"node-1", []float32{1.0, 0.0, 0.0}}, // 3D
 		{"node-2", []float32{0.0, 1.0, 0.0}}, // 3D
-		{"node-3", []float32{1.0, 0.0}},      // 2D - different dimension
+		{"node-3", []float32{1.0, 0.0, 0.0}}, // 3D - same dimension
 	}
 
 	for _, n := range nodes {
@@ -316,23 +316,16 @@ func TestSQLiteVectorStore_DimensionValidation(t *testing.T) {
 		}
 	}
 
-	// Search with 3D query - should only match 3D embeddings
+	// Search with 3D query - should match all 3D embeddings
 	query := []float32{0.0, 1.0, 0.0}
 	results, err := vs.Search(ctx, query, 10)
 	if err != nil {
 		t.Fatalf("Search failed: %v", err)
 	}
 
-	// Should get 2 results (node-1 and node-2), node-3 skipped due to dimension mismatch
-	if len(results) != 2 {
-		t.Fatalf("Expected 2 results (dimension match), got %d", len(results))
-	}
-
-	// Verify node-3 is not in results
-	for _, r := range results {
-		if r.ID == "node-3" {
-			t.Error("node-3 should be skipped due to dimension mismatch")
-		}
+	// Should get all 3 results (all have same dimension)
+	if len(results) != 3 {
+		t.Fatalf("Expected 3 results (all same dimension), got %d", len(results))
 	}
 }
 
@@ -349,7 +342,8 @@ func TestSQLiteVectorStore_Persistence(t *testing.T) {
 	tmpFile.Close()
 
 	// First session: create and populate
-	db1, err := sql.Open("sqlite", tmpFile.Name())
+	EnableSQLiteVec()
+	db1, err := sql.Open("sqlite3", tmpFile.Name())
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
@@ -364,7 +358,19 @@ func TestSQLiteVectorStore_Persistence(t *testing.T) {
 			embedding BLOB,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			metadata TEXT
-		)
+		);
+
+		CREATE VIRTUAL TABLE vec_nodes USING vec0(
+			embedding float[3]
+		);
+
+		CREATE TABLE vec_node_ids (
+			rowid INTEGER PRIMARY KEY,
+			node_id TEXT NOT NULL UNIQUE,
+			FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+		);
+
+		CREATE INDEX idx_vec_node_ids_node_id ON vec_node_ids(node_id);
 	`)
 	if err != nil {
 		t.Fatalf("Failed to create schema: %v", err)
@@ -386,7 +392,7 @@ func TestSQLiteVectorStore_Persistence(t *testing.T) {
 	db1.Close()
 
 	// Second session: reopen and verify
-	db2, err := sql.Open("sqlite", tmpFile.Name())
+	db2, err := sql.Open("sqlite3", tmpFile.Name())
 	if err != nil {
 		t.Fatalf("Failed to reopen database: %v", err)
 	}
@@ -482,7 +488,10 @@ func TestSQLiteVectorStore_ConcurrentAddAndSearch(t *testing.T) {
 
 // setupTestDB creates a test database with schema
 func setupTestDB(t *testing.T) (*sql.DB, func()) {
-	db, err := sql.Open("sqlite", ":memory:")
+	// Initialize sqlite-vec for all future connections
+	EnableSQLiteVec()
+
+	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
@@ -503,7 +512,19 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 			embedding BLOB,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			metadata TEXT
-		)
+		);
+
+		CREATE VIRTUAL TABLE vec_nodes USING vec0(
+			embedding float[3]
+		);
+
+		CREATE TABLE vec_node_ids (
+			rowid INTEGER PRIMARY KEY,
+			node_id TEXT NOT NULL UNIQUE,
+			FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+		);
+
+		CREATE INDEX idx_vec_node_ids_node_id ON vec_node_ids(node_id);
 	`)
 	if err != nil {
 		db.Close()

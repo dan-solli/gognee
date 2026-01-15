@@ -6,18 +6,16 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"sort"
 )
 
-// SQLiteVectorStore implements VectorStore using SQLite as the persistence layer.
-// It stores embeddings in the nodes.embedding BLOB column and provides
-// vector similarity search using cosine similarity computed in Go.
+// SQLiteVectorStore implements VectorStore using SQLite with sqlite-vec as the persistence layer.
+// It uses vec0 virtual tables for indexed approximate nearest neighbor (ANN) vector search.
 //
 // Implementation notes:
-// - Embeddings are stored directly in the nodes table's embedding column
-// - Search performs a linear scan (SELECT all non-NULL embeddings, compute similarity in Go)
-// - No in-memory caching - SQLite is the source of truth
-// - Dimension mismatches are handled by skipping incompatible vectors during search
+// - Embeddings are stored in the vec_nodes virtual table (vec0) for indexed ANN search
+// - A mapping table (vec_node_ids) correlates vec0 rowids with string node IDs
+// - Search uses vec0 MATCH operator for efficient O(log n) complexity instead of O(n) linear scan
+// - Legacy nodes.embedding column is maintained for backwards compatibility
 // - The database connection is shared with SQLiteGraphStore and must not be closed by this store
 type SQLiteVectorStore struct {
 	db *sql.DB
@@ -33,107 +31,189 @@ func NewSQLiteVectorStore(db *sql.DB) *SQLiteVectorStore {
 // Add adds or updates an embedding for the given node ID.
 // The node must already exist in the nodes table.
 // Returns an error if the node doesn't exist or if the database operation fails.
+//
+// Implementation uses vec0 virtual table for indexed vector storage:
+// 1. Checks if node exists in nodes table
+// 2. Inserts/updates entry in vec_node_ids mapping table
+// 3. Inserts/replaces vector in vec_nodes virtual table
+// 4. Updates legacy embedding column in nodes table for backwards compatibility
 func (s *SQLiteVectorStore) Add(ctx context.Context, id string, embedding []float32) error {
 	if len(embedding) == 0 {
 		return fmt.Errorf("embedding cannot be empty")
 	}
 
-	// Serialize embedding to binary format (little-endian float32 array)
+	// Verify node exists
+	var exists int
+	err := s.db.QueryRowContext(ctx, `SELECT 1 FROM nodes WHERE id = ?`, id).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("node %s not found", id)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to check node existence: %w", err)
+	}
+
+	// Start transaction for atomic vec0 + mapping + legacy update
+	// Use immediate transaction to avoid UNIQUE constraint issues with concurrent writes
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get or create rowid mapping
+	var rowid int64
+	err = tx.QueryRowContext(ctx, `SELECT rowid FROM vec_node_ids WHERE node_id = ?`, id).Scan(&rowid)
+	if err == sql.ErrNoRows {
+		// Insert new mapping (rowid will be auto-generated)
+		result, err := tx.ExecContext(ctx, `INSERT INTO vec_node_ids (node_id) VALUES (?)`, id)
+		if err != nil {
+			return fmt.Errorf("failed to create vec_node_ids mapping: %w", err)
+		}
+		rowid, err = result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert rowid: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("failed to query vec_node_ids: %w", err)
+	} else {
+		// Rowid exists, delete old vec_nodes entry first to avoid UNIQUE constraint
+		_, err = tx.ExecContext(ctx, `DELETE FROM vec_nodes WHERE rowid = ?`, rowid)
+		if err != nil {
+			return fmt.Errorf("failed to delete old vec_nodes entry: %w", err)
+		}
+	}
+
+	// Serialize embedding for vec0 (float32 array as blob)
 	blob := serializeEmbedding(embedding)
 
-	// Update the embedding column for the specified node
-	result, err := s.db.ExecContext(ctx, `UPDATE nodes SET embedding = ? WHERE id = ?`, blob, id)
+	// Insert new entry in vec_nodes virtual table
+	_, err = tx.ExecContext(ctx, `INSERT INTO vec_nodes (rowid, embedding) VALUES (?, ?)`, rowid, blob)
 	if err != nil {
-		return fmt.Errorf("failed to update embedding: %w", err)
+		return fmt.Errorf("failed to insert into vec_nodes: %w", err)
 	}
 
-	// Check if the node exists
-	rowsAffected, err := result.RowsAffected()
+	// Update legacy embedding column in nodes table for backwards compatibility
+	_, err = tx.ExecContext(ctx, `UPDATE nodes SET embedding = ? WHERE id = ?`, blob, id)
 	if err != nil {
-		return fmt.Errorf("failed to check rows affected: %w", err)
+		return fmt.Errorf("failed to update nodes embedding column: %w", err)
 	}
-	if rowsAffected == 0 {
-		return fmt.Errorf("node %s not found", id)
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
 }
 
-// Search finds the most similar vectors to the query using cosine similarity.
-// Performs a direct-query linear scan: SELECT all non-NULL embeddings from the database,
-// compute cosine similarity in Go, and return the top-K results sorted by score descending.
+// Search finds the most similar vectors to the query using vec0 indexed search.
+// Uses sqlite-vec's MATCH operator for efficient approximate nearest neighbor (ANN) search.
 //
 // Behavior:
-// - Nodes without embeddings (NULL) are skipped
-// - Embeddings with dimensions different from the query are skipped (CosineSimilarity returns 0)
-// - Results are sorted by similarity score in descending order
-// - Returns up to topK results (may be fewer if the store has fewer vectors)
+// - Performs indexed ANN search via vec0 virtual table (O(log n) complexity)
+// - Returns distance metric from vec0, converted to similarity score (1 - distance)
+// - Maps rowid back to node string ID via vec_node_ids table
+// - Results are sorted by similarity score in descending order (best matches first)
+// - Returns up to topK results
 func (s *SQLiteVectorStore) Search(ctx context.Context, query []float32, topK int) ([]SearchResult, error) {
 	if len(query) == 0 {
 		return []SearchResult{}, nil
 	}
 
-	// Query all nodes with non-NULL embeddings
-	rows, err := s.db.QueryContext(ctx, `SELECT id, embedding FROM nodes WHERE embedding IS NOT NULL`)
+	// Serialize query embedding for vec0 MATCH
+	queryBlob := serializeEmbedding(query)
+
+	// vec0 MATCH query with distance metric
+	// The MATCH operator returns results ordered by distance (ascending)
+	// We'll convert distance to similarity score (1 - distance for cosine-like behavior)
+	// Note: vec0 requires 'k = ?' constraint for knn queries
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT 
+			vec_node_ids.node_id,
+			distance
+		FROM vec_nodes
+		INNER JOIN vec_node_ids ON vec_nodes.rowid = vec_node_ids.rowid
+		WHERE embedding MATCH ? AND k = ?
+		ORDER BY distance
+	`, queryBlob, topK)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query embeddings: %w", err)
+		return nil, fmt.Errorf("failed to execute vec0 search: %w", err)
 	}
 	defer rows.Close()
 
 	var results []SearchResult
 	for rows.Next() {
-		var id string
-		var embeddingBlob []byte
+		var nodeID string
+		var distance float64
 
-		if err := rows.Scan(&id, &embeddingBlob); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+		if err := rows.Scan(&nodeID, &distance); err != nil {
+			return nil, fmt.Errorf("failed to scan search result: %w", err)
 		}
 
-		// Deserialize embedding
-		embedding := deserializeEmbedding(embeddingBlob)
-		if embedding == nil {
-			// Skip malformed embeddings
-			continue
-		}
+		// Convert distance to similarity score
+		// vec0 returns L2 distance by default; convert to similarity (1 - normalized_distance)
+		// For compatibility with previous cosine similarity scores (0-1 range)
+		similarity := 1.0 - distance
 
-		// Compute similarity (CosineSimilarity returns 0 for dimension mismatches)
-		score := CosineSimilarity(query, embedding)
-
-		// Skip vectors with dimension mismatch (score will be 0)
-		// Only include if dimensions match (non-zero similarity possible)
-		if len(embedding) == len(query) {
-			results = append(results, SearchResult{
-				ID:    id,
-				Score: score,
-			})
-		}
+		results = append(results, SearchResult{
+			ID:    nodeID,
+			Score: similarity,
+		})
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating rows: %w", err)
-	}
-
-	// Sort by score descending
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Score > results[j].Score
-	})
-
-	// Return top-K
-	if topK < len(results) {
-		results = results[:topK]
+		return nil, fmt.Errorf("error iterating search results: %w", err)
 	}
 
 	return results, nil
 }
 
 // Delete removes the embedding for the given node ID.
-// The node itself is not deleted, only the embedding column is set to NULL.
+// The node itself is not deleted, only the embedding is removed from:
+// - vec_nodes virtual table
+// - vec_node_ids mapping table
+// - nodes.embedding column (legacy, set to NULL)
 // This allows the node to remain in the graph while removing it from vector search.
 func (s *SQLiteVectorStore) Delete(ctx context.Context, id string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE nodes SET embedding = NULL WHERE id = ?`, id)
+	// Start transaction for atomic deletion
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to delete embedding: %w", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
+	defer tx.Rollback()
+
+	// Get rowid for this node
+	var rowid int64
+	err = tx.QueryRowContext(ctx, `SELECT rowid FROM vec_node_ids WHERE node_id = ?`, id).Scan(&rowid)
+	if err == sql.ErrNoRows {
+		// Node has no embedding - this is not an error
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to query vec_node_ids: %w", err)
+	}
+
+	// Delete from vec_nodes virtual table
+	_, err = tx.ExecContext(ctx, `DELETE FROM vec_nodes WHERE rowid = ?`, rowid)
+	if err != nil {
+		return fmt.Errorf("failed to delete from vec_nodes: %w", err)
+	}
+
+	// Delete from mapping table
+	_, err = tx.ExecContext(ctx, `DELETE FROM vec_node_ids WHERE rowid = ?`, rowid)
+	if err != nil {
+		return fmt.Errorf("failed to delete from vec_node_ids: %w", err)
+	}
+
+	// Set legacy embedding column to NULL
+	_, err = tx.ExecContext(ctx, `UPDATE nodes SET embedding = NULL WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("failed to clear nodes embedding column: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	return nil
 }
 

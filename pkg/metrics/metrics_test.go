@@ -1,5 +1,3 @@
-//go:build metrics
-
 package metrics
 
 import (

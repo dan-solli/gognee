@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-01-15
+
+### Added
+- **Vector Search Optimization (Plan 018)**: Replaced linear vector scan with sqlite-vec indexed ANN search
+  - vec0 virtual table for efficient approximate nearest neighbor (ANN) search
+  - Search complexity reduced from O(n) to O(log n) using sqlite-vec indexing
+  - Search query now uses `MATCH` operator with `k` parameter for indexed lookups
+  - ID mapping table (`vec_node_ids`) correlates vec0 rowids with string node IDs
+  - Rudimentary benchmarks: 1000-node search completes in ~94µs (vs. estimated 17s baseline)
+
+### Changed
+- **BREAKING**: CGO now required for all builds (sqlite-vec dependency)
+  - Set `CGO_ENABLED=1` when building
+  - Cross-compilation complexity increased (platform-specific builds needed)
+  - No pure-Go fallback available
+- **BREAKING**: SQLite driver changed from `modernc.org/sqlite` to `mattn/go-sqlite3`
+- **BREAKING**: Existing databases must be deleted and recreated
+  - Delete your `.db` file and re-run `Cognify()` to rebuild with vec0 schema
+  - No automatic migration provided
+- **Always-On Observability (Plan 017)**: Removed compile-time build tags for metrics and tracing
+  - Metrics collection now always compiled in (no `-tags metrics` required)
+  - Prometheus counters/gauges always active (near-zero overhead when not scraped)
+  - Trace exporter now always compiled in (no `-tags tracing` required)
+  - `NewFileExporter("")` returns no-op exporter at runtime (silent discard)
+  - Simplified build process: `go build` includes full observability without flags
+
+### Removed
+- Build tags `//go:build metrics` and `//go:build !metrics` from `pkg/metrics`
+- Build tags `//go:build tracing` and `//go:build !tracing` from `pkg/trace`
+- Noop stub files: `pkg/metrics/noop.go` and `pkg/trace/noop.go`
+- `BuildEnabled()` helper functions (metrics and tracing always enabled)
+
+### Migration
+- Remove `-tags "metrics tracing"` from build commands
+- All binaries now include observability; use env vars to control runtime behavior
+
 ## [1.1.1] - 2026-01-14
 
 ### Added

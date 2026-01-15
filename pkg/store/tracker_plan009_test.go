@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func openTestDB(t *testing.T) (*sql.DB, string) {

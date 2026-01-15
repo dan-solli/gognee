@@ -1258,7 +1258,11 @@ func TestSQLiteGraphStore_DB(t *testing.T) {
 	}
 
 	// Add embedding through VectorStore using the shared connection
-	embedding := []float32{1.0, 0.0, 0.0}
+	// Production schema uses 1536 dimensions (OpenAI embedding size)
+	embedding := make([]float32, 1536)
+	for i := range embedding {
+		embedding[i] = float32(i) / 1536.0
+	}
 	if err := vs.Add(ctx, "test-node", embedding); err != nil {
 		t.Fatalf("Failed to add embedding via shared connection: %v", err)
 	}

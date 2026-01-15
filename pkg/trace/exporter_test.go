@@ -1,5 +1,3 @@
-//go:build tracing
-
 package trace
 
 import (
@@ -63,6 +61,34 @@ func TestFileExporter_BasicExport(t *testing.T) {
 	}
 	if len(readRecord.Spans) != 2 {
 		t.Errorf("Expected 2 spans, got %d", len(readRecord.Spans))
+	}
+}
+
+func TestNewFileExporter_EmptyPathIsNoop(t *testing.T) {
+	exporter, err := NewFileExporter("")
+	if err != nil {
+		t.Fatalf("NewFileExporter(\"\") failed: %v", err)
+	}
+	if exporter == nil {
+		t.Fatal("Expected non-nil exporter")
+	}
+
+	record := &TraceRecord{
+		Timestamp:   time.Now(),
+		OperationID: "noop-op",
+		Operation:   "smoke",
+		DurationMs:  1,
+		Status:      "success",
+		Spans: []SpanRecord{
+			{Name: "noop", DurationMs: 1, OK: true},
+		},
+	}
+
+	if err := exporter.Export(context.Background(), record); err != nil {
+		t.Fatalf("Export on noop exporter should succeed, got: %v", err)
+	}
+	if err := exporter.Close(); err != nil {
+		t.Fatalf("Close on noop exporter should succeed, got: %v", err)
 	}
 }
 
