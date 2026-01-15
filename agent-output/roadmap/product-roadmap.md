@@ -7,6 +7,7 @@
 ## Change Log
 | Date & Time | Change | Rationale |
 |-------------|--------|-----------|
+| 2026-01-15 | Added v1.3.0 release track with Plan 019 (Write Path Optimization) | Performance incident: 33s memory write latency |
 | 2026-01-15 | Released v1.2.0 (Plans 017, 018); vector search + observability | Vector search 17s→<1ms; CGO required (breaking change); always-on metrics |
 | 2026-01-03 | Plan 011 drafted for Epic 8.1; provenance-first design confirmed | Architecture findings approved; plan ready for Critic review |
 | 2026-01-02 | Created Epic 8.1 (First-Class Memory CRUD) and Release v1.0.0; P0 priority | Glowbabe feature request identifies architecture gap blocking Memory Browser feature (Epic 6.1 in Glowbabe) |
@@ -94,7 +95,21 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: v1.2.0 (Vector Search Optimization + Always-On Observability)
+**Current Working Release**: v1.3.0 (Write Path Optimization)
+
+### v1.3.0 Release - Write Path Optimization
+**Target Date**: 2026-01-16
+**Status**: Planning
+**Strategic Goal**: Reduce memory write latency from 33s to <10s via batch embeddings; stretch goal <5s via combined LLM extraction
+
+| Plan ID | Title | Epic | Status | Committed | Released |
+|---------|-------|------|--------|----------|----------|
+| 019 | Write Path Optimization (Batch Embeddings) | 7.7 | Draft | ✗ | ✗ |
+
+**Release Status**: 0 of 1 plans committed
+**Blocking Items**: Plan 019 pending Critic approval
+**Release Notes**: (pending)
+**Architecture**: Batch embedding collection; optional combined entity+relation extraction
 
 ### v1.2.0 Release - Vector Search Optimization + Always-On Observability
 **Target Date**: 2026-01-15

@@ -3,7 +3,7 @@
 **Plan ID:** 019  
 **Target Release:** gognee v1.3.0  
 **Epic Alignment:** Epic 7.7 (Performance Optimization) — Cognify/AddMemory write latency  
-**Status:** Draft  
+**Status:** Critic Approved  
 **Created:** 2026-01-15  
 
 ---
@@ -13,14 +13,17 @@
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-15 | Initial plan drafted per performance incident (33s memory write) | Planner |
+| 2026-01-15 | Revised per critique: adjusted target to <10s, added M5 for LLM optimization, updated roadmap | Planner |
 
 ---
 
 ## Value Statement and Business Objective
 
 > As a Glowbabe user storing memories,  
-> I want memory creation to complete in <5 seconds,  
-> So that saving context doesn't interrupt my workflow.
+> I want memory creation to complete in <10 seconds,  
+> So that saving context doesn't significantly interrupt my workflow.
+
+**Stretch Goal**: <5s with combined LLM extraction (M5)
 
 ---
 
@@ -57,16 +60,26 @@ With 16 entities, this results in **16 separate OpenAI API calls** instead of 1 
 
 **The embedding batching problem accounts for ~70% of the latency.**
 
+**Post-optimization estimate** (with batched embeddings):
+- LLM entity extraction: ~3-5s (1 call)
+- LLM relation extraction: ~3-5s (1 call)
+- Embedding generation: ~1s (1 batched call)
+- Database writes: <1s
+- **Total: ~8-12s** (3-4x improvement)
+
+**Note**: Relation extraction depends on entity extraction output (entity names are passed to the relation prompt), so these LLM calls cannot be parallelized. Further optimization requires combining them into a single LLM call (see M5).
+
 ---
 
 ## Success Criteria
 
-| Criterion | Current | Target | Measurement |
-|-----------|---------|--------|-------------|
-| Single memory write latency | 33s | <5s | End-to-end duration for 16-node memory |
-| Embedding API calls per Cognify | N (one per entity) | 1 (batched) | Count of OpenAI embedding requests |
-| No regression in correctness | N/A | All tests pass | `go test ./...` |
-| No regression in coverage | 73.5% | ≥73% | Coverage report |
+| Criterion | Current | Target | Stretch | Measurement |
+|-----------|---------|--------|---------|-------------|
+| Single memory write latency | 33s | <10s | <5s (M5) | End-to-end duration for 16-node memory |
+| Embedding API calls per Cognify | N (one per entity) | 1 (batched) | 1 | Count of OpenAI embedding requests |
+| LLM calls per chunk | 2 (entity + relation) | 2 | 1 (M5) | Count of OpenAI completion requests |
+| No regression in correctness | N/A | All tests pass | — | `go test ./...` |
+| No regression in coverage | 73.5% | ≥73% | — | Coverage report |
 
 ---
 
@@ -78,13 +91,14 @@ With 16 entities, this results in **16 separate OpenAI API calls** instead of 1 
 2. **M2: Single Batch API Call** — Use `Embed()` instead of `EmbedOne()` loop
 3. **M3: Embedding Assignment** — Map batch results back to entities
 4. **M4: Benchmark Validation** — Add write-path benchmark to detect regressions
+5. **M5: Combined Entity+Relation Extraction (Stretch)** — Single LLM call for both
+6. **M6: Version Management** — Update release artifacts for v1.3.0
 
 ### Out of Scope
 
-- Parallel LLM extraction (entity + relation) — Future optimization
 - Database write batching — Marginal gain for current scale
 - Streaming/async memory creation — Different UX model
-- LLM call optimization — Separate concern (prompt engineering)
+- Prompt engineering for faster LLM responses — Orthogonal concern
 
 ---
 
@@ -178,7 +192,44 @@ for each chunk:
 
 ---
 
-### M4: Version Management
+### M4: Benchmark for Write Path
+
+**Objective**: Add benchmark to detect write-path performance regressions.
+
+**Files to create**:
+- `pkg/gognee/cognify_benchmark_test.go`
+
+**Acceptance Criteria**:
+- `BenchmarkCognify_BatchEmbeddings` measures Cognify with realistic entity count
+- Benchmark uses mock clients with simulated latency (~100ms per API call)
+- Baseline established: <500ms for 16-entity chunk with mocked APIs
+
+**Estimated complexity**: Low — follows existing benchmark patterns
+
+---
+
+### M5: Combined Entity+Relation Extraction (Stretch Goal)
+
+**Objective**: Reduce LLM calls from 2 to 1 by extracting entities and relations in a single prompt.
+
+**Files to modify**:
+- `pkg/extraction/combined.go` (new file)
+- `pkg/gognee/gognee.go` — Use combined extractor when available
+
+**Acceptance Criteria**:
+- Single LLM call returns both entities and triplets
+- JSON schema includes both `entities` and `relations` arrays
+- Validation logic preserved (entity type checking, triplet filtering)
+- Existing extractors remain available for backward compatibility
+- Total Cognify time <5s for 16-node memory
+
+**Estimated complexity**: Medium — new prompt design, schema validation, integration
+
+**Note**: This milestone is a stretch goal. Core value (33s → <10s) is delivered by M1-M4. M5 provides additional improvement (10s → <5s) but is not required for release.
+
+---
+
+### M6: Version Management
 
 **Objective**: Update release artifacts for v1.3.0.
 
@@ -200,6 +251,8 @@ for each chunk:
 | Batch API rate limiting | Low | Medium | OpenAI batch limits are generous (2048 texts); typical usage is <100 |
 | Index mismatch in batch results | Low | High | Rely on OpenAI's documented behavior (returns in input order); add assertion |
 | Empty entity text causes batch failure | Medium | Low | Filter empty texts before batching; skip embedding for those entities |
+| Combined extraction prompt too complex | Medium | Medium | M5 is stretch goal; core value delivered by M1-M4; can defer if needed |
+| LLM returns malformed combined JSON | Medium | Low | Validate schema strictly; fall back to separate extractors on parse failure |
 
 ---
 
@@ -214,6 +267,8 @@ for each chunk:
 1. OpenAI's `Embed()` endpoint returns embeddings in the same order as input texts
 2. Typical memory creation produces <100 entities per chunk
 3. Network latency dominates embedding time (batch reduces round trips)
+4. Combined extraction prompt can reliably produce valid JSON with both entities and relations
+5. LLM can infer relations without explicit entity list (self-referential extraction)
 
 ---
 
@@ -223,10 +278,13 @@ for each chunk:
 - Verify batch embedding is called with correct texts
 - Verify embeddings are assigned to correct nodes
 - Verify error handling for batch failures
+- (M5) Verify combined extractor returns valid entities and triplets
+- (M5) Verify fallback to separate extractors on parse failure
 
 **Integration Tests** (gated):
 - End-to-end Cognify with real OpenAI API
-- Verify <5s for 16-node memory
+- Verify <10s for 16-node memory (primary target)
+- (M5) Verify <5s for 16-node memory with combined extraction
 
 **Benchmarks**:
 - `BenchmarkCognify_BatchEmbeddings` with mocked clients
@@ -238,8 +296,9 @@ for each chunk:
 
 1. Run `go test ./...` — all tests pass
 2. Run `go test -bench=. ./pkg/gognee` — benchmark validates improvement
-3. Manual test: Create memory in Glowbabe, verify <5s latency
-4. Coverage: `go test -cover ./...` — ≥73%
+3. Manual test: Create memory in Glowbabe, verify <10s latency (primary)
+4. (M5) Manual test: Verify <5s latency with combined extraction
+5. Coverage: `go test -cover ./...` — ≥73%
 
 ---
 
@@ -278,9 +337,11 @@ for j, embedding := range embeddings {
 ## Handoff Notes
 
 - Plan is self-contained; no analyst investigation required
-- Implementation should be straightforward refactor
+- Implementation should be straightforward refactor for M1-M4
+- M5 (combined extraction) is stretch goal; can be deferred if prompt engineering is complex
 - Key file: `pkg/gognee/gognee.go` lines 475-520 (entity processing loop)
 - Existing trace instrumentation will capture improvement automatically
+- **Roadmap**: Update product-roadmap.md to include v1.3.0 with Plan 019
 
 ---
 
