@@ -127,7 +127,7 @@ func TestClassifyError_Nil(t *testing.T) {
 func TestClassifyError_WrappedErrors(t *testing.T) {
 	baseErr := context.DeadlineExceeded
 	wrappedErr := fmt.Errorf("operation failed: %w", baseErr)
-	
+
 	if got := ClassifyError(wrappedErr); got != ErrTypeTimeout {
 		t.Errorf("ClassifyError(wrapped) = %v, want %v", got, ErrTypeTimeout)
 	}

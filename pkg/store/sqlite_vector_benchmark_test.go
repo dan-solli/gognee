@@ -76,7 +76,7 @@ func BenchmarkVectorSearch_1000Nodes(b *testing.B) {
 
 	for i := 0; i < nodeCount; i++ {
 		nodeID := fmt.Sprintf("node-%d", i)
-		
+
 		// Create node in database
 		_, err := db.Exec(`INSERT INTO nodes (id, name, type) VALUES (?, ?, ?)`, nodeID, nodeID, "Concept")
 		if err != nil {

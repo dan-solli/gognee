@@ -39,7 +39,7 @@ func (m *mockLLMWithLatency) Complete(ctx context.Context, prompt string) (strin
 
 func (m *mockLLMWithLatency) CompleteWithSchema(ctx context.Context, prompt string, result interface{}) error {
 	time.Sleep(m.latency)
-	
+
 	// Return mock entities or relations based on result type
 	switch v := result.(type) {
 	case *[]extraction.Entity:
@@ -59,7 +59,7 @@ func (m *mockLLMWithLatency) CompleteWithSchema(ctx context.Context, prompt stri
 			{Subject: "EntityB", Relation: "DEPENDS_ON", Object: "EntityC"},
 		}
 	}
-	
+
 	return nil
 }
 

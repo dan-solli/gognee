@@ -493,66 +493,88 @@ func (s *SQLiteGraphStore) GetEdges(ctx context.Context, nodeID string) ([]*Edge
 }
 
 // GetNeighbors retrieves all nodes adjacent to a given node, up to the specified depth.
+// Uses a recursive CTE for efficient single-query graph expansion (v1.4.0 optimization).
 func (s *SQLiteGraphStore) GetNeighbors(ctx context.Context, nodeID string, depth int) ([]*Node, error) {
 	if depth < 1 {
 		return nil, fmt.Errorf("depth must be at least 1")
 	}
 
-	// Track visited nodes to avoid duplicates
-	visited := make(map[string]bool)
-	visited[nodeID] = true
+	// Recursive CTE to traverse graph bidirectionally up to depth
+	query := `
+	WITH RECURSIVE
+	graph_traversal(node_id, depth_level) AS (
+		-- Base case: starting node at depth 0
+		SELECT ? AS node_id, 0 AS depth_level
+		
+		UNION
+		
+		-- Recursive case: expand to neighbors
+		SELECT 
+			CASE 
+				WHEN edges.source_id = graph_traversal.node_id THEN edges.target_id
+				ELSE edges.source_id
+			END AS node_id,
+			graph_traversal.depth_level + 1 AS depth_level
+		FROM graph_traversal
+		JOIN edges ON (
+			edges.source_id = graph_traversal.node_id OR 
+			edges.target_id = graph_traversal.node_id
+		)
+		WHERE graph_traversal.depth_level < ?
+	)
+	SELECT DISTINCT 
+		n.id, n.name, n.type, n.description, n.embedding, 
+		n.created_at, n.last_accessed_at, n.metadata
+	FROM graph_traversal gt
+	JOIN nodes n ON gt.node_id = n.id
+	WHERE gt.node_id != ? -- Exclude starting node
+	`
 
-	// Current frontier of nodes to explore
-	frontier := []string{nodeID}
+	rows, err := s.db.QueryContext(ctx, query, nodeID, depth, nodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query neighbors with CTE: %w", err)
+	}
+	defer rows.Close()
 
-	// For each depth level
-	for d := 0; d < depth; d++ {
-		var nextFrontier []string
+	var neighbors []*Node
+	for rows.Next() {
+		node := &Node{}
+		var embeddingData []byte
+		var metadataJSON []byte
+		var lastAccessed sql.NullTime
 
-		// For each node in current frontier
-		for _, currentID := range frontier {
-			// Get all incident edges
-			edges, err := s.GetEdges(ctx, currentID)
-			if err != nil {
-				return nil, err
-			}
-
-			// Find neighbor node IDs
-			for _, edge := range edges {
-				var neighborID string
-				if edge.SourceID == currentID {
-					neighborID = edge.TargetID
-				} else {
-					neighborID = edge.SourceID
-				}
-
-				// Add to next frontier if not visited
-				if !visited[neighborID] {
-					visited[neighborID] = true
-					nextFrontier = append(nextFrontier, neighborID)
-				}
-			}
+		err := rows.Scan(
+			&node.ID, &node.Name, &node.Type, &node.Description,
+			&embeddingData, &node.CreatedAt, &lastAccessed, &metadataJSON,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan neighbor node: %w", err)
 		}
 
-		frontier = nextFrontier
-		if len(frontier) == 0 {
-			break // No more neighbors to explore
+		// Deserialize embedding
+		if len(embeddingData) > 0 {
+			node.Embedding = deserializeEmbedding(embeddingData)
 		}
+
+		// Deserialize metadata
+		if len(metadataJSON) > 0 {
+			if err := json.Unmarshal(metadataJSON, &node.Metadata); err != nil {
+				node.Metadata = make(map[string]interface{})
+			}
+		} else {
+			node.Metadata = make(map[string]interface{})
+		}
+
+		// Handle nullable last_accessed_at
+		if lastAccessed.Valid {
+			node.LastAccessedAt = &lastAccessed.Time
+		}
+
+		neighbors = append(neighbors, node)
 	}
 
-	// Remove the starting node from visited set
-	delete(visited, nodeID)
-
-	// Fetch all neighbor nodes
-	var neighbors []*Node
-	for neighborID := range visited {
-		node, err := s.GetNode(ctx, neighborID)
-		if err != nil {
-			return nil, err
-		}
-		if node != nil {
-			neighbors = append(neighbors, node)
-		}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating neighbor rows: %w", err)
 	}
 
 	return neighbors, nil

@@ -8,11 +8,11 @@ import (
 
 // MetricsCollector provides Prometheus metrics collection for gognee operations
 type MetricsCollector struct {
-	operationsTotal     *prometheus.CounterVec
-	operationDuration   *prometheus.HistogramVec
-	errorsTotal         *prometheus.CounterVec
-	storageCount        *prometheus.GaugeVec
-	registry            *prometheus.Registry
+	operationsTotal   *prometheus.CounterVec
+	operationDuration *prometheus.HistogramVec
+	errorsTotal       *prometheus.CounterVec
+	storageCount      *prometheus.GaugeVec
+	registry          *prometheus.Registry
 }
 
 // NewCollector creates a new Prometheus metrics collector

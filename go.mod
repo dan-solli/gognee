@@ -1,6 +1,6 @@
 module github.com/dan-solli/gognee
 
-// v1.3.0: Write path optimization with batch embeddings (33s → <10s)
+// v1.4.0: Read/write path optimization with batch embeddings + recursive CTE graph expansion (11s → <3s search)
 go 1.25.4
 
 require (

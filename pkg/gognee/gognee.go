@@ -1061,7 +1061,22 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 		}
 
 		// Create nodes for each entity
-		for _, entity := range entities {
+		// First pass: collect texts for batch embedding
+		entityTexts := make([]string, len(entities))
+		for i, entity := range entities {
+			entityTexts[i] = entity.Name + " " + entity.Description
+		}
+
+		// Batch embed all entities at once
+		embeddings, err := g.embeddings.Embed(ctx, entityTexts)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("batch embed failed for memory %s: %w", memoryID, err))
+			// Continue without embeddings
+			embeddings = make([][]float32, len(entities))
+		}
+
+		// Second pass: create nodes with embeddings
+		for i, entity := range entities {
 			nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
 			node := &store.Node{
 				ID:          nodeID,
@@ -1070,9 +1085,10 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 				Description: entity.Description,
 				CreatedAt:   time.Now(),
 				Metadata:    make(map[string]interface{}),
+				Embedding:   embeddings[i],
 			}
 
-			// Add to graph store (upsert)
+			// Add to graph store (upsert) with embedding
 			if err := g.graphStore.AddNode(ctx, node); err != nil {
 				result.Errors = append(result.Errors, fmt.Errorf("failed to add node %s: %w", entity.Name, err))
 				continue
@@ -1080,23 +1096,11 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 			createdNodeIDs = append(createdNodeIDs, nodeID)
 			result.NodesCreated++
 
-			// Generate embedding
-			embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
-			if err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to embed node %s: %w", entity.Name, err))
-				continue
-			}
-
-			// Update node with embedding
-			node.Embedding = embedding
-			if err := g.graphStore.AddNode(ctx, node); err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding %s: %w", entity.Name, err))
-				continue
-			}
-
 			// Index in vector store
-			if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to index node %s in vector store: %w", entity.Name, err))
+			if len(embeddings[i]) > 0 {
+				if err := g.vectorStore.Add(ctx, nodeID, embeddings[i]); err != nil {
+					result.Errors = append(result.Errors, fmt.Errorf("failed to index node %s in vector store: %w", entity.Name, err))
+				}
 			}
 		}
 
@@ -1305,7 +1309,22 @@ func (g *Gognee) UpdateMemory(ctx context.Context, id string, updates store.Memo
 			result.Errors = append(result.Errors, fmt.Errorf("relation extraction failed: %w", err))
 		}
 
-		for _, entity := range entities {
+		// First pass: collect texts for batch embedding
+		entityTexts := make([]string, len(entities))
+		for i, entity := range entities {
+			entityTexts[i] = entity.Name + " " + entity.Description
+		}
+
+		// Batch embed all entities at once
+		embeddings, err := g.embeddings.Embed(ctx, entityTexts)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Errorf("batch embed failed: %w", err))
+			// Continue without embeddings
+			embeddings = make([][]float32, len(entities))
+		}
+
+		// Second pass: create nodes with embeddings
+		for i, entity := range entities {
 			nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
 			node := &store.Node{
 				ID:          nodeID,
@@ -1314,6 +1333,7 @@ func (g *Gognee) UpdateMemory(ctx context.Context, id string, updates store.Memo
 				Description: entity.Description,
 				CreatedAt:   time.Now(),
 				Metadata:    make(map[string]interface{}),
+				Embedding:   embeddings[i],
 			}
 
 			if err := g.graphStore.AddNode(ctx, node); err != nil {
@@ -1323,20 +1343,10 @@ func (g *Gognee) UpdateMemory(ctx context.Context, id string, updates store.Memo
 			createdNodeIDs = append(createdNodeIDs, nodeID)
 			result.NodesCreated++
 
-			embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
-			if err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to embed node: %w", err))
-				continue
-			}
-
-			node.Embedding = embedding
-			if err := g.graphStore.AddNode(ctx, node); err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to update node embedding: %w", err))
-				continue
-			}
-
-			if err := g.vectorStore.Add(ctx, nodeID, embedding); err != nil {
-				result.Errors = append(result.Errors, fmt.Errorf("failed to index node in vector store: %w", err))
+			if len(embeddings[i]) > 0 {
+				if err := g.vectorStore.Add(ctx, nodeID, embeddings[i]); err != nil {
+					result.Errors = append(result.Errors, fmt.Errorf("failed to index node in vector store: %w", err))
+				}
 			}
 		}
 

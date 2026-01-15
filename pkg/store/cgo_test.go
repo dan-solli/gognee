@@ -9,7 +9,7 @@ import (
 
 func TestCGODriver(t *testing.T) {
 	EnableSQLiteVec()
-	
+
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -24,7 +24,7 @@ func TestCGODriver(t *testing.T) {
 	}
 
 	t.Logf("sqlite_version=%s, vec_version=%s", sqliteVersion, vecVersion)
-	
+
 	if vecVersion == "" {
 		t.Fatal("vec_version() returned empty")
 	}

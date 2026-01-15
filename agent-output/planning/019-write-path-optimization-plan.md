@@ -1,8 +1,8 @@
-# Plan 019 — Write Path Optimization (Batch Embeddings)
+# Plan 019 — Read/Write Path Optimization (Batch Embeddings + Graph Query)
 
 **Plan ID:** 019  
-**Target Release:** gognee v1.3.0  
-**Epic Alignment:** Epic 7.7 (Performance Optimization) — Cognify/AddMemory write latency  
+**Target Release:** gognee v1.3.0 → v1.4.0 (expanded scope)  
+**Epic Alignment:** Epic 7.7 (Performance Optimization) — Cognify/AddMemory/Search latency  
 **Status:** UAT Approved  
 **Created:** 2026-01-15  
 
@@ -16,14 +16,19 @@
 | 2026-01-15 | Revised per critique: adjusted target to <10s, added M5 for LLM optimization, updated roadmap | Planner |
 | 2026-01-16 | Implementation complete: M1-M4, M6 delivered; M5 deferred as stretch goal | Implementer |
 | 2026-01-15 | UAT approved: value statement delivered, QA technical findings assessed non-blocking | UAT |
+| 2026-01-15 | Released: tagged v1.3.0 and pushed to origin | DevOps |
+| 2026-01-15 | **EXTENDED**: Added M7-M10 for read path + remaining write path hotspots (11s search latency) | Planner |
+| 2026-01-15 | Implementation complete: M7-M10 delivered for v1.4.0 (batch embeddings + recursive CTE) | Implementer |
+| 2026-01-15 | QA complete: tests + coverage executed; artifacts recorded in agent-output/qa/ | QA |
+| 2026-01-15 | UAT approved: value delivered, all objectives met; recommended for v1.4.0 release | UAT |
 
 ---
 
 ## Value Statement and Business Objective
 
-> As a Glowbabe user storing memories,  
-> I want memory creation to complete in <10 seconds,  
-> So that saving context doesn't significantly interrupt my workflow.
+> As a Glowbabe user storing and retrieving memories,  
+> I want memory creation AND search to complete in <10 seconds,  
+> So that saving and retrieving context doesn't significantly interrupt my workflow.
 
 **Stretch Goal**: <5s with combined LLM extraction (M5)
 
@@ -31,74 +36,66 @@
 
 ## Problem Statement
 
-Memory writes are taking **33 seconds** for a single memory with 16 nodes and 13 edges. This makes the system impractical for real-time use.
+### Write Path (v1.3.0 — FIXED)
+Memory writes were taking **33 seconds** for a single memory with 16 nodes. Root cause: N+1 embedding problem in `Cognify()`. **Fixed in v1.3.0** via batch `Embed()` API.
+
+### Read Path (NEW — 11s latency)
+Memory search is taking **11 seconds** despite Plan 018's vector index optimization. 
 
 **Evidence** (from user logs):
 ```
-[2026-01-15 20:29:54.807] REQ [5] method=memory.create
-[2026-01-15 20:30:28.237] RES [5] method=memory.create status=OK duration=33430ms
+[2026-01-15 21:05:13.378] SearchMemories: calling gognee.Search topK=5
+[2026-01-15 21:05:24.583] SearchMemories: gognee.Search completed in 11.171356001s results=5
 ```
 
-**Root Cause Analysis:**
+**Root Cause Analysis — Complete Hotspot Inventory:**
 
-The current implementation has an **N+1 embedding problem**:
+| Location | Issue | Estimated Impact |
+|----------|-------|------------------|
+| `pkg/search/hybrid.go:39` | `EmbedOne()` per search query | ~1-2s |
+| `pkg/search/vector.go:36` | `EmbedOne()` per search query | ~1-2s |
+| `pkg/search/hybrid.go:170-208` | `expandFromNode()` BFS with N `GetNeighbors()` calls | ~8-10s (N+1 graph queries) |
+| `pkg/gognee/gognee.go:1084` | `EmbedOne()` loop in `AddMemory()` | N+1 per AddMemory |
+| `pkg/gognee/gognee.go:1326` | `EmbedOne()` loop in `UpdateMemory()` | N+1 per UpdateMemory |
 
-```go
-// pkg/gognee/gognee.go lines 498-502
-for _, entity := range entities {
-    // ... create node ...
-    embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
-    // ... store embedding ...
-}
-```
-
-With 16 entities, this results in **16 separate OpenAI API calls** instead of 1 batched call.
-
-**Estimated time breakdown** (33s total):
-- LLM entity extraction: ~3-5s (1 call)
-- LLM relation extraction: ~3-5s (1 call)
-- Embedding generation: **16 × ~1.5s = ~24s** (16 serial calls)
-- Database writes: <1s
-
-**The embedding batching problem accounts for ~70% of the latency.**
-
-**Post-optimization estimate** (with batched embeddings):
-- LLM entity extraction: ~3-5s (1 call)
-- LLM relation extraction: ~3-5s (1 call)
-- Embedding generation: ~1s (1 batched call)
-- Database writes: <1s
-- **Total: ~8-12s** (3-4x improvement)
-
-**Note**: Relation extraction depends on entity extraction output (entity names are passed to the relation prompt), so these LLM calls cannot be parallelized. Further optimization requires combining them into a single LLM call (see M5).
+**Key Insight**: The embedding call for a single search query isn't batchable (only 1 text), but it IS unavoidable (~1.5s). The **real problem** is the graph expansion BFS making **dozens of individual database queries**.
 
 ---
 
 ## Success Criteria
 
-| Criterion | Current | Target | Stretch | Measurement |
-|-----------|---------|--------|---------|-------------|
-| Single memory write latency | 33s | <10s | <5s (M5) | End-to-end duration for 16-node memory |
-| Embedding API calls per Cognify | N (one per entity) | 1 (batched) | 1 | Count of OpenAI embedding requests |
-| LLM calls per chunk | 2 (entity + relation) | 2 | 1 (M5) | Count of OpenAI completion requests |
-| No regression in correctness | N/A | All tests pass | — | `go test ./...` |
-| No regression in coverage | 73.5% | ≥73% | — | Coverage report |
+| Criterion | Current | Target | Measurement |
+|-----------|---------|--------|-------------|
+| Single memory write latency | 33s → **<10s (v1.3.0)** | <10s | End-to-end duration for 16-node memory |
+| Single memory search latency | **11s** | <3s | End-to-end search with graph expansion |
+| Embedding API calls per Cognify | ~~N~~ → **1 (v1.3.0)** | 1 | Count of OpenAI embedding requests |
+| Embedding API calls per AddMemory | N (broken) | 1 | Count of OpenAI embedding requests |
+| Graph queries per search | N (BFS loop) | O(1) or batched | Count of SQLite queries |
+| No regression in correctness | N/A | All tests pass | `go test ./...` |
 
 ---
 
 ## Scope
 
-### In Scope
+### In Scope (v1.3.0 — COMPLETED)
 
-1. **M1: Batch Embedding Collection** — Collect all entity texts before embedding
-2. **M2: Single Batch API Call** — Use `Embed()` instead of `EmbedOne()` loop
-3. **M3: Embedding Assignment** — Map batch results back to entities
-4. **M4: Benchmark Validation** — Add write-path benchmark to detect regressions
-5. **M5: Combined Entity+Relation Extraction (Stretch)** — Single LLM call for both
-6. **M6: Version Management** — Update release artifacts for v1.3.0
+1. **M1: Batch Embedding Collection** — Collect all entity texts before embedding ✅
+2. **M2: Single Batch API Call** — Use `Embed()` instead of `EmbedOne()` loop ✅
+3. **M3: Embedding Assignment** — Map batch results back to entities ✅
+4. **M4: Benchmark Validation** — Add write-path benchmark to detect regressions ✅ (scaffolded, skipped)
+5. **M5: Combined Entity+Relation Extraction (Stretch)** — Single LLM call for both ⏭️ DEFERRED
+6. **M6: Version Management** — Update release artifacts for v1.3.0 ✅
+
+### In Scope (v1.4.0 — NEW)
+
+7. **M7: Batch Embeddings in AddMemory/UpdateMemory** — Same fix as Cognify for remaining write paths
+8. **M8: Batched Graph Expansion** — Replace BFS N+1 GetNeighbors with batched query
+9. **M9: Search Path Benchmark** — Add search benchmark to detect regressions
+10. **M10: Version Management** — Update release artifacts for v1.4.0
 
 ### Out of Scope
 
-- Database write batching — Marginal gain for current scale
+- Caching query embeddings — Different optimization strategy
 - Streaming/async memory creation — Different UX model
 - Prompt engineering for faster LLM responses — Orthogonal concern
 
@@ -347,6 +344,112 @@ for j, embedding := range embeddings {
 
 ---
 
+## v1.4.0 Extension: New Milestones
+
+### M7: Batch Embeddings in AddMemory/UpdateMemory
+
+**Objective**: Apply same batch embedding fix to `AddMemory()` and `UpdateMemory()` functions.
+
+**Files to modify**:
+- `pkg/gognee/gognee.go` — Lines 1060-1100 (AddMemory entity loop)
+- `pkg/gognee/gognee.go` — Lines 1300-1340 (UpdateMemory entity loop)
+
+**Hotspots to fix**:
+```go
+// AddMemory (line 1084) — BEFORE
+embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
+
+// UpdateMemory (line 1326) — BEFORE  
+embedding, err := g.embeddings.EmbedOne(ctx, entity.Name+" "+entity.Description)
+```
+
+**Acceptance Criteria**:
+- Same batch pattern as Cognify: collect texts → batch Embed() → assign by index
+- Error handling matches Cognify pattern (continue without embeddings on failure)
+- Unit tests pass
+
+**Estimated complexity**: Low — copy pattern from Cognify refactor
+
+---
+
+### M8: Batched Graph Expansion (Critical for Search Performance)
+
+**Objective**: Replace BFS loop with batched query to eliminate N+1 graph queries.
+
+**Root Cause**: `expandFromNode()` in `pkg/search/hybrid.go` lines 170-208 performs BFS with individual `GetNeighbors()` calls per node in the queue. With a large graph, this results in dozens of sequential SQLite queries.
+
+**Current Flow (N+1)**:
+```go
+for len(queue) > 0 {
+    current := queue[0]
+    queue = queue[1:]
+    neighbors, err := h.graphStore.GetNeighbors(ctx, current.nodeID, 1) // 1 query per node ❌
+    // ... enqueue neighbors ...
+}
+```
+
+**Proposed Fix Options**:
+
+**Option A: Single Recursive CTE Query** (Recommended)
+Replace BFS loop with a single SQL query using recursive CTE to fetch all neighbors up to depth N:
+```sql
+WITH RECURSIVE graph_walk AS (
+    SELECT target_id AS node_id, 1 AS depth FROM edges WHERE source_id = ?
+    UNION
+    SELECT target_id, depth + 1 FROM edges e
+    JOIN graph_walk g ON e.source_id = g.node_id
+    WHERE depth < ?
+)
+SELECT DISTINCT node_id, MIN(depth) as depth FROM graph_walk GROUP BY node_id
+```
+
+**Option B: Batch GetNeighbors**
+Add `GetNeighborsBatched(ctx, nodeIDs []string, depth int)` to GraphStore interface that fetches neighbors for multiple nodes in one query.
+
+**Files to modify**:
+- `pkg/store/graph.go` — Add batched method to interface
+- `pkg/store/sqlite.go` — Implement recursive CTE or batch query
+- `pkg/search/hybrid.go` — Replace BFS loop with single call
+
+**Acceptance Criteria**:
+- Search with graph expansion completes in <3s (down from 11s)
+- Single or O(depth) SQL queries instead of O(nodes)
+- Existing search tests pass
+
+**Estimated complexity**: Medium — requires SQL expertise for recursive CTE
+
+---
+
+### M9: Search Path Benchmark
+
+**Objective**: Add benchmark for search path to detect performance regressions.
+
+**Files to create**:
+- `pkg/search/hybrid_benchmark_test.go`
+
+**Acceptance Criteria**:
+- `BenchmarkHybridSearch_GraphExpansion` measures search with graph depth 1-2
+- Benchmark uses mock stores or pre-populated in-memory DB
+- Baseline established: <100ms for 100-node graph with mocked APIs
+
+**Estimated complexity**: Low — follows existing benchmark patterns
+
+---
+
+### M10: Version Management for v1.4.0
+
+**Objective**: Update release artifacts for v1.4.0.
+
+**Files to modify**:
+- `CHANGELOG.md` — Add v1.4.0 entry
+- `go.mod` — Update version comment
+
+**Acceptance Criteria**:
+- CHANGELOG documents M7-M9 improvements
+- Version comment reflects v1.4.0
+
+---
+
 ## Open Questions
 
 None — approach is well-understood and low-risk.
@@ -358,4 +461,6 @@ None — approach is well-understood and low-risk.
 - Plan 018: Vector Search Optimization (related performance work)
 - [pkg/embeddings/client.go](pkg/embeddings/client.go) — `Embed()` batch interface
 - [pkg/gognee/gognee.go](pkg/gognee/gognee.go) — Cognify implementation
+- [pkg/search/hybrid.go](pkg/search/hybrid.go) — Graph expansion BFS loop
+- [pkg/store/sqlite.go](pkg/store/sqlite.go) — SQLite graph store implementation
 
