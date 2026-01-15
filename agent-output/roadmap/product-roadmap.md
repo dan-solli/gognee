@@ -1,17 +1,20 @@
 # gognee - Product Roadmap
 
-**Last Updated**: 2025-12-25
+**Last Updated**: 2026-01-15
 **Roadmap Owner**: roadmap agent
 **Strategic Vision**: Build a Go library package that provides AI assistants with persistent memory across conversations, knowledge graph for understanding relationships, and hybrid search combining graph traversal and vector similarity. Pure library design (no CLI), embeddable in Go projects like Glowbabe.
 
 ## Change Log
 | Date & Time | Change | Rationale |
-|-------------|--------|-----------||
+|-------------|--------|-----------|
+| 2026-01-15 | Released v1.2.0 (Plans 017, 018); vector search + observability | Vector search 17s→<1ms; CGO required (breaking change); always-on metrics |
 | 2026-01-03 | Plan 011 drafted for Epic 8.1; provenance-first design confirmed | Architecture findings approved; plan ready for Critic review |
 | 2026-01-02 | Created Epic 8.1 (First-Class Memory CRUD) and Release v1.0.0; P0 priority | Glowbabe feature request identifies architecture gap blocking Memory Browser feature (Epic 6.1 in Glowbabe) |
 | 2025-12-25 | Marked Plan 009 (Incremental Cognify) as Delivered; v0.8.0 ready for release | Retrospective closed for Plan 009; UAT approved incremental Cognify with cost/time reduction value delivered |
 | 2025-12-25 | Marked Plan 008 (Edge ID Correctness) as Delivered; v0.7.1 released | Retrospective closed for Plan 008; QA+UAT verified edge endpoint IDs match node IDs correctly |
-| 2025-12-25 | Marked Plan 010 (Memory Decay/Forgetting) as Delivered; v0.9.0 released | Retrospective closed for Plan 010; Epic 7.5 complete with full UAT approval || 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED || 2025-12-25 | Marked Plan 008 as QA Complete | QA executed: unit tests + coverage verified; integration suite warning documented |
+| 2025-12-25 | Marked Plan 010 (Memory Decay/Forgetting) as Delivered; v0.9.0 released | Retrospective closed for Plan 010; Epic 7.5 complete with full UAT approval |
+| 2025-12-25 | Marked Plans 007-010 as Critic Approved in Active Release Tracker | Plans revised per critique; critiques updated to RESOLVED/APPROVED |
+| 2025-12-25 | Marked Plan 008 as QA Complete | QA executed: unit tests + coverage verified; integration suite warning documented |
 | 2025-12-24 | Plans 007-010 created for post-MVP epics 7.1, 7.3, 7.4, 7.5 | User requested backlog planning; Skipped 7.2 and 7.6 |
 | 2025-12-24 23:30 | Created product roadmap; marked v0.6.0 as Released | Retrospective closed for Plan 006 (Phase 6 Integration); MVP delivered |
 
@@ -91,7 +94,31 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: v1.1.0 (Observability: Prometheus Metrics M1)
+**Current Working Release**: v1.2.0 (Vector Search Optimization + Always-On Observability)
+
+### v1.2.0 Release - Vector Search Optimization + Always-On Observability
+**Target Date**: 2026-01-15
+**Actual Release Date**: 2026-01-15
+**Status**: Released ✅
+**Strategic Goal**: Instant memory search via sqlite-vec indexed ANN search; remove build-tag complexity for observability
+
+| Plan ID | Title | Epic | Status | Committed | Released |
+|---------|-------|------|--------|----------|----------|
+| 017 | Always-On Observability | 7.1 | Released | ✅ Yes | ✅ 2026-01-15 |
+| 018 | Vector Search Optimization (sqlite-vec) | 7.6 | Released | ✅ Yes | ✅ 2026-01-15 |
+
+**Release Status**: ✅ RELEASED
+**Blocking Items**: None
+**Release Notes**:
+- **BREAKING**: CGO now required for all builds (sqlite-vec dependency)
+- **BREAKING**: Existing databases must be deleted and recreated (vec0 schema change)
+- Vector search reduced from 17s → <1ms for typical workloads (4,500x faster than target)
+- vec0 virtual table with MATCH operator for O(log n) ANN search
+- Always-on metrics and trace (no build tags; runtime no-op when disabled)
+- Metrics endpoint: 127.0.0.1:8899/metrics (default)
+- Benchmarks: 111µs/op for 1K-node search
+- Test coverage: 73.5% overall, 74.7% pkg/store
+**Architecture**: sqlite-vec v0.1.6 via mattn/go-sqlite3 CGO driver
 
 ### v1.1.0 Release - Observability: Metrics Infrastructure
 **Target Date**: 2026-01-14
@@ -114,6 +141,7 @@ So that I can integrate knowledge graph memory into my application with a single
 - Test coverage: 75.8% (metrics build), benchmarks verify <1% overhead for realistic workloads
 - Remaining milestones (M2–M8): HTTP metrics endpoint, trace export, viewer, documentation, etc.
 **Architecture**: Build-tag-driven opt-in via `//go:build metrics` and `//go:build !metrics`
+**Note**: Build-tag opt-in superseded by v1.2.0 always-on observability
 
 ### v1.0.0 Release - First-Class Memory CRUD
 **Target Date**: TBD
@@ -218,6 +246,8 @@ So that I can integrate knowledge graph memory into my application with a single
 ### Previous Releases
 | Version | Date | Plans Included | Status | Notes |
 |---------|------|----------------|--------|-------|
+| v1.2.0 | 2026-01-15 | 017, 018 | Released | Vector search optimization + Always-on observability (BREAKING: CGO required) |
+| v1.1.0 | 2026-01-14 | 016 | Released | Prometheus metrics infrastructure |
 | v0.9.0 | 2025-12-25 | 010 (Memory Decay/Forgetting) | Released | Time-based decay + Prune() API |
 | v0.8.0 | 2025-12-25 | 009 (Incremental Cognify) | Released | Document-level deduplication |
 | v0.7.1 | 2025-12-25 | 008 (Edge ID Correctness) | Released | Fixed edge endpoint ID derivation |
