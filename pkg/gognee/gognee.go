@@ -890,10 +890,8 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 			}
 		}
 
-		// Delete from vector store
-		if err := g.vectorStore.Delete(ctx, nodeID); err != nil {
-			// Continue on error
-		}
+		// Delete from vector store (ignore errors to prune as much as possible)
+		_ = g.vectorStore.Delete(ctx, nodeID)
 
 		// Delete the node
 		if err := sqlStore.DeleteNode(ctx, nodeID); err != nil {

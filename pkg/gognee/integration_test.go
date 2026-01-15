@@ -72,11 +72,12 @@ func TestIntegration_DecayAndPrune(t *testing.T) {
 	}
 
 	// Search - old node should have lower score due to decay
-	results, err := g.Search(ctx, "concept", SearchOptions{TopK: 10})
+	resp, err := g.Search(ctx, "concept", SearchOptions{TopK: 10})
 	if err != nil {
 		t.Fatalf("Search failed: %v", err)
 	}
 
+	results := resp.Results
 	if len(results) != 2 {
 		t.Fatalf("Expected 2 results, got %d", len(results))
 	}
@@ -128,11 +129,12 @@ func TestIntegration_DecayAndPrune(t *testing.T) {
 	}
 
 	// Search again - should only return recent node
-	results, err = g.Search(ctx, "concept", SearchOptions{TopK: 10})
+	resp, err = g.Search(ctx, "concept", SearchOptions{TopK: 10})
 	if err != nil {
 		t.Fatalf("Search after prune failed: %v", err)
 	}
 
+	results = resp.Results
 	if len(results) != 1 {
 		t.Errorf("Expected 1 result after prune, got %d", len(results))
 	}

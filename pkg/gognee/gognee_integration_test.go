@@ -124,7 +124,7 @@ func TestIntegrationCompleteWorkflow(t *testing.T) {
 
 	for _, query := range searchQueries {
 		t.Logf("Searching for: %q", query)
-		results, err := g.Search(ctx, query, SearchOptions{
+		resp, err := g.Search(ctx, query, SearchOptions{
 			Type:       SearchTypeHybrid,
 			TopK:       5,
 			GraphDepth: 1,
@@ -133,6 +133,7 @@ func TestIntegrationCompleteWorkflow(t *testing.T) {
 			t.Fatalf("Search failed: %v", err)
 		}
 
+		results := resp.Results
 		if len(results) > 0 {
 			t.Logf("Found %d results", len(results))
 			for i, result := range results[:min(3, len(results))] {
@@ -276,7 +277,7 @@ func TestIntegrationSearchTypes(t *testing.T) {
 			t.Fatalf("Search with type %v failed: %v", st, err)
 		}
 
-		t.Logf("Search type %v returned %d results", st, len(results))
+		t.Logf("Search type %v returned %d results", st, len(results.Results))
 	}
 }
 
@@ -343,7 +344,7 @@ func TestIntegrationPersistentVectorStore(t *testing.T) {
 	// Search to verify embeddings work
 	t.Log("Session 1: Testing search...")
 	query := "programming language"
-	results1, err := g1.Search(ctx, query, SearchOptions{
+	resp1, err := g1.Search(ctx, query, SearchOptions{
 		Type: SearchTypeVector,
 		TopK: 5,
 	})
@@ -351,6 +352,7 @@ func TestIntegrationPersistentVectorStore(t *testing.T) {
 		t.Fatalf("Session 1: Search failed: %v", err)
 	}
 
+	results1 := resp1.Results
 	if len(results1) == 0 {
 		t.Fatal("Session 1: Search should return results")
 	}
@@ -393,7 +395,7 @@ func TestIntegrationPersistentVectorStore(t *testing.T) {
 
 	// Search WITHOUT running Cognify again - embeddings should be immediately available
 	t.Log("Session 2: Testing search without re-running Cognify...")
-	results2, err := g2.Search(ctx, query, SearchOptions{
+	resp2, err := g2.Search(ctx, query, SearchOptions{
 		Type: SearchTypeVector,
 		TopK: 5,
 	})
@@ -401,6 +403,7 @@ func TestIntegrationPersistentVectorStore(t *testing.T) {
 		t.Fatalf("Session 2: Search failed: %v", err)
 	}
 
+	results2 := resp2.Results
 	if len(results2) == 0 {
 		t.Fatal("Session 2: Search should return results immediately after restart (embeddings should persist)")
 	}
@@ -434,7 +437,7 @@ func TestIntegrationPersistentVectorStore(t *testing.T) {
 
 	// Final search should include both old and new data
 	t.Log("Session 2: Final search including new data...")
-	results3, err := g2.Search(ctx, query, SearchOptions{
+	resp3, err := g2.Search(ctx, query, SearchOptions{
 		Type: SearchTypeVector,
 		TopK: 5,
 	})
@@ -442,7 +445,7 @@ func TestIntegrationPersistentVectorStore(t *testing.T) {
 		t.Fatalf("Session 2: Final search failed: %v", err)
 	}
 
-	t.Logf("Session 2: Final search returned %d results", len(results3))
+	t.Logf("Session 2: Final search returned %d results", len(resp3.Results))
 	// Note: Result count may be limited by topK, so we can't strictly require more results
 	// The important thing is that search still works with both old and new data
 
@@ -514,7 +517,7 @@ func TestIntegrationEdgeNodeConnectivity(t *testing.T) {
 	t.Logf("Total edges in graph: %d", stats.EdgeCount)
 
 	// Search for a known entity to get its node ID
-	results, err := g.Search(ctx, "React", SearchOptions{
+	resp, err := g.Search(ctx, "React", SearchOptions{
 		Type: SearchTypeVector,
 		TopK: 1,
 	})
@@ -522,11 +525,11 @@ func TestIntegrationEdgeNodeConnectivity(t *testing.T) {
 		t.Fatalf("Search failed: %v", err)
 	}
 
-	if len(results) == 0 {
+	if len(resp.Results) == 0 {
 		t.Fatal("Expected to find React node")
 	}
 
-	reactNodeID := results[0].NodeID
+	reactNodeID := resp.Results[0].NodeID
 	t.Logf("Found React node: %s", reactNodeID)
 
 	// Get edges for this node

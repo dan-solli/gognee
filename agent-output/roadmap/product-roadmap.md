@@ -7,6 +7,7 @@
 ## Change Log
 | Date & Time | Change | Rationale |
 |-------------|--------|-----------|
+| 2026-01-15 | Plan 019 v1.4.0 committed locally (11d14e3); v1.3.0 released | Read path optimization (M7–M10) UAT approved; write path v1.3.0 released |
 | 2026-01-15 | Added v1.3.0 release track with Plan 019 (Write Path Optimization) | Performance incident: 33s memory write latency |
 | 2026-01-15 | Released v1.2.0 (Plans 017, 018); vector search + observability | Vector search 17s→<1ms; CGO required (breaking change); always-on metrics |
 | 2026-01-03 | Plan 011 drafted for Epic 8.1; provenance-first design confirmed | Architecture findings approved; plan ready for Critic review |
@@ -95,20 +96,43 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: v1.3.0 (Write Path Optimization)
+**Current Working Release**: v1.4.0 (Read Path Optimization)
 
-### v1.3.0 Release - Write Path Optimization
+### v1.4.0 Release - Read & Write Path Optimization
 **Target Date**: 2026-01-16
-**Status**: Planning
-**Strategic Goal**: Reduce memory write latency from 33s to <10s via batch embeddings; stretch goal <5s via combined LLM extraction
+**Status**: Committed Locally
+**Strategic Goal**: Reduce search latency from ~11s to <3s via recursive CTE graph traversal and batch embeddings
 
 | Plan ID | Title | Epic | Status | Committed | Released |
 |---------|-------|------|--------|----------|----------|
-| 019 | Write Path Optimization (Batch Embeddings) | 7.7 | Draft | ✗ | ✗ |
+| 019 | Read/Write Path Optimization (v1.4.0) | 7.7 | UAT Approved | ✅ Yes (11d14e3) | ✗ |
 
-**Release Status**: 0 of 1 plans committed
-**Blocking Items**: Plan 019 pending Critic approval
-**Release Notes**: (pending)
+**Release Status**: 1 of 1 plans committed locally
+**Ready for Release**: Yes (pending push/tag approval)
+**Blocking Items**: None
+**Release Notes**:
+- M7: Batch embeddings for AddMemory/UpdateMemory (N+1 → single Embed() call)
+- M8: Recursive CTE for GetNeighbors (BFS N+1 → single SQL query)
+- M9: Search benchmarks added for regression detection
+- M10: CHANGELOG and version artifacts updated
+- Test coverage: 73.6% overall
+**Architecture**: Two-pass batch embedding pattern; recursive CTE graph traversal; benchmark harness
+
+### v1.3.0 Release - Write Path Optimization
+**Target Date**: 2026-01-15
+**Actual Release Date**: 2026-01-15
+**Status**: Released ✅
+**Strategic Goal**: Reduce memory write latency from 33s to <10s via batch embeddings
+
+| Plan ID | Title | Epic | Status | Committed | Released |
+|---------|-------|------|--------|----------|----------|
+| 019 | Write Path Optimization (M1–M6) | 7.7 | Released | ✅ Yes | ✅ 2026-01-15 |
+
+**Release Status**: ✅ RELEASED
+**Blocking Items**: None
+**Release Notes**:
+- Batch embedding for Cognify write path (33s → <5s)
+- Metrics for write latency monitoring
 **Architecture**: Batch embedding collection; optional combined entity+relation extraction
 
 ### v1.2.0 Release - Vector Search Optimization + Always-On Observability
