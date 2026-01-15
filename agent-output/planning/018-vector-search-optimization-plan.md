@@ -3,7 +3,7 @@
 **Plan ID:** 018  
 **Target Release:** gognee v1.2.0  
 **Epic Alignment:** Epic 7.6 (Performance Optimization) — ANN indexing for vector search  
-**Status:** Committed for Release v1.2.0  
+**Status:** Released v1.2.0  
 **Created:** 2026-01-15  
 
 ---
