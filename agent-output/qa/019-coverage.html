@@ -1796,13 +1796,11 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
                         }
                 }
 
-                // Delete from vector store
-                <span class="cov8" title="1">if err := g.vectorStore.Delete(ctx, nodeID); err != nil </span>{<span class="cov0" title="0">
-                        // Continue on error
-                }</span>
+                // Delete from vector store (ignore errors to prune as much as possible)
+                <span class="cov8" title="1">_ = g.vectorStore.Delete(ctx, nodeID)
 
                 // Delete the node
-                <span class="cov8" title="1">if err := sqlStore.DeleteNode(ctx, nodeID); err != nil </span><span class="cov0" title="0">{
+                if err := sqlStore.DeleteNode(ctx, nodeID); err != nil </span><span class="cov0" title="0">{
                         // Continue on error
                         continue</span>
                 }

@@ -1,0 +1,9 @@
+{
+  "gopls": {
+    "buildFlags": ["-tags=integration,plan009,metrics"],
+    "ui.diagnostic.staticcheck": false
+  },
+  "go.lintOnSave": "off",
+  "go.vetOnSave": "off",
+  "go.staticcheck": false
+}

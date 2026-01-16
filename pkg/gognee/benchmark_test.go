@@ -1,3 +1,4 @@
+//nolint:errcheck // Benchmarks intentionally prioritize signal over exhaustive error plumbing; VS Code errcheck reports false positives here.
 package gognee
 
 import (
@@ -97,10 +98,11 @@ func BenchmarkCognify_Empty(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if err := g.Add(ctx, fmt.Sprintf("Test document %d with some content about software development", i), AddOptions{}); err != nil {
+		err := g.Add(ctx, fmt.Sprintf("Test document %d with some content about software development", i), AddOptions{})
+		if err != nil {
 			b.Fatalf("Add failed: %v", err)
 		}
-		_, err := g.Cognify(ctx, CognifyOptions{})
+		_, err = g.Cognify(ctx, CognifyOptions{})
 		if err != nil {
 			b.Fatalf("Cognify failed: %v", err)
 		}
@@ -147,10 +149,11 @@ func BenchmarkCognify_100Memories(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if err := g.Add(ctx, fmt.Sprintf("New document %d", i), AddOptions{}); err != nil {
+		err := g.Add(ctx, fmt.Sprintf("New document %d", i), AddOptions{})
+		if err != nil {
 			b.Fatalf("Add failed: %v", err)
 		}
-		_, err := g.Cognify(ctx, CognifyOptions{})
+		_, err = g.Cognify(ctx, CognifyOptions{})
 		if err != nil {
 			b.Fatalf("Cognify failed: %v", err)
 		}
@@ -198,10 +201,11 @@ func BenchmarkCognify_1000Memories(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if err := g.Add(ctx, fmt.Sprintf("New document %d", i), AddOptions{}); err != nil {
+		err := g.Add(ctx, fmt.Sprintf("New document %d", i), AddOptions{})
+		if err != nil {
 			b.Fatalf("Add failed: %v", err)
 		}
-		_, err := g.Cognify(ctx, CognifyOptions{})
+		_, err = g.Cognify(ctx, CognifyOptions{})
 		if err != nil {
 			b.Fatalf("Cognify failed: %v", err)
 		}
