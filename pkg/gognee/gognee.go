@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -1040,11 +1041,18 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 
 	// Chunk the text
 	chunks := g.chunker.Chunk(text)
+	fmt.Fprintf(os.Stderr, "gognee: AddMemory starting: memoryID=%s chunks=%d\n", memoryID, len(chunks))
 
 	// Process each chunk
-	for _, chunk := range chunks {
+	for chunkIdx, chunk := range chunks {
+		chunkStart := time.Now()
+		fmt.Fprintf(os.Stderr, "gognee: chunk[%d] processing chunkLen=%d\n", chunkIdx, len(chunk.Text))
+
 		// Extract entities
+		entityStart := time.Now()
 		entities, err := g.entityExtractor.Extract(ctx, chunk.Text)
+		entityDuration := time.Since(entityStart)
+		fmt.Fprintf(os.Stderr, "gognee: chunk[%d] entity extraction: duration=%v count=%d\n", chunkIdx, entityDuration, len(entities))
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("entity extraction failed for memory %s: %w", memoryID, err))
 			continue
@@ -1054,7 +1062,10 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 		entityMap, ambiguous := buildEntityTypeMap(entities)
 
 		// Extract relations
+		relationStart := time.Now()
 		triplets, err := g.relationExtractor.Extract(ctx, chunk.Text, entities)
+		relationDuration := time.Since(relationStart)
+		fmt.Fprintf(os.Stderr, "gognee: chunk[%d] relation extraction: duration=%v count=%d\n", chunkIdx, relationDuration, len(triplets))
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("relation extraction failed for memory %s: %w", memoryID, err))
 			// Continue with entities only
@@ -1068,7 +1079,10 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 		}
 
 		// Batch embed all entities at once
+		embedStart := time.Now()
 		embeddings, err := g.embeddings.Embed(ctx, entityTexts)
+		embedDuration := time.Since(embedStart)
+		fmt.Fprintf(os.Stderr, "gognee: chunk[%d] batch embedding: duration=%v count=%d\n", chunkIdx, embedDuration, len(entityTexts))
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Errorf("batch embed failed for memory %s: %w", memoryID, err))
 			// Continue without embeddings
@@ -1076,6 +1090,7 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 		}
 
 		// Second pass: create nodes with embeddings
+		dbStart := time.Now()
 		for i, entity := range entities {
 			nodeID := generateDeterministicNodeID(entity.Name, entity.Type)
 			node := &store.Node{
@@ -1103,8 +1118,10 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 				}
 			}
 		}
+		dbNodesDuration := time.Since(dbStart)
 
 		// Create edges for each triplet
+		edgeStart := time.Now()
 		for _, triplet := range triplets {
 			// Look up source and target entity types
 			sourceType, sourceFound := lookupEntityType(triplet.Subject, entityMap, ambiguous)
@@ -1137,6 +1154,9 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 			createdEdgeIDs = append(createdEdgeIDs, edgeID)
 			result.EdgesCreated++
 		}
+		edgeDuration := time.Since(edgeStart)
+		chunkDuration := time.Since(chunkStart)
+		fmt.Fprintf(os.Stderr, "gognee: chunk[%d] complete: total=%v dbNodes=%v dbEdges=%v\n", chunkIdx, chunkDuration, dbNodesDuration, edgeDuration)
 	}
 
 	// Finish cognify timer

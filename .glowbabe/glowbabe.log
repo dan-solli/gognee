@@ -542,3 +542,836 @@
 [2026-01-15 21:05:50.002] RES [39] method=health status=OK duration=124ms
 [2026-01-15 21:05:50.035] REQ [40] method=stats
 [2026-01-15 21:05:50.069] RES [40] method=stats status=OK duration=33ms
+[2026-01-16 02:28:50.718] === Glowbabe Backend v1.5.0 started ===
+[2026-01-16 02:28:50.762] PID: 3741807
+[2026-01-16 02:28:50.796] Workspace: /home/dsi/projects/gognee
+[2026-01-16 02:28:50.829] Database: /home/dsi/projects/gognee/.glowbabe/glowbabe.db
+[2026-01-16 02:28:50.862] RES [2] method=init status=OK duration=145ms
+[2026-01-16 02:42:02.678] REQ [3] method=health
+[2026-01-16 02:42:02.721] RES [3] method=health status=OK duration=43ms
+[2026-01-16 02:42:02.764] REQ [4] method=stats
+[2026-01-16 02:42:02.800] RES [4] method=stats status=OK duration=35ms
+[2026-01-16 02:42:11.098] REQ [5] method=health
+[2026-01-16 02:42:11.144] RES [5] method=health status=OK duration=46ms
+[2026-01-16 02:42:11.186] REQ [6] method=stats
+[2026-01-16 02:42:11.211] RES [6] method=stats status=OK duration=25ms
+[2026-01-16 02:43:16.732] REQ [7] method=health
+[2026-01-16 02:43:16.758] RES [7] method=health status=OK duration=26ms
+[2026-01-16 02:43:16.792] REQ [8] method=stats
+[2026-01-16 02:43:16.826] RES [8] method=stats status=OK duration=33ms
+[2026-01-16 02:44:46.219] REQ [9] method=health
+[2026-01-16 02:44:46.271] RES [9] method=health status=OK duration=51ms
+[2026-01-16 02:44:46.304] REQ [10] method=stats
+[2026-01-16 02:44:46.338] RES [10] method=stats status=OK duration=33ms
+[2026-01-16 02:51:09.194] REQ [11] method=health
+[2026-01-16 02:51:09.226] RES [11] method=health status=OK duration=31ms
+[2026-01-16 02:51:09.260] REQ [12] method=stats
+[2026-01-16 02:51:09.293] RES [12] method=stats status=OK duration=33ms
+[2026-01-16 02:52:04.288] REQ [13] method=health
+[2026-01-16 02:52:04.336] RES [13] method=health status=OK duration=47ms
+[2026-01-16 02:52:04.370] REQ [14] method=stats
+[2026-01-16 02:52:04.403] RES [14] method=stats status=OK duration=32ms
+[2026-01-16 02:53:04.288] REQ [15] method=health
+[2026-01-16 02:53:04.364] RES [15] method=health status=OK duration=75ms
+[2026-01-16 02:53:04.431] REQ [16] method=stats
+[2026-01-16 02:53:04.487] RES [16] method=stats status=OK duration=55ms
+[2026-01-16 02:53:44.305] REQ [17] method=health
+[2026-01-16 02:53:44.334] RES [17] method=health status=OK duration=29ms
+[2026-01-16 02:53:44.357] REQ [18] method=stats
+[2026-01-16 02:53:44.379] RES [18] method=stats status=OK duration=22ms
+[2026-01-16 02:54:44.306] REQ [19] method=health
+[2026-01-16 02:54:44.351] RES [19] method=health status=OK duration=45ms
+[2026-01-16 02:54:44.385] REQ [20] method=stats
+[2026-01-16 02:54:44.418] RES [20] method=stats status=OK duration=33ms
+[2026-01-16 02:55:44.306] REQ [21] method=health
+[2026-01-16 02:55:44.354] RES [21] method=health status=OK duration=47ms
+[2026-01-16 02:55:44.388] REQ [22] method=stats
+[2026-01-16 02:55:44.421] RES [22] method=stats status=OK duration=33ms
+[2026-01-16 02:56:44.306] REQ [23] method=health
+[2026-01-16 02:56:44.347] RES [23] method=health status=OK duration=41ms
+[2026-01-16 02:56:44.381] REQ [24] method=stats
+[2026-01-16 02:56:44.415] RES [24] method=stats status=OK duration=33ms
+[2026-01-16 02:57:44.307] REQ [25] method=health
+[2026-01-16 02:57:44.348] RES [25] method=health status=OK duration=40ms
+[2026-01-16 02:57:44.382] REQ [26] method=stats
+[2026-01-16 02:57:44.415] RES [26] method=stats status=OK duration=33ms
+[2026-01-16 03:14:43.911] REQ [27] method=health
+[2026-01-16 03:14:43.947] RES [27] method=health status=OK duration=36ms
+[2026-01-16 03:14:43.970] REQ [28] method=stats
+[2026-01-16 03:14:43.993] RES [28] method=stats status=OK duration=22ms
+[2026-01-16 03:15:43.912] REQ [29] method=health
+[2026-01-16 03:15:43.960] RES [29] method=health status=OK duration=48ms
+[2026-01-16 03:15:43.994] REQ [30] method=stats
+[2026-01-16 03:15:44.027] RES [30] method=stats status=OK duration=33ms
+[2026-01-16 03:16:43.912] REQ [31] method=health
+[2026-01-16 03:16:43.987] RES [31] method=health status=OK duration=75ms
+[2026-01-16 03:16:44.038] REQ [32] method=stats
+[2026-01-16 03:16:44.072] RES [32] method=stats status=OK duration=33ms
+[2026-01-16 03:17:43.912] REQ [33] method=health
+[2026-01-16 03:17:43.960] RES [33] method=health status=OK duration=47ms
+[2026-01-16 03:17:43.982] REQ [34] method=stats
+[2026-01-16 03:17:44.016] RES [34] method=stats status=OK duration=33ms
+[2026-01-16 03:18:43.911] REQ [35] method=health
+[2026-01-16 03:18:43.949] RES [35] method=health status=OK duration=37ms
+[2026-01-16 03:18:43.983] REQ [36] method=stats
+[2026-01-16 03:18:44.016] RES [36] method=stats status=OK duration=33ms
+[2026-01-16 03:19:43.912] REQ [37] method=health
+[2026-01-16 03:19:43.937] RES [37] method=health status=OK duration=25ms
+[2026-01-16 03:19:43.971] REQ [38] method=stats
+[2026-01-16 03:19:44.005] RES [38] method=stats status=OK duration=33ms
+[2026-01-16 03:20:43.911] REQ [39] method=health
+[2026-01-16 03:20:43.959] RES [39] method=health status=OK duration=48ms
+[2026-01-16 03:20:43.993] REQ [40] method=stats
+[2026-01-16 03:20:44.027] RES [40] method=stats status=OK duration=33ms
+[2026-01-16 03:21:43.912] REQ [41] method=health
+[2026-01-16 03:21:43.961] RES [41] method=health status=OK duration=48ms
+[2026-01-16 03:21:43.995] REQ [42] method=stats
+[2026-01-16 03:21:44.028] RES [42] method=stats status=OK duration=33ms
+[2026-01-16 03:22:43.913] REQ [43] method=health
+[2026-01-16 03:22:43.961] RES [43] method=health status=OK duration=47ms
+[2026-01-16 03:22:43.995] REQ [44] method=stats
+[2026-01-16 03:22:44.028] RES [44] method=stats status=OK duration=33ms
+[2026-01-16 03:23:43.912] REQ [45] method=health
+[2026-01-16 03:23:43.949] RES [45] method=health status=OK duration=36ms
+[2026-01-16 03:23:43.983] REQ [46] method=stats
+[2026-01-16 03:23:44.016] RES [46] method=stats status=OK duration=33ms
+[2026-01-16 03:24:43.912] REQ [47] method=health
+[2026-01-16 03:24:43.961] RES [47] method=health status=OK duration=48ms
+[2026-01-16 03:24:43.995] REQ [48] method=stats
+[2026-01-16 03:24:44.028] RES [48] method=stats status=OK duration=33ms
+[2026-01-16 03:25:43.913] REQ [49] method=health
+[2026-01-16 03:25:43.961] RES [49] method=health status=OK duration=47ms
+[2026-01-16 03:25:43.995] REQ [50] method=stats
+[2026-01-16 03:25:44.028] RES [50] method=stats status=OK duration=33ms
+[2026-01-16 03:26:43.913] REQ [51] method=health
+[2026-01-16 03:26:43.960] RES [51] method=health status=OK duration=47ms
+[2026-01-16 03:26:43.994] REQ [52] method=stats
+[2026-01-16 03:26:44.028] RES [52] method=stats status=OK duration=33ms
+[2026-01-16 03:27:43.912] REQ [53] method=health
+[2026-01-16 03:27:43.962] RES [53] method=health status=OK duration=49ms
+[2026-01-16 03:27:43.996] REQ [54] method=stats
+[2026-01-16 03:27:44.029] RES [54] method=stats status=OK duration=33ms
+[2026-01-16 03:28:43.912] REQ [55] method=health
+[2026-01-16 03:28:43.950] RES [55] method=health status=OK duration=38ms
+[2026-01-16 03:28:43.984] REQ [56] method=stats
+[2026-01-16 03:28:44.017] RES [56] method=stats status=OK duration=33ms
+[2026-01-16 03:29:43.913] REQ [57] method=health
+[2026-01-16 03:29:43.961] RES [57] method=health status=OK duration=48ms
+[2026-01-16 03:29:43.996] REQ [58] method=stats
+[2026-01-16 03:29:44.028] RES [58] method=stats status=OK duration=32ms
+[2026-01-16 03:30:43.913] REQ [59] method=health
+[2026-01-16 03:30:43.962] RES [59] method=health status=OK duration=48ms
+[2026-01-16 03:30:43.996] REQ [60] method=stats
+[2026-01-16 03:30:44.029] RES [60] method=stats status=OK duration=33ms
+[2026-01-16 03:31:43.913] REQ [61] method=health
+[2026-01-16 03:31:43.961] RES [61] method=health status=OK duration=48ms
+[2026-01-16 03:31:43.996] REQ [62] method=stats
+[2026-01-16 03:31:44.029] RES [62] method=stats status=OK duration=32ms
+[2026-01-16 03:32:43.912] REQ [63] method=health
+[2026-01-16 03:32:43.962] RES [63] method=health status=OK duration=50ms
+[2026-01-16 03:32:43.996] REQ [64] method=stats
+[2026-01-16 03:32:44.029] RES [64] method=stats status=OK duration=33ms
+[2026-01-16 03:33:43.912] REQ [65] method=health
+[2026-01-16 03:33:43.952] RES [65] method=health status=OK duration=39ms
+[2026-01-16 03:33:43.985] REQ [66] method=stats
+[2026-01-16 03:33:44.019] RES [66] method=stats status=OK duration=33ms
+[2026-01-16 03:34:43.913] REQ [67] method=health
+[2026-01-16 03:34:43.951] RES [67] method=health status=OK duration=38ms
+[2026-01-16 03:34:43.985] REQ [68] method=stats
+[2026-01-16 03:34:44.019] RES [68] method=stats status=OK duration=33ms
+[2026-01-16 03:35:43.913] REQ [69] method=health
+[2026-01-16 03:35:43.951] RES [69] method=health status=OK duration=38ms
+[2026-01-16 03:35:43.985] REQ [70] method=stats
+[2026-01-16 03:35:44.018] RES [70] method=stats status=OK duration=33ms
+[2026-01-16 03:36:43.913] REQ [71] method=health
+[2026-01-16 03:36:43.963] RES [71] method=health status=OK duration=49ms
+[2026-01-16 03:36:43.997] REQ [72] method=stats
+[2026-01-16 03:36:44.030] RES [72] method=stats status=OK duration=32ms
+[2026-01-16 03:37:43.913] REQ [73] method=health
+[2026-01-16 03:37:43.962] RES [73] method=health status=OK duration=49ms
+[2026-01-16 03:37:43.996] REQ [74] method=stats
+[2026-01-16 03:37:44.029] RES [74] method=stats status=OK duration=33ms
+[2026-01-16 03:38:43.913] REQ [75] method=health
+[2026-01-16 03:38:43.952] RES [75] method=health status=OK duration=39ms
+[2026-01-16 03:38:43.986] REQ [76] method=stats
+[2026-01-16 03:38:44.019] RES [76] method=stats status=OK duration=33ms
+[2026-01-16 03:39:43.914] REQ [77] method=health
+[2026-01-16 03:39:43.963] RES [77] method=health status=OK duration=49ms
+[2026-01-16 03:39:43.997] REQ [78] method=stats
+[2026-01-16 03:39:44.031] RES [78] method=stats status=OK duration=33ms
+[2026-01-16 03:40:43.914] REQ [79] method=health
+[2026-01-16 03:40:43.963] RES [79] method=health status=OK duration=49ms
+[2026-01-16 03:40:43.997] REQ [80] method=stats
+[2026-01-16 03:40:44.031] RES [80] method=stats status=OK duration=33ms
+[2026-01-16 03:41:43.913] REQ [81] method=health
+[2026-01-16 03:41:43.963] RES [81] method=health status=OK duration=49ms
+[2026-01-16 03:41:43.997] REQ [82] method=stats
+[2026-01-16 03:41:44.030] RES [82] method=stats status=OK duration=33ms
+[2026-01-16 03:42:43.913] REQ [83] method=health
+[2026-01-16 03:42:43.963] RES [83] method=health status=OK duration=50ms
+[2026-01-16 03:42:43.997] REQ [84] method=stats
+[2026-01-16 03:42:44.031] RES [84] method=stats status=OK duration=33ms
+[2026-01-16 03:43:43.913] REQ [85] method=health
+[2026-01-16 03:43:43.952] RES [85] method=health status=OK duration=38ms
+[2026-01-16 03:43:43.975] REQ [86] method=stats
+[2026-01-16 03:43:43.997] RES [86] method=stats status=OK duration=22ms
+[2026-01-16 03:44:43.914] REQ [87] method=health
+[2026-01-16 03:44:43.953] RES [87] method=health status=OK duration=39ms
+[2026-01-16 03:44:43.987] REQ [88] method=stats
+[2026-01-16 03:44:44.021] RES [88] method=stats status=OK duration=33ms
+[2026-01-16 03:45:43.913] REQ [89] method=health
+[2026-01-16 03:45:43.954] RES [89] method=health status=OK duration=40ms
+[2026-01-16 03:45:43.987] REQ [90] method=stats
+[2026-01-16 03:45:44.021] RES [90] method=stats status=OK duration=33ms
+[2026-01-16 03:46:43.914] REQ [91] method=health
+[2026-01-16 03:46:43.953] RES [91] method=health status=OK duration=39ms
+[2026-01-16 03:46:43.987] REQ [92] method=stats
+[2026-01-16 03:46:44.021] RES [92] method=stats status=OK duration=33ms
+[2026-01-16 03:47:43.914] REQ [93] method=health
+[2026-01-16 03:47:43.953] RES [93] method=health status=OK duration=38ms
+[2026-01-16 03:47:43.987] REQ [94] method=stats
+[2026-01-16 03:47:44.020] RES [94] method=stats status=OK duration=33ms
+[2026-01-16 03:48:43.914] REQ [95] method=health
+[2026-01-16 03:48:43.953] RES [95] method=health status=OK duration=38ms
+[2026-01-16 03:48:43.976] REQ [96] method=stats
+[2026-01-16 03:48:43.998] RES [96] method=stats status=OK duration=22ms
+[2026-01-16 03:49:43.915] REQ [97] method=health
+[2026-01-16 03:49:43.954] RES [97] method=health status=OK duration=39ms
+[2026-01-16 03:49:43.988] REQ [98] method=stats
+[2026-01-16 03:49:44.022] RES [98] method=stats status=OK duration=33ms
+[2026-01-16 03:50:43.915] REQ [99] method=health
+[2026-01-16 03:50:43.954] RES [99] method=health status=OK duration=39ms
+[2026-01-16 03:50:43.988] REQ [100] method=stats
+[2026-01-16 03:50:44.010] RES [100] method=stats status=OK duration=21ms
+[2026-01-16 03:51:43.915] REQ [101] method=health
+[2026-01-16 03:51:43.954] RES [101] method=health status=OK duration=39ms
+[2026-01-16 03:51:43.988] REQ [102] method=stats
+[2026-01-16 03:51:44.022] RES [102] method=stats status=OK duration=33ms
+[2026-01-16 03:52:43.915] REQ [103] method=health
+[2026-01-16 03:52:43.965] RES [103] method=health status=OK duration=50ms
+[2026-01-16 03:52:43.999] REQ [104] method=stats
+[2026-01-16 03:52:44.032] RES [104] method=stats status=OK duration=33ms
+[2026-01-16 03:53:43.915] REQ [105] method=health
+[2026-01-16 03:53:43.965] RES [105] method=health status=OK duration=50ms
+[2026-01-16 03:53:43.999] REQ [106] method=stats
+[2026-01-16 03:53:44.032] RES [106] method=stats status=OK duration=33ms
+[2026-01-16 03:54:43.915] REQ [107] method=health
+[2026-01-16 03:54:43.966] RES [107] method=health status=OK duration=51ms
+[2026-01-16 03:54:44.000] REQ [108] method=stats
+[2026-01-16 03:54:44.033] RES [108] method=stats status=OK duration=33ms
+[2026-01-16 03:55:43.915] REQ [109] method=health
+[2026-01-16 03:55:43.945] RES [109] method=health status=OK duration=30ms
+[2026-01-16 03:55:43.967] REQ [110] method=stats
+[2026-01-16 03:55:43.990] RES [110] method=stats status=OK duration=22ms
+[2026-01-16 03:56:43.915] REQ [111] method=health
+[2026-01-16 03:56:43.956] RES [111] method=health status=OK duration=41ms
+[2026-01-16 03:56:43.990] REQ [112] method=stats
+[2026-01-16 03:56:44.023] RES [112] method=stats status=OK duration=33ms
+[2026-01-16 03:57:43.915] REQ [113] method=health
+[2026-01-16 03:57:43.956] RES [113] method=health status=OK duration=41ms
+[2026-01-16 03:57:43.990] REQ [114] method=stats
+[2026-01-16 03:57:44.023] RES [114] method=stats status=OK duration=33ms
+[2026-01-16 03:58:43.914] REQ [115] method=health
+[2026-01-16 03:58:43.956] RES [115] method=health status=OK duration=41ms
+[2026-01-16 03:58:43.990] REQ [116] method=stats
+[2026-01-16 03:58:44.023] RES [116] method=stats status=OK duration=33ms
+[2026-01-16 03:59:43.915] REQ [117] method=health
+[2026-01-16 03:59:43.956] RES [117] method=health status=OK duration=41ms
+[2026-01-16 03:59:43.990] REQ [118] method=stats
+[2026-01-16 03:59:44.023] RES [118] method=stats status=OK duration=33ms
+[2026-01-16 04:00:43.914] REQ [119] method=health
+[2026-01-16 04:00:43.946] RES [119] method=health status=OK duration=32ms
+[2026-01-16 04:00:43.969] REQ [120] method=stats
+[2026-01-16 04:00:43.991] RES [120] method=stats status=OK duration=22ms
+[2026-01-16 04:01:43.914] REQ [121] method=health
+[2026-01-16 04:01:43.957] RES [121] method=health status=OK duration=42ms
+[2026-01-16 04:01:44.015] REQ [122] method=stats
+[2026-01-16 04:01:44.058] RES [122] method=stats status=OK duration=43ms
+[2026-01-16 04:02:43.915] REQ [123] method=health
+[2026-01-16 04:02:43.957] RES [123] method=health status=OK duration=42ms
+[2026-01-16 04:02:43.991] REQ [124] method=stats
+[2026-01-16 04:02:44.025] RES [124] method=stats status=OK duration=33ms
+[2026-01-16 04:03:43.915] REQ [125] method=health
+[2026-01-16 04:03:43.958] RES [125] method=health status=OK duration=42ms
+[2026-01-16 04:03:43.991] REQ [126] method=stats
+[2026-01-16 04:03:44.025] RES [126] method=stats status=OK duration=33ms
+[2026-01-16 04:04:43.916] REQ [127] method=health
+[2026-01-16 04:04:43.958] RES [127] method=health status=OK duration=41ms
+[2026-01-16 04:04:43.992] REQ [128] method=stats
+[2026-01-16 04:04:44.025] RES [128] method=stats status=OK duration=33ms
+[2026-01-16 04:05:43.917] REQ [129] method=health
+[2026-01-16 04:05:43.958] RES [129] method=health status=OK duration=40ms
+[2026-01-16 04:05:43.991] REQ [130] method=stats
+[2026-01-16 04:05:44.025] RES [130] method=stats status=OK duration=33ms
+[2026-01-16 04:06:43.917] REQ [131] method=health
+[2026-01-16 04:06:43.959] RES [131] method=health status=OK duration=42ms
+[2026-01-16 04:06:44.016] REQ [132] method=stats
+[2026-01-16 04:06:44.060] RES [132] method=stats status=OK duration=44ms
+[2026-01-16 04:07:43.917] REQ [133] method=health
+[2026-01-16 04:07:43.959] RES [133] method=health status=OK duration=42ms
+[2026-01-16 04:07:43.993] REQ [134] method=stats
+[2026-01-16 04:07:44.026] RES [134] method=stats status=OK duration=33ms
+[2026-01-16 04:08:43.916] REQ [135] method=health
+[2026-01-16 04:08:43.959] RES [135] method=health status=OK duration=42ms
+[2026-01-16 04:08:43.993] REQ [136] method=stats
+[2026-01-16 04:08:44.026] RES [136] method=stats status=OK duration=33ms
+[2026-01-16 04:09:43.917] REQ [137] method=health
+[2026-01-16 04:09:43.959] RES [137] method=health status=OK duration=41ms
+[2026-01-16 04:09:43.993] REQ [138] method=stats
+[2026-01-16 04:09:44.026] RES [138] method=stats status=OK duration=33ms
+[2026-01-16 04:10:43.918] REQ [139] method=health
+[2026-01-16 04:10:43.959] RES [139] method=health status=OK duration=40ms
+[2026-01-16 04:10:43.993] REQ [140] method=stats
+[2026-01-16 04:10:44.026] RES [140] method=stats status=OK duration=33ms
+[2026-01-16 04:11:43.919] REQ [141] method=health
+[2026-01-16 04:11:43.959] RES [141] method=health status=OK duration=39ms
+[2026-01-16 04:11:43.992] REQ [142] method=stats
+[2026-01-16 04:11:44.026] RES [142] method=stats status=OK duration=33ms
+[2026-01-16 04:12:43.919] REQ [143] method=health
+[2026-01-16 04:12:43.960] RES [143] method=health status=OK duration=40ms
+[2026-01-16 04:12:44.007] REQ [144] method=stats
+[2026-01-16 04:12:44.038] RES [144] method=stats status=OK duration=31ms
+[2026-01-16 04:13:43.919] REQ [145] method=health
+[2026-01-16 04:13:43.960] RES [145] method=health status=OK duration=40ms
+[2026-01-16 04:13:43.994] REQ [146] method=stats
+[2026-01-16 04:13:44.027] RES [146] method=stats status=OK duration=32ms
+[2026-01-16 04:14:43.919] REQ [147] method=health
+[2026-01-16 04:14:43.971] RES [147] method=health status=OK duration=51ms
+[2026-01-16 04:14:44.005] REQ [148] method=stats
+[2026-01-16 04:14:44.038] RES [148] method=stats status=OK duration=33ms
+[2026-01-16 04:15:43.920] REQ [149] method=health
+[2026-01-16 04:15:44.056] RES [149] method=health status=OK duration=136ms
+[2026-01-16 04:15:44.105] REQ [150] method=stats
+[2026-01-16 04:15:44.138] RES [150] method=stats status=OK duration=33ms
+[2026-01-16 04:16:43.920] REQ [151] method=health
+[2026-01-16 04:16:43.971] RES [151] method=health status=OK duration=51ms
+[2026-01-16 04:16:44.005] REQ [152] method=stats
+[2026-01-16 04:16:44.038] RES [152] method=stats status=OK duration=32ms
+[2026-01-16 04:17:43.920] REQ [153] method=health
+[2026-01-16 04:17:43.961] RES [153] method=health status=OK duration=40ms
+[2026-01-16 04:17:43.995] REQ [154] method=stats
+[2026-01-16 04:17:44.028] RES [154] method=stats status=OK duration=33ms
+[2026-01-16 04:18:43.921] REQ [155] method=health
+[2026-01-16 04:18:43.961] RES [155] method=health status=OK duration=39ms
+[2026-01-16 04:18:43.995] REQ [156] method=stats
+[2026-01-16 04:18:44.028] RES [156] method=stats status=OK duration=33ms
+[2026-01-16 04:19:43.921] REQ [157] method=health
+[2026-01-16 04:19:43.961] RES [157] method=health status=OK duration=39ms
+[2026-01-16 04:19:43.995] REQ [158] method=stats
+[2026-01-16 04:19:44.028] RES [158] method=stats status=OK duration=33ms
+[2026-01-16 04:20:43.922] REQ [159] method=health
+[2026-01-16 04:20:43.972] RES [159] method=health status=OK duration=50ms
+[2026-01-16 04:20:44.006] REQ [160] method=stats
+[2026-01-16 04:20:44.039] RES [160] method=stats status=OK duration=33ms
+[2026-01-16 04:21:43.921] REQ [161] method=health
+[2026-01-16 04:21:43.972] RES [161] method=health status=OK duration=51ms
+[2026-01-16 04:21:44.006] REQ [162] method=stats
+[2026-01-16 04:21:44.039] RES [162] method=stats status=OK duration=33ms
+[2026-01-16 04:22:43.922] REQ [163] method=health
+[2026-01-16 04:22:43.972] RES [163] method=health status=OK duration=50ms
+[2026-01-16 04:22:44.017] REQ [164] method=stats
+[2026-01-16 04:22:44.061] RES [164] method=stats status=OK duration=44ms
+[2026-01-16 04:23:43.921] REQ [165] method=health
+[2026-01-16 04:23:43.962] RES [165] method=health status=OK duration=40ms
+[2026-01-16 04:23:43.996] REQ [166] method=stats
+[2026-01-16 04:23:44.029] RES [166] method=stats status=OK duration=33ms
+[2026-01-16 04:24:43.922] REQ [167] method=health
+[2026-01-16 04:24:43.962] RES [167] method=health status=OK duration=40ms
+[2026-01-16 04:24:43.996] REQ [168] method=stats
+[2026-01-16 04:24:44.062] RES [168] method=stats status=OK duration=66ms
+[2026-01-16 04:25:43.923] REQ [169] method=health
+[2026-01-16 04:25:43.962] RES [169] method=health status=OK duration=39ms
+[2026-01-16 04:25:43.996] REQ [170] method=stats
+[2026-01-16 04:25:44.029] RES [170] method=stats status=OK duration=33ms
+[2026-01-16 04:26:43.923] REQ [171] method=health
+[2026-01-16 04:26:43.995] RES [171] method=health status=OK duration=71ms
+[2026-01-16 04:26:44.029] REQ [172] method=stats
+[2026-01-16 04:26:44.062] RES [172] method=stats status=OK duration=33ms
+[2026-01-16 04:27:43.922] REQ [173] method=health
+[2026-01-16 04:27:43.973] RES [173] method=health status=OK duration=50ms
+[2026-01-16 04:27:44.007] REQ [174] method=stats
+[2026-01-16 04:27:44.040] RES [174] method=stats status=OK duration=33ms
+[2026-01-16 04:28:43.922] REQ [175] method=health
+[2026-01-16 04:28:43.950] RES [175] method=health status=OK duration=27ms
+[2026-01-16 04:28:43.984] REQ [176] method=stats
+[2026-01-16 04:28:44.017] RES [176] method=stats status=OK duration=33ms
+[2026-01-16 04:29:43.923] REQ [177] method=health
+[2026-01-16 04:29:43.962] RES [177] method=health status=OK duration=38ms
+[2026-01-16 04:29:43.996] REQ [178] method=stats
+[2026-01-16 04:29:44.030] RES [178] method=stats status=OK duration=33ms
+[2026-01-16 04:30:43.924] REQ [179] method=health
+[2026-01-16 04:30:43.962] RES [179] method=health status=OK duration=37ms
+[2026-01-16 04:30:43.985] REQ [180] method=stats
+[2026-01-16 04:30:44.018] RES [180] method=stats status=OK duration=33ms
+[2026-01-16 04:31:43.925] REQ [181] method=health
+[2026-01-16 04:31:43.973] RES [181] method=health status=OK duration=47ms
+[2026-01-16 04:31:44.007] REQ [182] method=stats
+[2026-01-16 04:31:44.040] RES [182] method=stats status=OK duration=33ms
+[2026-01-16 04:32:43.925] REQ [183] method=health
+[2026-01-16 04:32:43.973] RES [183] method=health status=OK duration=47ms
+[2026-01-16 04:32:44.007] REQ [184] method=stats
+[2026-01-16 04:32:44.040] RES [184] method=stats status=OK duration=33ms
+[2026-01-16 04:33:43.925] REQ [185] method=health
+[2026-01-16 04:33:43.973] RES [185] method=health status=OK duration=47ms
+[2026-01-16 04:33:44.007] REQ [186] method=stats
+[2026-01-16 04:33:44.040] RES [186] method=stats status=OK duration=33ms
+[2026-01-16 04:34:43.926] REQ [187] method=health
+[2026-01-16 04:34:43.974] RES [187] method=health status=OK duration=47ms
+[2026-01-16 04:34:44.008] REQ [188] method=stats
+[2026-01-16 04:34:44.041] RES [188] method=stats status=OK duration=33ms
+[2026-01-16 04:35:43.926] REQ [189] method=health
+[2026-01-16 04:35:43.962] RES [189] method=health status=OK duration=36ms
+[2026-01-16 04:35:43.985] REQ [190] method=stats
+[2026-01-16 04:35:44.008] RES [190] method=stats status=OK duration=22ms
+[2026-01-16 04:36:43.925] REQ [191] method=health
+[2026-01-16 04:36:43.962] RES [191] method=health status=OK duration=37ms
+[2026-01-16 04:36:43.996] REQ [192] method=stats
+[2026-01-16 04:36:44.029] RES [192] method=stats status=OK duration=33ms
+[2026-01-16 04:37:43.926] REQ [193] method=health
+[2026-01-16 04:37:43.962] RES [193] method=health status=OK duration=36ms
+[2026-01-16 04:37:43.996] REQ [194] method=stats
+[2026-01-16 04:37:44.030] RES [194] method=stats status=OK duration=33ms
+[2026-01-16 04:38:43.926] REQ [195] method=health
+[2026-01-16 04:38:44.006] RES [195] method=health status=OK duration=80ms
+[2026-01-16 04:38:44.040] REQ [196] method=stats
+[2026-01-16 04:38:44.074] RES [196] method=stats status=OK duration=33ms
+[2026-01-16 04:39:43.926] REQ [197] method=health
+[2026-01-16 04:39:43.998] RES [197] method=health status=OK duration=71ms
+[2026-01-16 04:39:44.040] REQ [198] method=stats
+[2026-01-16 04:39:44.074] RES [198] method=stats status=OK duration=33ms
+[2026-01-16 04:40:43.926] REQ [199] method=health
+[2026-01-16 04:40:43.974] RES [199] method=health status=OK duration=48ms
+[2026-01-16 04:40:44.008] REQ [200] method=stats
+[2026-01-16 04:40:44.042] RES [200] method=stats status=OK duration=33ms
+[2026-01-16 04:41:43.925] REQ [201] method=health
+[2026-01-16 04:41:43.963] RES [201] method=health status=OK duration=37ms
+[2026-01-16 04:41:43.985] REQ [202] method=stats
+[2026-01-16 04:41:44.008] RES [202] method=stats status=OK duration=22ms
+[2026-01-16 04:42:43.925] REQ [203] method=health
+[2026-01-16 04:42:43.963] RES [203] method=health status=OK duration=37ms
+[2026-01-16 04:42:43.997] REQ [204] method=stats
+[2026-01-16 04:42:44.030] RES [204] method=stats status=OK duration=33ms
+[2026-01-16 04:43:43.925] REQ [205] method=health
+[2026-01-16 04:43:43.974] RES [205] method=health status=OK duration=48ms
+[2026-01-16 04:43:44.008] REQ [206] method=stats
+[2026-01-16 04:43:44.042] RES [206] method=stats status=OK duration=33ms
+[2026-01-16 04:44:43.926] REQ [207] method=health
+[2026-01-16 04:44:43.974] RES [207] method=health status=OK duration=47ms
+[2026-01-16 04:44:44.008] REQ [208] method=stats
+[2026-01-16 04:44:44.041] RES [208] method=stats status=OK duration=33ms
+[2026-01-16 04:45:43.926] REQ [209] method=health
+[2026-01-16 04:45:43.963] RES [209] method=health status=OK duration=37ms
+[2026-01-16 04:45:43.997] REQ [210] method=stats
+[2026-01-16 04:45:44.030] RES [210] method=stats status=OK duration=33ms
+[2026-01-16 04:46:43.926] REQ [211] method=health
+[2026-01-16 04:46:43.964] RES [211] method=health status=OK duration=38ms
+[2026-01-16 04:46:43.998] REQ [212] method=stats
+[2026-01-16 04:46:44.020] RES [212] method=stats status=OK duration=22ms
+[2026-01-16 04:47:43.926] REQ [213] method=health
+[2026-01-16 04:47:43.964] RES [213] method=health status=OK duration=37ms
+[2026-01-16 04:47:43.998] REQ [214] method=stats
+[2026-01-16 04:47:44.031] RES [214] method=stats status=OK duration=33ms
+[2026-01-16 04:48:43.926] REQ [215] method=health
+[2026-01-16 04:48:43.964] RES [215] method=health status=OK duration=37ms
+[2026-01-16 04:48:43.997] REQ [216] method=stats
+[2026-01-16 04:48:44.031] RES [216] method=stats status=OK duration=33ms
+[2026-01-16 04:49:43.925] REQ [217] method=health
+[2026-01-16 04:49:43.963] RES [217] method=health status=OK duration=38ms
+[2026-01-16 04:49:43.997] REQ [218] method=stats
+[2026-01-16 04:49:44.031] RES [218] method=stats status=OK duration=33ms
+[2026-01-16 04:50:43.925] REQ [219] method=health
+[2026-01-16 04:50:43.974] RES [219] method=health status=OK duration=49ms
+[2026-01-16 04:50:44.008] REQ [220] method=stats
+[2026-01-16 04:50:44.041] RES [220] method=stats status=OK duration=32ms
+[2026-01-16 04:51:43.926] REQ [221] method=health
+[2026-01-16 04:51:43.965] RES [221] method=health status=OK duration=38ms
+[2026-01-16 04:51:43.999] REQ [222] method=stats
+[2026-01-16 04:51:44.032] RES [222] method=stats status=OK duration=33ms
+[2026-01-16 04:52:43.927] REQ [223] method=health
+[2026-01-16 04:52:43.964] RES [223] method=health status=OK duration=37ms
+[2026-01-16 04:52:43.998] REQ [224] method=stats
+[2026-01-16 04:52:44.031] RES [224] method=stats status=OK duration=33ms
+[2026-01-16 04:53:43.927] REQ [225] method=health
+[2026-01-16 04:53:43.975] RES [225] method=health status=OK duration=48ms
+[2026-01-16 04:53:44.009] REQ [226] method=stats
+[2026-01-16 04:53:44.043] RES [226] method=stats status=OK duration=33ms
+[2026-01-16 04:54:43.928] REQ [227] method=health
+[2026-01-16 04:54:43.976] RES [227] method=health status=OK duration=47ms
+[2026-01-16 04:54:44.010] REQ [228] method=stats
+[2026-01-16 04:54:44.043] RES [228] method=stats status=OK duration=33ms
+[2026-01-16 04:55:43.928] REQ [229] method=health
+[2026-01-16 04:55:43.976] RES [229] method=health status=OK duration=47ms
+[2026-01-16 04:55:44.009] REQ [230] method=stats
+[2026-01-16 04:55:44.043] RES [230] method=stats status=OK duration=33ms
+[2026-01-16 04:56:43.928] REQ [231] method=health
+[2026-01-16 04:56:43.975] RES [231] method=health status=OK duration=47ms
+[2026-01-16 04:56:44.009] REQ [232] method=stats
+[2026-01-16 04:56:44.043] RES [232] method=stats status=OK duration=33ms
+[2026-01-16 04:57:43.928] REQ [233] method=health
+[2026-01-16 04:57:43.965] RES [233] method=health status=OK duration=37ms
+[2026-01-16 04:57:44.000] REQ [234] method=stats
+[2026-01-16 04:57:44.033] RES [234] method=stats status=OK duration=33ms
+[2026-01-16 04:58:43.927] REQ [235] method=health
+[2026-01-16 04:58:43.965] RES [235] method=health status=OK duration=37ms
+[2026-01-16 04:58:43.999] REQ [236] method=stats
+[2026-01-16 04:58:44.033] RES [236] method=stats status=OK duration=33ms
+[2026-01-16 04:59:43.927] REQ [237] method=health
+[2026-01-16 04:59:43.965] RES [237] method=health status=OK duration=37ms
+[2026-01-16 04:59:43.999] REQ [238] method=stats
+[2026-01-16 04:59:44.032] RES [238] method=stats status=OK duration=33ms
+[2026-01-16 05:00:43.928] REQ [239] method=health
+[2026-01-16 05:00:43.967] RES [239] method=health status=OK duration=38ms
+[2026-01-16 05:00:44.001] REQ [240] method=stats
+[2026-01-16 05:00:44.034] RES [240] method=stats status=OK duration=33ms
+[2026-01-16 05:01:43.927] REQ [241] method=health
+[2026-01-16 05:01:43.967] RES [241] method=health status=OK duration=39ms
+[2026-01-16 05:01:43.989] REQ [242] method=stats
+[2026-01-16 05:01:44.012] RES [242] method=stats status=OK duration=22ms
+[2026-01-16 05:02:43.928] REQ [243] method=health
+[2026-01-16 05:02:43.968] RES [243] method=health status=OK duration=39ms
+[2026-01-16 05:02:44.025] REQ [244] method=stats
+[2026-01-16 05:02:44.068] RES [244] method=stats status=OK duration=42ms
+[2026-01-16 05:03:43.929] REQ [245] method=health
+[2026-01-16 05:03:43.979] RES [245] method=health status=OK duration=50ms
+[2026-01-16 05:03:44.014] REQ [246] method=stats
+[2026-01-16 05:03:44.046] RES [246] method=stats status=OK duration=32ms
+[2026-01-16 05:04:43.929] REQ [247] method=health
+[2026-01-16 05:04:43.979] RES [247] method=health status=OK duration=50ms
+[2026-01-16 05:04:44.013] REQ [248] method=stats
+[2026-01-16 05:04:44.046] RES [248] method=stats status=OK duration=33ms
+[2026-01-16 05:05:43.929] REQ [249] method=health
+[2026-01-16 05:05:43.979] RES [249] method=health status=OK duration=50ms
+[2026-01-16 05:05:44.013] REQ [250] method=stats
+[2026-01-16 05:05:44.046] RES [250] method=stats status=OK duration=33ms
+[2026-01-16 05:06:43.929] REQ [251] method=health
+[2026-01-16 05:06:43.968] RES [251] method=health status=OK duration=39ms
+[2026-01-16 05:06:44.002] REQ [252] method=stats
+[2026-01-16 05:06:44.035] RES [252] method=stats status=OK duration=33ms
+[2026-01-16 05:07:43.929] REQ [253] method=health
+[2026-01-16 05:07:43.969] RES [253] method=health status=OK duration=40ms
+[2026-01-16 05:07:44.003] REQ [254] method=stats
+[2026-01-16 05:07:44.036] RES [254] method=stats status=OK duration=33ms
+[2026-01-16 05:08:43.929] REQ [255] method=health
+[2026-01-16 05:08:43.969] RES [255] method=health status=OK duration=40ms
+[2026-01-16 05:08:44.003] REQ [256] method=stats
+[2026-01-16 05:08:44.036] RES [256] method=stats status=OK duration=33ms
+[2026-01-16 05:09:43.928] REQ [257] method=health
+[2026-01-16 05:09:43.969] RES [257] method=health status=OK duration=40ms
+[2026-01-16 05:09:44.003] REQ [258] method=stats
+[2026-01-16 05:09:44.036] RES [258] method=stats status=OK duration=33ms
+[2026-01-16 05:10:43.929] REQ [259] method=health
+[2026-01-16 05:10:43.980] RES [259] method=health status=OK duration=50ms
+[2026-01-16 05:10:44.015] REQ [260] method=stats
+[2026-01-16 05:10:44.047] RES [260] method=stats status=OK duration=32ms
+[2026-01-16 05:11:43.929] REQ [261] method=health
+[2026-01-16 05:11:43.999] RES [261] method=health status=OK duration=70ms
+[2026-01-16 05:11:44.047] REQ [262] method=stats
+[2026-01-16 05:11:44.080] RES [262] method=stats status=OK duration=33ms
+[2026-01-16 05:12:43.929] REQ [263] method=health
+[2026-01-16 05:12:43.957] RES [263] method=health status=OK duration=28ms
+[2026-01-16 05:12:43.991] REQ [264] method=stats
+[2026-01-16 05:12:44.025] RES [264] method=stats status=OK duration=33ms
+[2026-01-16 05:13:43.929] REQ [265] method=health
+[2026-01-16 05:13:43.981] RES [265] method=health status=OK duration=51ms
+[2026-01-16 05:13:44.026] REQ [266] method=stats
+[2026-01-16 05:13:44.071] RES [266] method=stats status=OK duration=44ms
+[2026-01-16 05:14:43.930] REQ [267] method=health
+[2026-01-16 05:14:43.970] RES [267] method=health status=OK duration=39ms
+[2026-01-16 05:14:44.003] REQ [268] method=stats
+[2026-01-16 05:14:44.037] RES [268] method=stats status=OK duration=33ms
+[2026-01-16 05:15:43.929] REQ [269] method=health
+[2026-01-16 05:15:43.980] RES [269] method=health status=OK duration=50ms
+[2026-01-16 05:15:44.014] REQ [270] method=stats
+[2026-01-16 05:15:44.047] RES [270] method=stats status=OK duration=33ms
+[2026-01-16 05:16:43.929] REQ [271] method=health
+[2026-01-16 05:16:43.981] RES [271] method=health status=OK duration=51ms
+[2026-01-16 05:16:44.015] REQ [272] method=stats
+[2026-01-16 05:16:44.048] RES [272] method=stats status=OK duration=33ms
+[2026-01-16 05:17:43.929] REQ [273] method=health
+[2026-01-16 05:17:43.969] RES [273] method=health status=OK duration=40ms
+[2026-01-16 05:17:44.003] REQ [274] method=stats
+[2026-01-16 05:17:44.037] RES [274] method=stats status=OK duration=33ms
+[2026-01-16 05:18:43.929] REQ [275] method=health
+[2026-01-16 05:18:43.980] RES [275] method=health status=OK duration=50ms
+[2026-01-16 05:18:44.014] REQ [276] method=stats
+[2026-01-16 05:18:44.048] RES [276] method=stats status=OK duration=33ms
+[2026-01-16 05:19:43.929] REQ [277] method=health
+[2026-01-16 05:19:43.959] RES [277] method=health status=OK duration=30ms
+[2026-01-16 05:19:43.993] REQ [278] method=stats
+[2026-01-16 05:19:44.026] RES [278] method=stats status=OK duration=33ms
+[2026-01-16 05:20:43.930] REQ [279] method=health
+[2026-01-16 05:20:43.970] RES [279] method=health status=OK duration=40ms
+[2026-01-16 05:20:44.004] REQ [280] method=stats
+[2026-01-16 05:20:44.038] RES [280] method=stats status=OK duration=33ms
+[2026-01-16 05:21:43.929] REQ [281] method=health
+[2026-01-16 05:21:43.981] RES [281] method=health status=OK duration=51ms
+[2026-01-16 05:21:44.015] REQ [282] method=stats
+[2026-01-16 05:21:44.049] RES [282] method=stats status=OK duration=33ms
+[2026-01-16 05:22:43.930] REQ [283] method=health
+[2026-01-16 05:22:43.970] RES [283] method=health status=OK duration=40ms
+[2026-01-16 05:22:44.004] REQ [284] method=stats
+[2026-01-16 05:22:44.038] RES [284] method=stats status=OK duration=33ms
+[2026-01-16 05:23:43.930] REQ [285] method=health
+[2026-01-16 05:23:43.981] RES [285] method=health status=OK duration=51ms
+[2026-01-16 05:23:44.015] REQ [286] method=stats
+[2026-01-16 05:23:44.049] RES [286] method=stats status=OK duration=33ms
+[2026-01-16 05:24:43.930] REQ [287] method=health
+[2026-01-16 05:24:43.981] RES [287] method=health status=OK duration=51ms
+[2026-01-16 05:24:44.026] REQ [288] method=stats
+[2026-01-16 05:24:44.071] RES [288] method=stats status=OK duration=44ms
+[2026-01-16 05:25:43.930] REQ [289] method=health
+[2026-01-16 05:25:43.972] RES [289] method=health status=OK duration=41ms
+[2026-01-16 05:25:44.006] REQ [290] method=stats
+[2026-01-16 05:25:44.039] RES [290] method=stats status=OK duration=33ms
+[2026-01-16 05:26:43.930] REQ [291] method=health
+[2026-01-16 05:26:43.971] RES [291] method=health status=OK duration=41ms
+[2026-01-16 05:26:44.005] REQ [292] method=stats
+[2026-01-16 05:26:44.039] RES [292] method=stats status=OK duration=33ms
+[2026-01-16 05:27:43.930] REQ [293] method=health
+[2026-01-16 05:27:43.971] RES [293] method=health status=OK duration=41ms
+[2026-01-16 05:27:44.005] REQ [294] method=stats
+[2026-01-16 05:27:44.038] RES [294] method=stats status=OK duration=33ms
+[2026-01-16 05:28:43.929] REQ [295] method=health
+[2026-01-16 05:28:43.971] RES [295] method=health status=OK duration=41ms
+[2026-01-16 05:28:44.005] REQ [296] method=stats
+[2026-01-16 05:28:44.038] RES [296] method=stats status=OK duration=33ms
+[2026-01-16 05:29:43.930] REQ [297] method=health
+[2026-01-16 05:29:43.971] RES [297] method=health status=OK duration=41ms
+[2026-01-16 05:29:44.016] REQ [298] method=stats
+[2026-01-16 05:29:44.061] RES [298] method=stats status=OK duration=44ms
+[2026-01-16 05:30:43.929] REQ [299] method=health
+[2026-01-16 05:30:43.966] RES [299] method=health status=OK duration=37ms
+[2026-01-16 05:30:44.000] REQ [300] method=stats
+[2026-01-16 05:30:44.034] RES [300] method=stats status=OK duration=33ms
+[2026-01-16 05:31:43.930] REQ [301] method=health
+[2026-01-16 05:31:43.978] RES [301] method=health status=OK duration=48ms
+[2026-01-16 05:31:44.023] REQ [302] method=stats
+[2026-01-16 05:31:44.068] RES [302] method=stats status=OK duration=44ms
+[2026-01-16 05:32:43.930] REQ [303] method=health
+[2026-01-16 05:32:43.966] RES [303] method=health status=OK duration=36ms
+[2026-01-16 05:32:44.000] REQ [304] method=stats
+[2026-01-16 05:32:44.034] RES [304] method=stats status=OK duration=33ms
+[2026-01-16 05:33:43.931] REQ [305] method=health
+[2026-01-16 05:33:43.979] RES [305] method=health status=OK duration=47ms
+[2026-01-16 05:33:44.013] REQ [306] method=stats
+[2026-01-16 05:33:44.046] RES [306] method=stats status=OK duration=33ms
+[2026-01-16 05:34:43.932] REQ [307] method=health
+[2026-01-16 05:34:43.979] RES [307] method=health status=OK duration=47ms
+[2026-01-16 05:34:44.013] REQ [308] method=stats
+[2026-01-16 05:34:44.047] RES [308] method=stats status=OK duration=33ms
+[2026-01-16 05:35:43.932] REQ [309] method=health
+[2026-01-16 05:35:43.979] RES [309] method=health status=OK duration=47ms
+[2026-01-16 05:35:44.013] REQ [310] method=stats
+[2026-01-16 05:35:44.047] RES [310] method=stats status=OK duration=33ms
+[2026-01-16 05:36:43.931] REQ [311] method=health
+[2026-01-16 05:36:43.979] RES [311] method=health status=OK duration=47ms
+[2026-01-16 05:36:44.024] REQ [312] method=stats
+[2026-01-16 05:36:44.069] RES [312] method=stats status=OK duration=44ms
+[2026-01-16 05:37:43.931] REQ [313] method=health
+[2026-01-16 05:37:43.968] RES [313] method=health status=OK duration=37ms
+[2026-01-16 05:37:44.002] REQ [314] method=stats
+[2026-01-16 05:37:44.035] RES [314] method=stats status=OK duration=33ms
+[2026-01-16 05:38:43.932] REQ [315] method=health
+[2026-01-16 05:38:43.979] RES [315] method=health status=OK duration=47ms
+[2026-01-16 05:38:44.013] REQ [316] method=stats
+[2026-01-16 05:38:44.047] RES [316] method=stats status=OK duration=33ms
+[2026-01-16 05:39:43.932] REQ [317] method=health
+[2026-01-16 05:39:43.969] RES [317] method=health status=OK duration=37ms
+[2026-01-16 05:39:44.003] REQ [318] method=stats
+[2026-01-16 05:39:44.036] RES [318] method=stats status=OK duration=33ms
+[2026-01-16 05:40:43.931] REQ [319] method=health
+[2026-01-16 05:40:43.970] RES [319] method=health status=OK duration=38ms
+[2026-01-16 05:40:44.003] REQ [320] method=stats
+[2026-01-16 05:40:44.037] RES [320] method=stats status=OK duration=33ms
+[2026-01-16 05:41:43.932] REQ [321] method=health
+[2026-01-16 05:41:43.981] RES [321] method=health status=OK duration=48ms
+[2026-01-16 05:41:44.026] REQ [322] method=stats
+[2026-01-16 05:41:44.070] RES [322] method=stats status=OK duration=44ms
+[2026-01-16 05:42:43.931] REQ [323] method=health
+[2026-01-16 05:42:43.958] RES [323] method=health status=OK duration=26ms
+[2026-01-16 05:42:43.992] REQ [324] method=stats
+[2026-01-16 05:42:44.026] RES [324] method=stats status=OK duration=33ms
+[2026-01-16 05:43:43.931] REQ [325] method=health
+[2026-01-16 05:43:43.970] RES [325] method=health status=OK duration=38ms
+[2026-01-16 05:43:44.004] REQ [326] method=stats
+[2026-01-16 05:43:44.037] RES [326] method=stats status=OK duration=33ms
+[2026-01-16 05:44:43.931] REQ [327] method=health
+[2026-01-16 05:44:43.973] RES [327] method=health status=OK duration=41ms
+[2026-01-16 05:44:44.006] REQ [328] method=stats
+[2026-01-16 05:44:44.040] RES [328] method=stats status=OK duration=33ms
+[2026-01-16 05:45:43.932] REQ [329] method=health
+[2026-01-16 05:45:43.972] RES [329] method=health status=OK duration=40ms
+[2026-01-16 05:45:44.006] REQ [330] method=stats
+[2026-01-16 05:45:44.040] RES [330] method=stats status=OK duration=33ms
+[2026-01-16 05:46:43.932] REQ [331] method=health
+[2026-01-16 05:46:43.972] RES [331] method=health status=OK duration=40ms
+[2026-01-16 05:46:44.007] REQ [332] method=stats
+[2026-01-16 05:46:44.040] RES [332] method=stats status=OK duration=33ms
+[2026-01-16 05:47:43.931] REQ [333] method=health
+[2026-01-16 05:47:43.972] RES [333] method=health status=OK duration=41ms
+[2026-01-16 05:47:44.006] REQ [334] method=stats
+[2026-01-16 05:47:44.040] RES [334] method=stats status=OK duration=33ms
+[2026-01-16 05:48:43.931] REQ [335] method=health
+[2026-01-16 05:48:43.972] RES [335] method=health status=OK duration=40ms
+[2026-01-16 05:48:44.006] REQ [336] method=stats
+[2026-01-16 05:48:44.039] RES [336] method=stats status=OK duration=33ms
+[2026-01-16 05:49:43.932] REQ [337] method=health
+[2026-01-16 05:49:43.972] RES [337] method=health status=OK duration=40ms
+[2026-01-16 05:49:44.006] REQ [338] method=stats
+[2026-01-16 05:49:44.040] RES [338] method=stats status=OK duration=33ms
+[2026-01-16 05:50:43.931] REQ [339] method=health
+[2026-01-16 05:50:43.973] RES [339] method=health status=OK duration=41ms
+[2026-01-16 05:50:44.007] REQ [340] method=stats
+[2026-01-16 05:50:44.040] RES [340] method=stats status=OK duration=33ms
+[2026-01-16 05:51:43.932] REQ [341] method=health
+[2026-01-16 05:51:43.973] RES [341] method=health status=OK duration=41ms
+[2026-01-16 05:51:44.018] REQ [342] method=stats
+[2026-01-16 05:51:44.062] RES [342] method=stats status=OK duration=44ms
+[2026-01-16 05:52:43.931] REQ [343] method=health
+[2026-01-16 05:52:43.984] RES [343] method=health status=OK duration=53ms
+[2026-01-16 05:52:44.018] REQ [344] method=stats
+[2026-01-16 05:52:44.051] RES [344] method=stats status=OK duration=33ms
+[2026-01-16 05:53:43.931] REQ [345] method=health
+[2026-01-16 05:53:43.973] RES [345] method=health status=OK duration=41ms
+[2026-01-16 05:53:44.007] REQ [346] method=stats
+[2026-01-16 05:53:44.040] RES [346] method=stats status=OK duration=33ms
+[2026-01-16 05:54:43.932] REQ [347] method=health
+[2026-01-16 05:54:43.973] RES [347] method=health status=OK duration=41ms
+[2026-01-16 05:54:44.007] REQ [348] method=stats
+[2026-01-16 05:54:44.040] RES [348] method=stats status=OK duration=33ms
+[2026-01-16 05:55:43.931] REQ [349] method=health
+[2026-01-16 05:55:43.973] RES [349] method=health status=OK duration=41ms
+[2026-01-16 05:55:44.007] REQ [350] method=stats
+[2026-01-16 05:55:44.040] RES [350] method=stats status=OK duration=33ms
+[2026-01-16 05:56:43.932] REQ [351] method=health
+[2026-01-16 05:56:43.985] RES [351] method=health status=OK duration=53ms
+[2026-01-16 05:56:44.030] REQ [352] method=stats
+[2026-01-16 05:56:44.075] RES [352] method=stats status=OK duration=44ms
+[2026-01-16 05:57:43.932] REQ [353] method=health
+[2026-01-16 05:57:43.973] RES [353] method=health status=OK duration=41ms
+[2026-01-16 05:57:44.007] REQ [354] method=stats
+[2026-01-16 05:57:44.041] RES [354] method=stats status=OK duration=33ms
+[2026-01-16 05:58:43.933] REQ [355] method=health
+[2026-01-16 05:58:43.963] RES [355] method=health status=OK duration=29ms
+[2026-01-16 05:58:43.996] REQ [356] method=stats
+[2026-01-16 05:58:44.030] RES [356] method=stats status=OK duration=33ms
+[2026-01-16 05:59:43.932] REQ [357] method=health
+[2026-01-16 05:59:43.985] RES [357] method=health status=OK duration=52ms
+[2026-01-16 05:59:44.018] REQ [358] method=stats
+[2026-01-16 05:59:44.052] RES [358] method=stats status=OK duration=33ms
+[2026-01-16 06:00:43.933] REQ [359] method=health
+[2026-01-16 06:00:43.973] RES [359] method=health status=OK duration=40ms
+[2026-01-16 06:00:44.007] REQ [360] method=stats
+[2026-01-16 06:00:44.040] RES [360] method=stats status=OK duration=33ms
+[2026-01-16 06:01:43.932] REQ [361] method=health
+[2026-01-16 06:01:43.973] RES [361] method=health status=OK duration=40ms
+[2026-01-16 06:01:44.007] REQ [362] method=stats
+[2026-01-16 06:01:44.041] RES [362] method=stats status=OK duration=33ms
+[2026-01-16 06:02:43.932] REQ [363] method=health
+[2026-01-16 06:02:43.974] RES [363] method=health status=OK duration=41ms
+[2026-01-16 06:02:44.008] REQ [364] method=stats
+[2026-01-16 06:02:44.041] RES [364] method=stats status=OK duration=33ms
+[2026-01-16 06:03:43.933] REQ [365] method=health
+[2026-01-16 06:03:43.974] RES [365] method=health status=OK duration=40ms
+[2026-01-16 06:03:44.008] REQ [366] method=stats
+[2026-01-16 06:03:44.041] RES [366] method=stats status=OK duration=33ms
+[2026-01-16 06:04:43.933] REQ [367] method=health
+[2026-01-16 06:04:43.974] RES [367] method=health status=OK duration=41ms
+[2026-01-16 06:04:44.063] REQ [368] method=stats
+[2026-01-16 06:04:44.096] RES [368] method=stats status=OK duration=33ms
+[2026-01-16 06:05:43.933] REQ [369] method=health
+[2026-01-16 06:05:43.985] RES [369] method=health status=OK duration=52ms
+[2026-01-16 06:05:44.019] REQ [370] method=stats
+[2026-01-16 06:05:44.052] RES [370] method=stats status=OK duration=32ms
+[2026-01-16 06:06:43.933] REQ [371] method=health
+[2026-01-16 06:06:43.962] RES [371] method=health status=OK duration=29ms
+[2026-01-16 06:06:43.996] REQ [372] method=stats
+[2026-01-16 06:06:44.030] RES [372] method=stats status=OK duration=33ms
+[2026-01-16 06:07:43.934] REQ [373] method=health
+[2026-01-16 06:07:43.985] RES [373] method=health status=OK duration=50ms
+[2026-01-16 06:07:44.030] REQ [374] method=stats
+[2026-01-16 06:07:44.074] RES [374] method=stats status=OK duration=44ms
+[2026-01-16 06:08:43.933] REQ [375] method=health
+[2026-01-16 06:08:43.974] RES [375] method=health status=OK duration=41ms
+[2026-01-16 06:08:44.008] REQ [376] method=stats
+[2026-01-16 06:08:44.042] RES [376] method=stats status=OK duration=33ms
+[2026-01-16 06:09:43.934] REQ [377] method=health
+[2026-01-16 06:09:43.974] RES [377] method=health status=OK duration=39ms
+[2026-01-16 06:09:44.008] REQ [378] method=stats
+[2026-01-16 06:09:44.041] RES [378] method=stats status=OK duration=33ms
+[2026-01-16 06:10:43.934] REQ [379] method=health
+[2026-01-16 06:10:43.985] RES [379] method=health status=OK duration=50ms
+[2026-01-16 06:10:44.020] REQ [380] method=stats
+[2026-01-16 06:10:44.052] RES [380] method=stats status=OK duration=32ms
+[2026-01-16 06:11:43.933] REQ [381] method=health
+[2026-01-16 06:11:43.984] RES [381] method=health status=OK duration=51ms
+[2026-01-16 06:11:44.019] REQ [382] method=stats
+[2026-01-16 06:11:44.052] RES [382] method=stats status=OK duration=33ms
+[2026-01-16 06:12:43.934] REQ [383] method=health
+[2026-01-16 06:12:43.984] RES [383] method=health status=OK duration=50ms
+[2026-01-16 06:12:44.018] REQ [384] method=stats
+[2026-01-16 06:12:44.051] RES [384] method=stats status=OK duration=33ms
+[2026-01-16 06:13:43.933] REQ [385] method=health
+[2026-01-16 06:13:43.984] RES [385] method=health status=OK duration=50ms
+[2026-01-16 06:13:44.029] REQ [386] method=stats
+[2026-01-16 06:13:44.073] RES [386] method=stats status=OK duration=44ms
+[2026-01-16 06:14:43.934] REQ [387] method=health
+[2026-01-16 06:14:43.984] RES [387] method=health status=OK duration=50ms
+[2026-01-16 06:14:44.019] REQ [388] method=stats
+[2026-01-16 06:14:44.052] RES [388] method=stats status=OK duration=32ms
+[2026-01-16 06:15:43.935] REQ [389] method=health
+[2026-01-16 06:15:43.973] RES [389] method=health status=OK duration=37ms
+[2026-01-16 06:15:44.007] REQ [390] method=stats
+[2026-01-16 06:15:44.040] RES [390] method=stats status=OK duration=33ms
+[2026-01-16 06:16:43.934] REQ [391] method=health
+[2026-01-16 06:16:43.973] RES [391] method=health status=OK duration=38ms
+[2026-01-16 06:16:44.006] REQ [392] method=stats
+[2026-01-16 06:16:44.040] RES [392] method=stats status=OK duration=33ms
+[2026-01-16 06:17:43.935] REQ [393] method=health
+[2026-01-16 06:17:43.972] RES [393] method=health status=OK duration=37ms
+[2026-01-16 06:17:44.006] REQ [394] method=stats
+[2026-01-16 06:17:44.039] RES [394] method=stats status=OK duration=33ms
+[2026-01-16 06:18:43.935] REQ [395] method=health
+[2026-01-16 06:18:43.972] RES [395] method=health status=OK duration=37ms
+[2026-01-16 06:18:44.017] REQ [396] method=stats
+[2026-01-16 06:18:44.062] RES [396] method=stats status=OK duration=44ms
+[2026-01-16 06:19:43.934] REQ [397] method=health
+[2026-01-16 06:19:43.972] RES [397] method=health status=OK duration=37ms
+[2026-01-16 06:19:44.006] REQ [398] method=stats
+[2026-01-16 06:19:44.039] RES [398] method=stats status=OK duration=33ms
+[2026-01-16 06:20:43.935] REQ [399] method=health
+[2026-01-16 06:20:43.984] RES [399] method=health status=OK duration=49ms
+[2026-01-16 06:20:44.018] REQ [400] method=stats
+[2026-01-16 06:20:44.051] RES [400] method=stats status=OK duration=33ms
+[2026-01-16 06:21:43.935] REQ [401] method=health
+[2026-01-16 06:21:43.984] RES [401] method=health status=OK duration=49ms
+[2026-01-16 06:21:44.018] REQ [402] method=stats
+[2026-01-16 06:21:44.051] RES [402] method=stats status=OK duration=33ms
+[2026-01-16 06:22:43.935] REQ [403] method=health
+[2026-01-16 06:22:43.984] RES [403] method=health status=OK duration=48ms
+[2026-01-16 06:22:44.018] REQ [404] method=stats
+[2026-01-16 06:22:44.051] RES [404] method=stats status=OK duration=33ms
+[2026-01-16 06:23:43.935] REQ [405] method=health
+[2026-01-16 06:23:43.983] RES [405] method=health status=OK duration=48ms
+[2026-01-16 06:23:44.017] REQ [406] method=stats
+[2026-01-16 06:23:44.050] RES [406] method=stats status=OK duration=33ms
+[2026-01-16 06:24:43.935] REQ [407] method=health
+[2026-01-16 06:24:43.983] RES [407] method=health status=OK duration=48ms
+[2026-01-16 06:24:44.028] REQ [408] method=stats
+[2026-01-16 06:24:44.072] RES [408] method=stats status=OK duration=44ms
+[2026-01-16 06:25:43.935] REQ [409] method=health
+[2026-01-16 06:25:43.983] RES [409] method=health status=OK duration=47ms
+[2026-01-16 06:25:44.017] REQ [410] method=stats
+[2026-01-16 06:25:44.050] RES [410] method=stats status=OK duration=33ms
+[2026-01-16 06:26:43.936] REQ [411] method=health
+[2026-01-16 06:26:43.983] RES [411] method=health status=OK duration=46ms
+[2026-01-16 06:26:44.017] REQ [412] method=stats
+[2026-01-16 06:26:44.051] RES [412] method=stats status=OK duration=34ms
+[2026-01-16 06:27:34.731] REQ [413] method=health
+[2026-01-16 06:27:34.884] RES [413] method=health status=OK duration=152ms
+[2026-01-16 06:27:34.940] REQ [414] method=stats
+[2026-01-16 06:27:34.973] RES [414] method=stats status=OK duration=33ms
+[2026-01-16 06:27:43.594] REQ [415] method=health
+[2026-01-16 06:27:43.640] RES [415] method=health status=OK duration=45ms
+[2026-01-16 06:27:43.674] REQ [416] method=stats
+[2026-01-16 06:27:43.707] RES [416] method=stats status=OK duration=33ms
