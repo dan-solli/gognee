@@ -3,7 +3,7 @@
 **Plan ID:** 019  
 **Target Release:** gognee v1.3.0 → v1.4.0 (expanded scope)  
 **Epic Alignment:** Epic 7.7 (Performance Optimization) — Cognify/AddMemory/Search latency  
-**Status:** UAT Approved FINAL (2026-01-16, gpt-3.5-turbo optimization applied)  
+**Status:** Released v1.4.0 (2026-01-16)  
 **Created:** 2026-01-15  
 
 ---

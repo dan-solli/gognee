@@ -96,19 +96,20 @@ So that I can integrate knowledge graph memory into my application with a single
 
 ## Active Release Tracker
 
-**Current Working Release**: v1.4.0 (Read Path Optimization)
+**Current Working Release**: None (all approved work released)
 
 ### v1.4.0 Release - Read & Write Path Optimization
 **Target Date**: 2026-01-16
-**Status**: Committed Locally
+**Actual Release Date**: 2026-01-16
+**Status**: Released ✅
 **Strategic Goal**: Reduce search latency from ~11s to <3s via recursive CTE graph traversal and batch embeddings
 
 | Plan ID | Title | Epic | Status | Committed | Released |
 |---------|-------|------|--------|----------|----------|
-| 019 | Read/Write Path Optimization (v1.4.0) | 7.7 | UAT Approved | ✅ Yes (11d14e3) | ✗ |
+| 019 | Read/Write Path Optimization (v1.4.0) | 7.7 | Released | ✅ Yes (3e65eac) | ✅ 2026-01-16 |
 
-**Release Status**: 1 of 1 plans committed locally
-**Ready for Release**: Yes (pending push/tag approval)
+**Release Status**: ✅ RELEASED
+**Ready for Release**: N/A
 **Blocking Items**: None
 **Release Notes**:
 - M7: Batch embeddings for AddMemory/UpdateMemory (N+1 → single Embed() call)
