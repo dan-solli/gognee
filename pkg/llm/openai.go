@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"regexp"
@@ -107,7 +108,17 @@ func (o *OpenAILLM) CompleteWithSchema(ctx context.Context, prompt string, schem
 	// Strip markdown code fences if present (LLM sometimes wraps JSON in ```json ... ```)
 	cleaned := stripMarkdownCodeFence(response)
 
-	if err := json.Unmarshal([]byte(cleaned), schema); err != nil {
+	// Normalize arrays to strings where needed (handles LLM non-compliance)
+	normalized, changed, err := NormalizeJSONArraysToStrings([]byte(cleaned))
+	if err != nil {
+		return fmt.Errorf("failed to normalize LLM response: %w", err)
+	}
+
+	if changed {
+		log.Printf("gognee: LLM response contained array values where strings expected; normalized to comma-joined strings")
+	}
+
+	if err := json.Unmarshal(normalized, schema); err != nil {
 		return fmt.Errorf("failed to unmarshal LLM response: %w", err)
 	}
 

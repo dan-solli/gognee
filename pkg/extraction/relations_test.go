@@ -495,3 +495,103 @@ func TestRelationExtractorExtract_PromptContainsEntityNames(t *testing.T) {
 		t.Errorf("Expected prompt to contain 'Go'")
 	}
 }
+
+// TestRelationExtractorExtract_ObjectIsArray verifies that when the LLM returns
+// an array for the object field, it gets normalized to a comma-joined string.
+// NOTE: The normalized string may not match any entity, so validation may filter it out.
+// This test verifies the normalization happens without error (no unmarshal failure).
+func TestRelationExtractorExtract_ObjectIsArray(t *testing.T) {
+	entities := []Entity{
+		{Name: "Wishlist", Type: "Feature", Description: "Shopping wishlist feature"},
+		{Name: "Plan, Shopping Flow", Type: "Concept", Description: "Combined concept"}, // Entity matching normalized form
+	}
+
+	// LLM returns array for object field (production error case)
+	fakeLLM := &fakeLLMClient{
+		response: `[{"subject": "Wishlist", "relation": "USES", "object": ["Plan", "Shopping Flow"]}]`,
+	}
+	extractor := NewRelationExtractor(fakeLLM)
+
+	result, err := extractor.Extract(context.Background(), "Wishlist uses plan and shopping flow", entities)
+	if err != nil {
+		t.Fatalf("Extract should succeed with array normalization, got error: %v", err)
+	}
+
+	// With proper entity matching, we should get 1 result
+	if len(result) != 1 {
+		t.Fatalf("Expected 1 triplet, got %d", len(result))
+	}
+
+	// Verify normalization occurred: array became comma-joined string
+	if result[0].Subject != "Wishlist" {
+		t.Errorf("Expected subject='Wishlist', got %q", result[0].Subject)
+	}
+	if result[0].Relation != "USES" {
+		t.Errorf("Expected relation='USES', got %q", result[0].Relation)
+	}
+	if result[0].Object != "Plan, Shopping Flow" {
+		t.Errorf("Expected object='Plan, Shopping Flow' (normalized), got %q", result[0].Object)
+	}
+}
+
+// TestRelationExtractorExtract_SubjectIsArray verifies subject array normalization
+func TestRelationExtractorExtract_SubjectIsArray(t *testing.T) {
+	entities := []Entity{
+		{Name: "Alice, Bob", Type: "Team", Description: "Team members"}, // Entity matching normalized form
+		{Name: "Project", Type: "Thing", Description: "Software project"},
+	}
+
+	fakeLLM := &fakeLLMClient{
+		response: `[{"subject": ["Alice", "Bob"], "relation": "WORKS_ON", "object": "Project"}]`,
+	}
+	extractor := NewRelationExtractor(fakeLLM)
+
+	result, err := extractor.Extract(context.Background(), "Alice and Bob work on project", entities)
+	if err != nil {
+		t.Fatalf("Extract should succeed, got error: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("Expected 1 triplet, got %d", len(result))
+	}
+
+	if result[0].Subject != "Alice, Bob" {
+		t.Errorf("Expected subject='Alice, Bob', got %q", result[0].Subject)
+	}
+	if result[0].Object != "Project" {
+		t.Errorf("Expected object='Project', got %q", result[0].Object)
+	}
+}
+
+// TestRelationExtractorExtract_MultipleArrayFields verifies handling of multiple array fields
+func TestRelationExtractorExtract_MultipleArrayFields(t *testing.T) {
+	entities := []Entity{
+		{Name: "Service A, Service B", Type: "ServiceGroup", Description: "Service group"},
+		{Name: "Database, Cache", Type: "ResourceGroup", Description: "Resource group"},
+	}
+
+	// LLM returns arrays for both subject and object
+	fakeLLM := &fakeLLMClient{
+		response: `[{"subject": ["Service A", "Service B"], "relation": "DEPENDS_ON", "object": ["Database", "Cache"]}]`,
+	}
+	extractor := NewRelationExtractor(fakeLLM)
+
+	result, err := extractor.Extract(context.Background(), "Services depend on database and cache", entities)
+	if err != nil {
+		t.Fatalf("Extract should succeed, got error: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("Expected 1 triplet, got %d", len(result))
+	}
+
+	if result[0].Subject != "Service A, Service B" {
+		t.Errorf("Expected subject='Service A, Service B', got %q", result[0].Subject)
+	}
+	if result[0].Relation != "DEPENDS_ON" {
+		t.Errorf("Expected relation='DEPENDS_ON', got %q", result[0].Relation)
+	}
+	if result[0].Object != "Database, Cache" {
+		t.Errorf("Expected object='Database, Cache', got %q", result[0].Object)
+	}
+}

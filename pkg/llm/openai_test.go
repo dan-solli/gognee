@@ -370,8 +370,9 @@ func TestOpenAILLMCompleteWithSchema_InvalidJSON(t *testing.T) {
 		t.Fatal("Expected error for invalid JSON in schema, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "unmarshal") {
-		t.Errorf("Expected unmarshal error, got: %v", err)
+	// Error can be from normalization (if JSON is invalid) or unmarshal
+	if !strings.Contains(err.Error(), "normalize") && !strings.Contains(err.Error(), "unmarshal") {
+		t.Errorf("Expected normalize or unmarshal error, got: %v", err)
 	}
 }
 

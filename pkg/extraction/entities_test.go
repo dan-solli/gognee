@@ -8,6 +8,8 @@ import (
 	"log"
 	"strings"
 	"testing"
+
+	"github.com/dan-solli/gognee/pkg/llm"
 )
 
 // fakeLLMClient is a test implementation of llm.LLMClient
@@ -34,7 +36,14 @@ func (f *fakeLLMClient) CompleteWithSchema(ctx context.Context, prompt string, s
 	if f.err != nil {
 		return f.err
 	}
-	return json.Unmarshal([]byte(f.response), schema)
+	
+	// Apply normalization just like the real OpenAI client does
+	normalized, _, err := llm.NormalizeJSONArraysToStrings([]byte(f.response))
+	if err != nil {
+		return fmt.Errorf("failed to normalize LLM response: %w (input was: %q)", err, f.response)
+	}
+	
+	return json.Unmarshal(normalized, schema)
 }
 
 func TestEntityExtractorExtract_Success(t *testing.T) {
