@@ -1375,3 +1375,296 @@
 [2026-01-16 06:27:43.640] RES [415] method=health status=OK duration=45ms
 [2026-01-16 06:27:43.674] REQ [416] method=stats
 [2026-01-16 06:27:43.707] RES [416] method=stats status=OK duration=33ms
+[2026-01-24 14:23:41.548] === Glowbabe Backend v1.5.0 started ===
+[2026-01-24 14:23:42.031] PID: 3446083
+[2026-01-24 14:23:42.143] Workspace: /home/dsi/projects/gognee
+[2026-01-24 14:23:42.321] Database: /home/dsi/projects/gognee/.glowbabe/glowbabe.db
+[2026-01-24 14:23:42.577] RES [2] method=init status=OK duration=1263ms
+[2026-01-24 14:24:25.091] REQ [3] method=health
+[2026-01-24 14:24:25.143] RES [3] method=health status=OK duration=51ms
+[2026-01-24 14:24:25.188] REQ [4] method=stats
+[2026-01-24 14:24:25.245] RES [4] method=stats status=OK duration=57ms
+[2026-01-24 14:25:00.632] REQ [5] method=health
+[2026-01-24 14:25:00.677] RES [5] method=health status=OK duration=45ms
+[2026-01-24 14:25:00.711] REQ [6] method=stats
+[2026-01-24 14:25:00.745] RES [6] method=stats status=OK duration=33ms
+[2026-01-24 14:25:34.202] REQ [7] method=health
+[2026-01-24 14:25:34.245] RES [7] method=health status=OK duration=42ms
+[2026-01-24 14:25:34.279] REQ [8] method=stats
+[2026-01-24 14:25:34.312] RES [8] method=stats status=OK duration=33ms
+[2026-01-24 14:25:35.082] REQ [9] method=health
+[2026-01-24 14:25:35.112] RES [9] method=health status=OK duration=30ms
+[2026-01-24 14:25:35.147] REQ [10] method=stats
+[2026-01-24 14:25:35.179] RES [10] method=stats status=OK duration=32ms
+[2026-01-24 14:26:10.395] REQ [11] method=health
+[2026-01-24 14:26:10.435] RES [11] method=health status=OK duration=40ms
+[2026-01-24 14:26:10.469] REQ [12] method=stats
+[2026-01-24 14:26:10.503] RES [12] method=stats status=OK duration=33ms
+[2026-01-24 14:27:10.395] REQ [13] method=health
+[2026-01-24 14:27:10.440] RES [13] method=health status=OK duration=44ms
+[2026-01-24 14:27:10.473] REQ [14] method=stats
+[2026-01-24 14:27:10.506] RES [14] method=stats status=OK duration=33ms
+[2026-01-24 14:27:39.434] REQ [15] method=health
+[2026-01-24 14:27:39.476] RES [15] method=health status=OK duration=42ms
+[2026-01-24 14:27:39.510] REQ [16] method=stats
+[2026-01-24 14:27:39.543] RES [16] method=stats status=OK duration=33ms
+[2026-01-24 14:28:39.434] REQ [17] method=health
+[2026-01-24 14:28:39.488] RES [17] method=health status=OK duration=54ms
+[2026-01-24 14:28:39.522] REQ [18] method=stats
+[2026-01-24 14:28:39.555] RES [18] method=stats status=OK duration=32ms
+[2026-01-24 14:29:14.976] REQ [19] method=health
+[2026-01-24 14:29:15.002] RES [19] method=health status=OK duration=25ms
+[2026-01-24 14:29:15.036] REQ [20] method=stats
+[2026-01-24 14:29:15.069] RES [20] method=stats status=OK duration=33ms
+[2026-01-24 14:30:14.977] REQ [21] method=health
+[2026-01-24 14:30:15.025] RES [21] method=health status=OK duration=47ms
+[2026-01-24 14:30:15.059] REQ [22] method=stats
+[2026-01-24 14:30:15.092] RES [22] method=stats status=OK duration=33ms
+[2026-01-24 14:31:14.976] REQ [23] method=health
+[2026-01-24 14:31:15.024] RES [23] method=health status=OK duration=48ms
+[2026-01-24 14:31:15.058] REQ [24] method=stats
+[2026-01-24 14:31:15.092] RES [24] method=stats status=OK duration=33ms
+[2026-01-24 14:32:14.976] REQ [25] method=health
+[2026-01-24 14:32:15.024] RES [25] method=health status=OK duration=47ms
+[2026-01-24 14:32:15.058] REQ [26] method=stats
+[2026-01-24 14:32:15.091] RES [26] method=stats status=OK duration=33ms
+[2026-01-24 14:33:14.977] REQ [27] method=health
+[2026-01-24 14:33:15.035] RES [27] method=health status=OK duration=58ms
+[2026-01-24 14:33:15.080] REQ [28] method=stats
+[2026-01-24 14:33:15.125] RES [28] method=stats status=OK duration=44ms
+[2026-01-24 14:33:24.986] REQ [29] method=health
+[2026-01-24 14:33:25.035] RES [29] method=health status=OK duration=49ms
+[2026-01-24 14:33:25.080] REQ [30] method=stats
+[2026-01-24 14:33:25.125] RES [30] method=stats status=OK duration=44ms
+[2026-01-24 14:34:24.986] REQ [31] method=health
+[2026-01-24 14:34:25.037] RES [31] method=health status=OK duration=50ms
+[2026-01-24 14:34:25.073] REQ [32] method=stats
+[2026-01-24 14:34:25.105] RES [32] method=stats status=OK duration=32ms
+[2026-01-24 14:36:05.085] REQ [33] method=health
+[2026-01-24 14:36:05.136] RES [33] method=health status=OK duration=51ms
+[2026-01-24 14:36:05.171] REQ [34] method=stats
+[2026-01-24 14:36:05.204] RES [34] method=stats status=OK duration=33ms
+[2026-01-24 14:36:30.761] REQ [35] method=health
+[2026-01-24 14:36:30.793] RES [35] method=health status=OK duration=32ms
+[2026-01-24 14:36:30.827] REQ [36] method=stats
+[2026-01-24 14:36:30.860] RES [36] method=stats status=OK duration=33ms
+[2026-01-24 14:37:30.761] REQ [37] method=health
+[2026-01-24 14:37:30.794] RES [37] method=health status=OK duration=32ms
+[2026-01-24 14:37:30.828] REQ [38] method=stats
+[2026-01-24 14:37:30.861] RES [38] method=stats status=OK duration=33ms
+[2026-01-24 14:38:30.761] REQ [39] method=health
+[2026-01-24 14:38:30.806] RES [39] method=health status=OK duration=44ms
+[2026-01-24 14:38:30.840] REQ [40] method=stats
+[2026-01-24 14:38:30.873] RES [40] method=stats status=OK duration=33ms
+[2026-01-24 14:39:30.762] REQ [41] method=health
+[2026-01-24 14:39:30.806] RES [41] method=health status=OK duration=44ms
+[2026-01-24 14:39:30.840] REQ [42] method=stats
+[2026-01-24 14:39:30.873] RES [42] method=stats status=OK duration=33ms
+[2026-01-24 14:39:44.571] REQ [43] method=health
+[2026-01-24 14:39:44.618] RES [43] method=health status=OK duration=46ms
+[2026-01-24 14:39:44.652] REQ [44] method=stats
+[2026-01-24 14:39:44.707] RES [44] method=stats status=OK duration=54ms
+[2026-01-24 14:39:50.235] REQ [45] method=health
+[2026-01-24 14:39:50.285] RES [45] method=health status=OK duration=50ms
+[2026-01-24 14:39:50.319] REQ [46] method=stats
+[2026-01-24 14:39:50.353] RES [46] method=stats status=OK duration=33ms
+[2026-01-24 14:40:50.235] REQ [47] method=health
+[2026-01-24 14:40:50.321] RES [47] method=health status=OK duration=86ms
+[2026-01-24 14:40:50.364] REQ [48] method=stats
+[2026-01-24 14:40:50.398] RES [48] method=stats status=OK duration=33ms
+[2026-01-24 14:41:08.666] REQ [49] method=health
+[2026-01-24 14:41:08.709] RES [49] method=health status=OK duration=43ms
+[2026-01-24 14:41:08.743] REQ [50] method=stats
+[2026-01-24 14:41:08.777] RES [50] method=stats status=OK duration=33ms
+[2026-01-24 14:41:13.273] REQ [51] method=health
+[2026-01-24 14:41:13.310] RES [51] method=health status=OK duration=36ms
+[2026-01-24 14:41:13.344] REQ [52] method=stats
+[2026-01-24 14:41:13.377] RES [52] method=stats status=OK duration=33ms
+[2026-01-24 14:41:47.355] === Glowbabe Backend v1.5.0 started ===
+[2026-01-24 14:41:47.392] PID: 3465184
+[2026-01-24 14:41:47.425] Workspace: /home/dsi/projects/gognee
+[2026-01-24 14:41:47.459] Database: /home/dsi/projects/gognee/.glowbabe/glowbabe.db
+[2026-01-24 14:41:47.492] RES [2] method=init status=OK duration=138ms
+[2026-01-24 14:42:13.273] REQ [53] method=health
+[2026-01-24 14:42:13.309] RES [53] method=health status=OK duration=35ms
+[2026-01-24 14:42:13.342] REQ [54] method=stats
+[2026-01-24 14:42:13.376] RES [54] method=stats status=OK duration=33ms
+[2026-01-24 14:42:47.616] REQ [3] method=health
+[2026-01-24 14:42:47.654] RES [3] method=health status=OK duration=37ms
+[2026-01-24 14:42:47.688] REQ [4] method=stats
+[2026-01-24 14:42:47.721] RES [4] method=stats status=OK duration=32ms
+[2026-01-24 14:43:13.274] REQ [55] method=health
+[2026-01-24 14:43:13.322] RES [55] method=health status=OK duration=47ms
+[2026-01-24 14:43:13.355] REQ [56] method=stats
+[2026-01-24 14:43:13.388] RES [56] method=stats status=OK duration=33ms
+[2026-01-24 14:43:47.615] REQ [5] method=health
+[2026-01-24 14:43:47.655] RES [5] method=health status=OK duration=39ms
+[2026-01-24 14:43:47.689] REQ [6] method=stats
+[2026-01-24 14:43:47.722] RES [6] method=stats status=OK duration=32ms
+[2026-01-24 14:44:13.274] REQ [57] method=health
+[2026-01-24 14:44:13.299] RES [57] method=health status=OK duration=25ms
+[2026-01-24 14:44:13.333] REQ [58] method=stats
+[2026-01-24 14:44:13.366] RES [58] method=stats status=OK duration=33ms
+[2026-01-24 14:44:17.720] REQ [7] method=health
+[2026-01-24 14:44:17.766] RES [7] method=health status=OK duration=46ms
+[2026-01-24 14:44:17.801] REQ [8] method=stats
+[2026-01-24 14:44:17.845] RES [8] method=stats status=OK duration=44ms
+[2026-01-24 14:44:20.870] REQ [9] method=health
+[2026-01-24 14:44:20.922] RES [9] method=health status=OK duration=52ms
+[2026-01-24 14:44:20.983] REQ [10] method=stats
+[2026-01-24 14:44:21.023] RES [10] method=stats status=OK duration=40ms
+[2026-01-24 14:45:13.274] REQ [59] method=health
+[2026-01-24 14:45:13.312] RES [59] method=health status=OK duration=37ms
+[2026-01-24 14:45:13.346] REQ [60] method=stats
+[2026-01-24 14:45:13.379] RES [60] method=stats status=OK duration=33ms
+[2026-01-24 14:45:32.772] REQ [11] method=health
+[2026-01-24 14:45:32.812] RES [11] method=health status=OK duration=39ms
+[2026-01-24 14:45:32.849] REQ [12] method=stats
+[2026-01-24 14:45:32.879] RES [12] method=stats status=OK duration=30ms
+[2026-01-24 14:45:42.910] REQ [13] method=health
+[2026-01-24 14:45:42.935] RES [13] method=health status=OK duration=25ms
+[2026-01-24 14:45:42.969] REQ [14] method=stats
+[2026-01-24 14:45:43.003] RES [14] method=stats status=OK duration=33ms
+[2026-01-24 14:46:13.273] REQ [61] method=health
+[2026-01-24 14:46:13.325] RES [61] method=health status=OK duration=51ms
+[2026-01-24 14:46:13.359] REQ [62] method=stats
+[2026-01-24 14:46:13.392] RES [62] method=stats status=OK duration=33ms
+[2026-01-24 14:46:38.303] REQ [63] method=shutdown
+[2026-01-24 14:46:38.349] RES [63] method=shutdown status=OK duration=45ms
+[2026-01-24 14:46:42.910] REQ [15] method=health
+[2026-01-24 14:46:42.961] RES [15] method=health status=OK duration=51ms
+[2026-01-24 14:46:42.995] REQ [16] method=stats
+[2026-01-24 14:46:43.028] RES [16] method=stats status=OK duration=33ms
+[2026-01-24 14:47:42.909] REQ [17] method=health
+[2026-01-24 14:47:42.940] RES [17] method=health status=OK duration=30ms
+[2026-01-24 14:47:42.974] REQ [18] method=stats
+[2026-01-24 14:47:43.007] RES [18] method=stats status=OK duration=33ms
+[2026-01-24 14:48:03.398] === Glowbabe Backend v1.5.0 started ===
+[2026-01-24 14:48:03.431] PID: 3471926
+[2026-01-24 14:48:03.487] Workspace: /home/dsi/projects/gognee
+[2026-01-24 14:48:03.521] Database: /home/dsi/projects/gognee/.glowbabe/glowbabe.db
+[2026-01-24 14:48:03.555] RES [2] method=init status=OK duration=158ms
+[2026-01-24 14:48:42.910] REQ [19] method=health
+[2026-01-24 14:48:42.940] RES [19] method=health status=OK duration=29ms
+[2026-01-24 14:48:42.974] REQ [20] method=stats
+[2026-01-24 14:48:43.008] RES [20] method=stats status=OK duration=33ms
+[2026-01-24 14:49:03.827] REQ [3] method=health
+[2026-01-24 14:49:03.852] RES [3] method=health status=OK duration=25ms
+[2026-01-24 14:49:03.887] REQ [4] method=stats
+[2026-01-24 14:49:03.920] RES [4] method=stats status=OK duration=33ms
+[2026-01-24 14:49:42.911] REQ [21] method=health
+[2026-01-24 14:49:42.953] RES [21] method=health status=OK duration=42ms
+[2026-01-24 14:49:42.988] REQ [22] method=stats
+[2026-01-24 14:49:43.021] RES [22] method=stats status=OK duration=33ms
+[2026-01-24 14:50:03.827] REQ [5] method=health
+[2026-01-24 14:50:03.854] RES [5] method=health status=OK duration=26ms
+[2026-01-24 14:50:03.888] REQ [6] method=stats
+[2026-01-24 14:50:03.921] RES [6] method=stats status=OK duration=33ms
+[2026-01-24 14:50:42.910] REQ [23] method=health
+[2026-01-24 14:50:42.951] RES [23] method=health status=OK duration=40ms
+[2026-01-24 14:50:42.985] REQ [24] method=stats
+[2026-01-24 14:50:43.019] RES [24] method=stats status=OK duration=33ms
+[2026-01-24 14:51:03.827] REQ [7] method=health
+[2026-01-24 14:51:03.852] RES [7] method=health status=OK duration=25ms
+[2026-01-24 14:51:03.886] REQ [8] method=stats
+[2026-01-24 14:51:03.919] RES [8] method=stats status=OK duration=33ms
+[2026-01-24 14:51:42.911] REQ [25] method=health
+[2026-01-24 14:51:42.942] RES [25] method=health status=OK duration=31ms
+[2026-01-24 14:51:42.976] REQ [26] method=stats
+[2026-01-24 14:51:43.009] RES [26] method=stats status=OK duration=33ms
+[2026-01-24 14:52:03.827] REQ [9] method=health
+[2026-01-24 14:52:03.857] RES [9] method=health status=OK duration=30ms
+[2026-01-24 14:52:03.891] REQ [10] method=stats
+[2026-01-24 14:52:03.924] RES [10] method=stats status=OK duration=33ms
+[2026-01-24 14:52:04.148] === Glowbabe Backend v1.5.0 started ===
+[2026-01-24 14:52:04.180] PID: 3477521
+[2026-01-24 14:52:04.236] Workspace: /home/dsi/projects/gognee
+[2026-01-24 14:52:04.269] Database: /home/dsi/projects/gognee/.glowbabe/glowbabe.db
+[2026-01-24 14:52:04.303] RES [2] method=init status=OK duration=156ms
+[2026-01-24 14:52:32.972] REQ [3] method=health
+[2026-01-24 14:52:33.015] RES [3] method=health status=OK duration=42ms
+[2026-01-24 14:52:33.049] REQ [4] method=stats
+[2026-01-24 14:52:33.082] RES [4] method=stats status=OK duration=32ms
+[2026-01-24 14:52:42.911] REQ [27] method=health
+[2026-01-24 14:52:42.949] RES [27] method=health status=OK duration=38ms
+[2026-01-24 14:52:42.983] REQ [28] method=stats
+[2026-01-24 14:52:43.016] RES [28] method=stats status=OK duration=33ms
+[2026-01-24 14:52:54.059] REQ [29] method=shutdown
+[2026-01-24 14:52:54.178] RES [29] method=shutdown status=OK duration=119ms
+[2026-01-24 14:53:03.826] REQ [11] method=health
+[2026-01-24 14:53:03.863] RES [11] method=health status=OK duration=36ms
+[2026-01-24 14:53:03.897] REQ [12] method=stats
+[2026-01-24 14:53:03.930] RES [12] method=stats status=OK duration=33ms
+[2026-01-24 14:53:32.973] REQ [5] method=health
+[2026-01-24 14:53:33.008] RES [5] method=health status=OK duration=34ms
+[2026-01-24 14:53:33.042] REQ [6] method=stats
+[2026-01-24 14:53:33.075] RES [6] method=stats status=OK duration=33ms
+[2026-01-24 14:54:03.827] REQ [13] method=health
+[2026-01-24 14:54:03.853] RES [13] method=health status=OK duration=25ms
+[2026-01-24 14:54:03.887] REQ [14] method=stats
+[2026-01-24 14:54:03.920] RES [14] method=stats status=OK duration=33ms
+[2026-01-24 14:54:32.973] REQ [7] method=health
+[2026-01-24 14:54:33.011] RES [7] method=health status=OK duration=38ms
+[2026-01-24 14:54:33.045] REQ [8] method=stats
+[2026-01-24 14:54:33.078] RES [8] method=stats status=OK duration=33ms
+[2026-01-24 14:55:03.827] REQ [15] method=health
+[2026-01-24 14:55:03.891] RES [15] method=health status=OK duration=63ms
+[2026-01-24 14:55:03.936] REQ [16] method=stats
+[2026-01-24 14:55:04.002] RES [16] method=stats status=OK duration=66ms
+[2026-01-24 14:55:08.257] === Glowbabe Backend v1.5.0 started ===
+[2026-01-24 14:55:08.292] PID: 3481650
+[2026-01-24 14:55:08.326] Workspace: /home/dsi/projects/gognee
+[2026-01-24 14:55:08.359] Database: /home/dsi/projects/gognee/.glowbabe/glowbabe.db
+[2026-01-24 14:55:08.405] RES [2] method=init status=OK duration=148ms
+[2026-01-24 14:55:32.973] REQ [9] method=health
+[2026-01-24 14:55:33.021] RES [9] method=health status=OK duration=48ms
+[2026-01-24 14:55:33.067] REQ [10] method=stats
+[2026-01-24 14:55:33.111] RES [10] method=stats status=OK duration=44ms
+[2026-01-24 14:55:56.310] REQ [3] method=health
+[2026-01-24 14:55:56.344] RES [3] method=health status=OK duration=34ms
+[2026-01-24 14:55:56.378] REQ [4] method=stats
+[2026-01-24 14:55:56.412] RES [4] method=stats status=OK duration=33ms
+[2026-01-24 14:56:03.827] REQ [17] method=health
+[2026-01-24 14:56:03.867] RES [17] method=health status=OK duration=40ms
+[2026-01-24 14:56:03.901] REQ [18] method=stats
+[2026-01-24 14:56:03.934] RES [18] method=stats status=OK duration=33ms
+[2026-01-24 14:56:31.533] REQ [5] method=health
+[2026-01-24 14:56:31.579] RES [5] method=health status=OK duration=45ms
+[2026-01-24 14:56:31.613] REQ [6] method=stats
+[2026-01-24 14:56:31.647] RES [6] method=stats status=OK duration=33ms
+[2026-01-24 14:56:32.973] REQ [11] method=health
+[2026-01-24 14:56:33.004] RES [11] method=health status=OK duration=30ms
+[2026-01-24 14:56:33.038] REQ [12] method=stats
+[2026-01-24 14:56:33.071] RES [12] method=stats status=OK duration=33ms
+[2026-01-24 14:56:47.894] REQ [7] method=health
+[2026-01-24 14:56:47.938] RES [7] method=health status=OK duration=43ms
+[2026-01-24 14:56:47.972] REQ [8] method=stats
+[2026-01-24 14:56:48.061] RES [8] method=stats status=OK duration=88ms
+[2026-01-24 14:56:53.476] REQ [19] method=shutdown
+[2026-01-24 14:56:53.549] RES [19] method=shutdown status=OK duration=72ms
+[2026-01-24 14:57:27.095] REQ [9] method=health
+[2026-01-24 14:57:27.133] RES [9] method=health status=OK duration=37ms
+[2026-01-24 14:57:27.167] REQ [10] method=stats
+[2026-01-24 14:57:27.201] RES [10] method=stats status=OK duration=33ms
+[2026-01-24 14:57:32.973] REQ [13] method=health
+[2026-01-24 14:57:33.000] RES [13] method=health status=OK duration=27ms
+[2026-01-24 14:57:33.034] REQ [14] method=stats
+[2026-01-24 14:57:33.068] RES [14] method=stats status=OK duration=33ms
+[2026-01-24 14:58:27.096] REQ [11] method=health
+[2026-01-24 14:58:27.135] RES [11] method=health status=OK duration=38ms
+[2026-01-24 14:58:27.169] REQ [12] method=stats
+[2026-01-24 14:58:27.202] RES [12] method=stats status=OK duration=33ms
+[2026-01-24 14:58:32.973] REQ [15] method=health
+[2026-01-24 14:58:33.002] RES [15] method=health status=OK duration=28ms
+[2026-01-24 14:58:33.036] REQ [16] method=stats
+[2026-01-24 14:58:33.069] RES [16] method=stats status=OK duration=33ms
+[2026-01-24 14:59:32.974] REQ [17] method=health
+[2026-01-24 14:59:33.017] RES [17] method=health status=OK duration=43ms
+[2026-01-24 14:59:33.051] REQ [18] method=stats
+[2026-01-24 14:59:33.085] RES [18] method=stats status=OK duration=33ms
+[2026-01-24 14:59:58.484] REQ [19] method=shutdown
+[2026-01-24 14:59:58.518] RES [19] method=shutdown status=OK duration=33ms
+[2026-01-24 15:01:05.440] REQ [13] method=health
+[2026-01-24 15:01:05.485] RES [13] method=health status=OK duration=44ms
+[2026-01-24 15:01:05.518] REQ [14] method=stats
+[2026-01-24 15:01:05.552] RES [14] method=stats status=OK duration=33ms
