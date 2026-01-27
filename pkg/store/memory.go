@@ -14,35 +14,53 @@ import (
 
 // MemoryRecord represents a first-class memory with structured payload.
 type MemoryRecord struct {
-	ID        string                 `json:"id"`
-	Topic     string                 `json:"topic"`
-	Context   string                 `json:"context"`
-	Decisions []string               `json:"decisions,omitempty"`
-	Rationale []string               `json:"rationale,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
-	Version   int                    `json:"version"`
-	DocHash   string                 `json:"doc_hash"`
-	Source    string                 `json:"source,omitempty"`
-	Status    string                 `json:"status"` // "pending" or "complete"
+	ID             string                 `json:"id"`
+	Topic          string                 `json:"topic"`
+	Context        string                 `json:"context"`
+	Decisions      []string               `json:"decisions,omitempty"`
+	Rationale      []string               `json:"rationale,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt      time.Time              `json:"created_at"`
+	UpdatedAt      time.Time              `json:"updated_at"`
+	Version        int                    `json:"version"`
+	DocHash        string                 `json:"doc_hash"`
+	Source         string                 `json:"source,omitempty"`
+	Status         string                 `json:"status"`           // "pending", "complete", "Active", "Superseded", "Archived", "Pinned" (M3: Plan 021)
+	AccessCount    int                    `json:"access_count"`     // M1: Plan 021 - Number of times this memory was accessed
+	LastAccessedAt *time.Time             `json:"last_accessed_at"` // M1: Plan 021 - Timestamp of last access
+	AccessVelocity float64                `json:"access_velocity"`  // M1: Plan 021 - Computed access frequency (accesses / days since creation)
+	SupersededBy   *string                `json:"superseded_by"`    // M3: Plan 021 - ID of memory that supersedes this one (nullable)
+	RetentionPolicy string                `json:"retention_policy"` // M6: Plan 021 - Retention policy: permanent, decision, standard, ephemeral, session
+	RetentionUntil  *time.Time            `json:"retention_until"`  // M6: Plan 021 - Explicit expiration timestamp (nullable)
+	Pinned          bool                   `json:"pinned"`           // M9: Plan 021 - Whether this memory is pinned
+	PinnedAt        *time.Time            `json:"pinned_at"`        // M9: Plan 021 - When this memory was pinned
+	PinnedReason    *string                `json:"pinned_reason"`    // M9: Plan 021 - Why this memory was pinned (nullable)
 }
 
 // MemorySummary provides a lightweight view of a memory for list operations.
 type MemorySummary struct {
-	ID            string    `json:"id"`
-	Topic         string    `json:"topic"`
-	Preview       string    `json:"preview"` // Truncated context
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	DecisionCount int       `json:"decision_count"`
-	Status        string    `json:"status"`
+	ID              string     `json:"id"`
+	Topic           string     `json:"topic"`
+	Preview         string     `json:"preview"` // Truncated context
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+	DecisionCount   int        `json:"decision_count"`
+	Status          string     `json:"status"`
+	RetentionPolicy string     `json:"retention_policy"` // M10: Plan 021
+	Pinned          bool       `json:"pinned"`           // M10: Plan 021
+	AccessCount     int        `json:"access_count"`     // M10: Plan 021
+	SupersededBy    *string    `json:"superseded_by"`    // M10: Plan 021
 }
 
-// ListMemoriesOptions provides pagination for memory listing.
+// ListMemoriesOptions provides pagination and filtering for memory listing (M10: Plan 021).
 type ListMemoriesOptions struct {
-	Offset int
-	Limit  int // Default 50, max 100
+	Offset          int
+	Limit           int // Default 50, max 100
+	Status          *string   // Filter by status (Active, Superseded, Pinned, etc.) (M10)
+	RetentionPolicy *string   // Filter by retention_policy (M10)
+	Pinned          *bool     // Filter pinned only (M10)
+	OrderBy         string    // "created_at", "updated_at", "access_count", "last_accessed_at" (M10)
+	OrderDesc       bool      // Default true (newest/highest first) (M10)
 }
 
 // MemoryUpdate represents partial updates to a memory.
@@ -54,6 +72,15 @@ type MemoryUpdate struct {
 	Rationale *[]string
 	Metadata  *map[string]interface{}
 	Status    *string
+}
+
+// SupersessionRecord represents a memory supersession relationship (M3: Plan 021).
+type SupersessionRecord struct {
+	ID            string    `json:"id"`
+	SupersedingID string    `json:"superseding_id"`   // New memory that replaces old one
+	SupersededID  string    `json:"superseded_id"`    // Old memory being replaced
+	Reason        string    `json:"reason,omitempty"` // Optional explanation
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // MemoryStore defines the interface for memory CRUD operations.
@@ -78,6 +105,24 @@ type MemoryStore interface {
 
 	// CountMemories returns the total number of memories in the store.
 	CountMemories(ctx context.Context) (int64, error)
+
+	// UpdateMemoryAccess increments access tracking for a single memory.
+	UpdateMemoryAccess(ctx context.Context, id string) error
+
+	// BatchUpdateMemoryAccess increments access tracking for multiple memories.
+	BatchUpdateMemoryAccess(ctx context.Context, ids []string) error
+
+	// RecordSupersession records that one memory supersedes another (M3: Plan 021).
+	RecordSupersession(ctx context.Context, supersedingID, supersededID, reason string) error
+
+	// GetSupersessionChain retrieves the full chain of supersessions for a memory (M3: Plan 021).
+	GetSupersessionChain(ctx context.Context, memoryID string) ([]SupersessionRecord, error)
+
+	// GetSupersedingMemory returns the ID of the memory that supersedes this one, if any (M3: Plan 021).
+	GetSupersedingMemory(ctx context.Context, memoryID string) (*string, error)
+
+	// GetSupersededMemories returns the IDs of memories this one supersedes (M3: Plan 021).
+	GetSupersededMemories(ctx context.Context, memoryID string) ([]string, error)
 }
 
 // SQLiteMemoryStore implements MemoryStore using SQLite.
@@ -146,6 +191,10 @@ func (s *SQLiteMemoryStore) AddMemory(ctx context.Context, record *MemoryRecord)
 	if record.Status == "" {
 		record.Status = "pending"
 	}
+	// Default retention policy (M6: Plan 021)
+	if record.RetentionPolicy == "" {
+		record.RetentionPolicy = "standard"
+	}
 
 	// Serialize JSON fields
 	decisionsJSON, err := json.Marshal(record.Decisions)
@@ -172,8 +221,8 @@ func (s *SQLiteMemoryStore) AddMemory(ctx context.Context, record *MemoryRecord)
 
 	query := `
 		INSERT INTO memories (id, topic, context, decisions_json, rationale_json, metadata_json,
-			created_at, updated_at, version, doc_hash, source, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			created_at, updated_at, version, doc_hash, source, status, retention_policy, pinned)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err = tx.ExecContext(ctx, query,
@@ -189,6 +238,8 @@ func (s *SQLiteMemoryStore) AddMemory(ctx context.Context, record *MemoryRecord)
 		record.DocHash,
 		record.Source,
 		record.Status,
+		record.RetentionPolicy,
+		record.Pinned,
 	)
 
 	if err != nil {
@@ -207,13 +258,16 @@ func (s *SQLiteMemoryStore) AddMemory(ctx context.Context, record *MemoryRecord)
 func (s *SQLiteMemoryStore) GetMemory(ctx context.Context, id string) (*MemoryRecord, error) {
 	query := `
 		SELECT id, topic, context, decisions_json, rationale_json, metadata_json,
-			created_at, updated_at, version, doc_hash, source, status
+			created_at, updated_at, version, doc_hash, source, status,
+			access_count, last_accessed_at, access_velocity, superseded_by,
+			retention_policy, retention_until, pinned, pinned_at, pinned_reason
 		FROM memories
 		WHERE id = ?
 	`
 
 	var record MemoryRecord
 	var decisionsJSON, rationaleJSON, metadataJSON []byte
+	var pinnedReason sql.NullString
 
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&record.ID,
@@ -228,6 +282,15 @@ func (s *SQLiteMemoryStore) GetMemory(ctx context.Context, id string) (*MemoryRe
 		&record.DocHash,
 		&record.Source,
 		&record.Status,
+		&record.AccessCount,
+		&record.LastAccessedAt,
+		&record.AccessVelocity,
+		&record.SupersededBy,
+		&record.RetentionPolicy,
+		&record.RetentionUntil,
+		&record.Pinned,
+		&record.PinnedAt,
+		&pinnedReason,
 	)
 
 	if err == sql.ErrNoRows {
@@ -235,6 +298,11 @@ func (s *SQLiteMemoryStore) GetMemory(ctx context.Context, id string) (*MemoryRe
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get memory: %w", err)
+	}
+
+	// Handle nullable pinned_reason
+	if pinnedReason.Valid {
+		record.PinnedReason = &pinnedReason.String
 	}
 
 	// Deserialize JSON fields
@@ -256,6 +324,14 @@ func (s *SQLiteMemoryStore) GetMemory(ctx context.Context, id string) (*MemoryRe
 		}
 	}
 
+	// Update access tracking (Milestone 1: Memory Access Tracking)
+	// Don't fail the read if access tracking fails
+	if err := s.UpdateMemoryAccess(ctx, id); err != nil {
+		// Log error but don't fail the read
+		// In production, this could use a proper logger
+		_ = err
+	}
+
 	return &record, nil
 }
 
@@ -272,14 +348,53 @@ func (s *SQLiteMemoryStore) ListMemories(ctx context.Context, opts ListMemoriesO
 		opts.Offset = 0
 	}
 
+	// M10: Build dynamic query with filters
 	query := `
-		SELECT id, topic, context, decisions_json, created_at, updated_at, status
+		SELECT id, topic, context, decisions_json, created_at, updated_at, status,
+			retention_policy, pinned, access_count, superseded_by
 		FROM memories
-		ORDER BY updated_at DESC, created_at DESC
-		LIMIT ? OFFSET ?
+		WHERE 1=1
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, opts.Limit, opts.Offset)
+	args := make([]interface{}, 0)
+
+	// M10: Apply filters
+	if opts.Status != nil {
+		query += " AND status = ?"
+		args = append(args, *opts.Status)
+	}
+
+	if opts.RetentionPolicy != nil {
+		query += " AND retention_policy = ?"
+		args = append(args, *opts.RetentionPolicy)
+	}
+
+	if opts.Pinned != nil {
+		query += " AND pinned = ?"
+		args = append(args, *opts.Pinned)
+	}
+
+	// M10: Apply ordering
+	orderBy := "updated_at"
+	if opts.OrderBy != "" {
+		switch opts.OrderBy {
+		case "created_at", "updated_at", "access_count", "last_accessed_at":
+			orderBy = opts.OrderBy
+		default:
+			orderBy = "updated_at" // Default fallback
+		}
+	}
+
+	orderDir := "DESC"
+	if !opts.OrderDesc && opts.OrderBy != "" {
+		orderDir = "ASC"
+	}
+
+	query += fmt.Sprintf(" ORDER BY %s %s, created_at DESC LIMIT ? OFFSET ?", orderBy, orderDir)
+
+	args = append(args, opts.Limit, opts.Offset)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list memories: %w", err)
 	}
@@ -287,11 +402,15 @@ func (s *SQLiteMemoryStore) ListMemories(ctx context.Context, opts ListMemoriesO
 
 	var summaries []MemorySummary
 	for rows.Next() {
-		var id, topic, context, status string
+		var id, topic, context, status, retentionPolicy string
 		var decisionsJSON []byte
 		var createdAt, updatedAt time.Time
+		var pinned bool
+		var accessCount int
+		var supersededBy *string
 
-		err := rows.Scan(&id, &topic, &context, &decisionsJSON, &createdAt, &updatedAt, &status)
+		err := rows.Scan(&id, &topic, &context, &decisionsJSON, &createdAt, &updatedAt, &status,
+			&retentionPolicy, &pinned, &accessCount, &supersededBy)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan memory: %w", err)
 		}
@@ -309,13 +428,17 @@ func (s *SQLiteMemoryStore) ListMemories(ctx context.Context, opts ListMemoriesO
 		}
 
 		summaries = append(summaries, MemorySummary{
-			ID:            id,
-			Topic:         topic,
-			Preview:       preview,
-			CreatedAt:     createdAt,
-			UpdatedAt:     updatedAt,
-			DecisionCount: len(decisions),
-			Status:        status,
+			ID:              id,
+			Topic:           topic,
+			Preview:         preview,
+			CreatedAt:       createdAt,
+			UpdatedAt:       updatedAt,
+			DecisionCount:   len(decisions),
+			Status:          status,
+			RetentionPolicy: retentionPolicy,
+			Pinned:          pinned,
+			AccessCount:     accessCount,
+			SupersededBy:    supersededBy,
 		})
 	}
 
@@ -902,3 +1025,311 @@ func (s *SQLiteMemoryStore) GarbageCollectCandidates(ctx context.Context, nodeID
 
 // ErrMemoryNotFound indicates that no memory was found for the given ID.
 var ErrMemoryNotFound = fmt.Errorf("memory not found")
+
+// UpdateMemoryAccess increments access tracking for a single memory.
+// Updates access_count, last_accessed_at, and recomputes access_velocity in real-time.
+func (s *SQLiteMemoryStore) UpdateMemoryAccess(ctx context.Context, id string) error {
+	// Begin transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get created_at for velocity calculation
+	var createdAt time.Time
+	err = tx.QueryRowContext(ctx, "SELECT created_at FROM memories WHERE id = ?", id).Scan(&createdAt)
+	if err == sql.ErrNoRows {
+		return ErrMemoryNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get memory created_at: %w", err)
+	}
+
+	// Calculate days since creation
+	now := time.Now()
+	daysSinceCreation := now.Sub(createdAt).Hours() / 24.0
+	if daysSinceCreation < 1 {
+		daysSinceCreation = 1 // Minimum 1 day to avoid division by zero
+	}
+
+	// Update access tracking fields
+	// access_velocity = (access_count + 1) / max(1, days_since_creation)
+	query := `
+		UPDATE memories
+		SET access_count = access_count + 1,
+		    last_accessed_at = ?,
+		    access_velocity = (access_count + 1) / ?
+		WHERE id = ?
+	`
+
+	result, err := tx.ExecContext(ctx, query, now, daysSinceCreation, id)
+	if err != nil {
+		return fmt.Errorf("failed to update memory access: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return ErrMemoryNotFound
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// BatchUpdateMemoryAccess increments access tracking for multiple memories efficiently.
+// This is critical for the search path where multiple memories are accessed simultaneously.
+func (s *SQLiteMemoryStore) BatchUpdateMemoryAccess(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	// Remove duplicates
+	uniqueIDs := make(map[string]bool)
+	var dedupedIDs []string
+	for _, id := range ids {
+		if !uniqueIDs[id] {
+			uniqueIDs[id] = true
+			dedupedIDs = append(dedupedIDs, id)
+		}
+	}
+
+	// Begin transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	now := time.Now()
+
+	// Update each memory's access tracking
+	for _, id := range dedupedIDs {
+		// Get created_at for velocity calculation
+		var createdAt time.Time
+		err := tx.QueryRowContext(ctx, "SELECT created_at FROM memories WHERE id = ?", id).Scan(&createdAt)
+		if err == sql.ErrNoRows {
+			// Memory not found - skip (don't fail entire batch)
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get memory created_at for %s: %w", id, err)
+		}
+
+		// Calculate days since creation
+		daysSinceCreation := now.Sub(createdAt).Hours() / 24.0
+		if daysSinceCreation < 1 {
+			daysSinceCreation = 1
+		}
+
+		// Update access tracking
+		query := `
+			UPDATE memories
+			SET access_count = access_count + 1,
+			    last_accessed_at = ?,
+			    access_velocity = (access_count + 1) / ?
+			WHERE id = ?
+		`
+
+		_, err = tx.ExecContext(ctx, query, now, daysSinceCreation, id)
+		if err != nil {
+			return fmt.Errorf("failed to update memory access for %s: %w", id, err)
+		}
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// RecordSupersession records that one memory supersedes another (M3: Plan 021).
+func (s *SQLiteMemoryStore) RecordSupersession(ctx context.Context, supersedingID, supersededID, reason string) error {
+	// Validate that both memories exist
+	var countSuperseding, countSuperseded int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM memories WHERE id = ?", supersedingID).Scan(&countSuperseding)
+	if err != nil {
+		return fmt.Errorf("failed to check superseding memory: %w", err)
+	}
+	if countSuperseding == 0 {
+		return fmt.Errorf("superseding memory %s not found", supersedingID)
+	}
+
+	err = s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM memories WHERE id = ?", supersededID).Scan(&countSuperseded)
+	if err != nil {
+		return fmt.Errorf("failed to check superseded memory: %w", err)
+	}
+	if countSuperseded == 0 {
+		return fmt.Errorf("superseded memory %s not found", supersededID)
+	}
+
+	// Begin transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Insert supersession record
+	supersessionID := uuid.New().String()
+	insertQuery := `
+		INSERT INTO memory_supersession (id, superseding_id, superseded_id, reason, created_at)
+		VALUES (?, ?, ?, ?, ?)
+	`
+	_, err = tx.ExecContext(ctx, insertQuery, supersessionID, supersedingID, supersededID, reason, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to insert supersession record: %w", err)
+	}
+
+	// Update superseded memory: set status to 'Superseded' and superseded_by field
+	updateQuery := `
+		UPDATE memories
+		SET status = 'Superseded',
+		    superseded_by = ?,
+		    updated_at = ?
+		WHERE id = ?
+	`
+	_, err = tx.ExecContext(ctx, updateQuery, supersedingID, time.Now(), supersededID)
+	if err != nil {
+		return fmt.Errorf("failed to update superseded memory: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit supersession: %w", err)
+	}
+
+	return nil
+}
+
+// GetSupersessionChain retrieves the full chain of supersessions for a memory (M3: Plan 021).
+// Returns the chain from oldest to newest, including the given memoryID.
+func (s *SQLiteMemoryStore) GetSupersessionChain(ctx context.Context, memoryID string) ([]SupersessionRecord, error) {
+	// Trace backward to find the root (oldest) memory
+	rootID := memoryID
+	for {
+		var supersededID sql.NullString
+		err := s.db.QueryRowContext(ctx,
+			"SELECT superseded_id FROM memory_supersession WHERE superseding_id = ?",
+			rootID).Scan(&supersededID)
+
+		if err == sql.ErrNoRows {
+			// No more backward links - rootID is the oldest
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to trace supersession chain backward: %w", err)
+		}
+		if !supersededID.Valid {
+			break
+		}
+		rootID = supersededID.String
+	}
+
+	// Now trace forward from root to build the full chain
+	chain := []SupersessionRecord{}
+	currentID := rootID
+
+	for {
+		query := `
+			SELECT id, superseding_id, superseded_id, reason, created_at
+			FROM memory_supersession
+			WHERE superseded_id = ?
+			ORDER BY created_at ASC
+		`
+
+		rows, err := s.db.QueryContext(ctx, query, currentID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query supersession chain: %w", err)
+		}
+
+		foundNext := false
+		for rows.Next() {
+			var record SupersessionRecord
+			err := rows.Scan(&record.ID, &record.SupersedingID, &record.SupersededID, &record.Reason, &record.CreatedAt)
+			if err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("failed to scan supersession record: %w", err)
+			}
+			chain = append(chain, record)
+			currentID = record.SupersedingID
+			foundNext = true
+			break // Only take the first (oldest) superseding record
+		}
+
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("error iterating supersession chain: %w", err)
+		}
+
+		rows.Close() // Close rows immediately after processing
+
+		if !foundNext {
+			// No more forward links - end of chain
+			break
+		}
+	}
+
+	return chain, nil
+}
+
+// GetSupersedingMemory returns the ID of the memory that supersedes this one, if any (M3: Plan 021).
+func (s *SQLiteMemoryStore) GetSupersedingMemory(ctx context.Context, memoryID string) (*string, error) {
+	var supersedingID sql.NullString
+	query := "SELECT superseded_by FROM memories WHERE id = ?"
+
+	err := s.db.QueryRowContext(ctx, query, memoryID).Scan(&supersedingID)
+	if err == sql.ErrNoRows {
+		return nil, ErrMemoryNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get superseding memory: %w", err)
+	}
+
+	if !supersedingID.Valid {
+		return nil, nil
+	}
+
+	result := supersedingID.String
+	return &result, nil
+}
+
+// GetSupersededMemories returns the IDs of memories this one supersedes (M3: Plan 021).
+func (s *SQLiteMemoryStore) GetSupersededMemories(ctx context.Context, memoryID string) ([]string, error) {
+	query := `
+		SELECT superseded_id
+		FROM memory_supersession
+		WHERE superseding_id = ?
+		ORDER BY created_at ASC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, memoryID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query superseded memories: %w", err)
+	}
+	defer rows.Close()
+
+	var memoryIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scan superseded memory ID: %w", err)
+		}
+		memoryIDs = append(memoryIDs, id)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating superseded memories: %w", err)
+	}
+
+	return memoryIDs, nil
+}

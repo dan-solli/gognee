@@ -1,12 +1,15 @@
 # gognee - Product Roadmap
 
-**Last Updated**: 2026-01-15
+**Last Updated**: 2026-01-27
 **Roadmap Owner**: roadmap agent
 **Strategic Vision**: Build a Go library package that provides AI assistants with persistent memory across conversations, knowledge graph for understanding relationships, and hybrid search combining graph traversal and vector similarity. Pure library design (no CLI), embeddable in Go projects like Glowbabe.
 
 ## Change Log
 | Date & Time | Change | Rationale |
 |-------------|--------|-----------|
+| 2026-01-27 | Plan 021 APPROVED after Critic revisions; search instrumentation added, bidirectional supersession confirmed, real-time velocity locked | Critic found HIGH-severity gap: access tracking must capture search path (primary read). Resolved with BatchUpdateMemoryAccess. Handoff to Implementer. |
+| 2026-01-27 | Plan 021 drafted for Epic 9.1 (v1.1.0); 13 milestones, 4 sub-epics | Implementation planning for Intelligent Memory Lifecycle |
+| 2026-01-27 | Created Epic 9.1 (Intelligent Memory Lifecycle) with 7 sub-epics | Strategic analysis: calendar-time decay insufficient; need access-frequency scoring, explicit supersession, semantic consolidation, retention policies, pinning, conflict detection, provenance weighting |
 | 2026-01-15 | Plan 019 v1.4.0 committed locally (11d14e3); v1.3.0 released | Read path optimization (M7–M10) UAT approved; write path v1.3.0 released |
 | 2026-01-15 | Added v1.3.0 release track with Plan 019 (Write Path Optimization) | Performance incident: 33s memory write latency |
 | 2026-01-15 | Released v1.2.0 (Plans 017, 018); vector search + observability | Vector search 17s→<1ms; CGO required (breaking change); always-on metrics |
@@ -559,9 +562,220 @@ So that I can understand entity relationships and diagnose extraction problems.
 
 ---
 
+### Epic 9.1: Intelligent Memory Lifecycle (Post-v1.0.0)
+**Priority**: P1
+**Status**: Planned
+**Target Release**: v1.1.0 or v1.2.0
+
+**User Story**:
+As a developer building a long-lived AI assistant,
+I want memories to be thinned based on usage patterns, explicit supersession, and semantic redundancy—not just calendar time,
+So that the knowledge graph remains relevant, bounded, and preserves truly important information regardless of age.
+
+**Business Value**:
+- **Preserves foundational truths**: Original architectural decisions don't decay just because they're old
+- **Reduces noise**: Redundant/superseded memories are consolidated or deprecated
+- **Respects user intent**: Explicit supersession chains preserve decision provenance
+- **Scales sustainably**: Frequency-based scoring keeps high-value memories alive
+- **Enables diverse retention**: Different memory types (permanent, ephemeral, session) have appropriate lifespans
+
+**Dependencies**:
+- v1.0.0 complete (First-Class Memory CRUD)
+- Existing v0.9.0 decay infrastructure (`access_count`, `last_accessed_at`)
+
+**Design Principles**:
+1. **Don't delete, deprecate**: Supersession > deletion. History has value.
+2. **Access patterns reveal value**: What users retrieve is what matters.
+3. **Semantic similarity signals redundancy**: Consolidation > accumulation.
+4. **Different facts have different lifespans**: One policy doesn't fit all.
+5. **Give users control**: Pinning, policies, explicit supersession.
+6. **Decay is for irrelevance, not age**: Time is a weak proxy; behavior is stronger.
+
+**Sub-Epics / Features**:
+
+#### 9.1.1: Access Frequency Scoring
+**Priority**: P1 (build on existing `access_count` column)
+**Effort**: Small
+
+Memories that are frequently retrieved are demonstrably useful. Evolve decay formula:
+```
+relevance_score = base_score × heat_multiplier
+heat_multiplier = min(1.0, log(access_count + 1) / log(reference_count))
+```
+
+Schema additions:
+- `access_velocity REAL` - rolling window retrieval rate
+- `last_30d_hits INTEGER` - recent access count
+
+**Acceptance Criteria**:
+- [ ] High-hit memories resist decay regardless of age
+- [ ] 6-month-old memory retrieved 50× ranks higher than 1-week-old memory never accessed
+- [ ] Access tracking adds minimal write overhead
+
+---
+
+#### 9.1.2: Explicit Supersession Chains
+**Priority**: P1 (critical for decision history)
+**Effort**: Medium
+
+When storing a new memory, explicitly declare which prior memories it supersedes. Superseded memories become prunable; the chain preserves provenance.
+
+Schema additions:
+```sql
+CREATE TABLE memory_supersession (
+  id TEXT PRIMARY KEY,
+  superseding_id TEXT NOT NULL,
+  superseded_id TEXT NOT NULL,
+  reason TEXT,
+  created_at DATETIME
+);
+ALTER TABLE memories ADD COLUMN status TEXT DEFAULT 'Active';
+-- Values: Active, Superseded, Archived, Consolidated
+```
+
+API surface:
+```go
+type AddMemoryOptions struct {
+  Supersedes []string  // IDs of memories this one replaces
+}
+```
+
+**Acceptance Criteria**:
+- [ ] AddMemory accepts `Supersedes` option
+- [ ] Superseded memories marked with status and link to successor
+- [ ] Prune respects supersession (only prune Superseded with no active dependents)
+- [ ] Supersession chain queryable for provenance ("why was this decided?")
+
+---
+
+#### 9.1.3: Retention Policies
+**Priority**: P2 (different memory types)
+**Effort**: Medium
+
+Different types of memories have different natural lifespans. Configuration decisions may be permanent; debugging sessions are ephemeral.
+
+Schema additions:
+```sql
+ALTER TABLE memories ADD COLUMN retention_policy TEXT DEFAULT 'standard';
+ALTER TABLE memories ADD COLUMN retention_until DATETIME;
+```
+
+Policy definitions:
+| Policy | Half-life | Prunable | Use Case |
+|--------|-----------|----------|----------|
+| `permanent` | ∞ | Never | Architectural decisions, core facts |
+| `decision` | 365 days | After supersession | Important choices that may evolve |
+| `standard` | 90 days | By decay | Default |
+| `ephemeral` | 7 days | By decay | Debug sessions, temp context |
+| `session` | 1 day | Always | Single-session scratch |
+
+**Acceptance Criteria**:
+- [ ] AddMemory accepts `RetentionPolicy` option
+- [ ] Decay formula respects per-memory half-life
+- [ ] `permanent` memories exempt from Prune
+- [ ] ListMemories filterable by policy
+
+---
+
+#### 9.1.4: Semantic Consolidation
+**Priority**: P2 (reduce redundancy)
+**Effort**: Large
+
+Periodically identify memories with high semantic overlap and offer to merge/consolidate them into a single, richer memory.
+
+Algorithm:
+1. Compute pairwise similarity for Active memories
+2. Cluster memories with similarity > threshold (0.85)
+3. Use LLM to synthesize cluster into consolidated memory
+4. Mark originals as `Consolidated` → prunable after retention period
+
+API surface:
+```go
+func (g *Gognee) SuggestConsolidations(ctx context.Context, opts ConsolidationOptions) ([]ConsolidationSuggestion, error)
+func (g *Gognee) ApplyConsolidation(ctx context.Context, suggestionID string) error
+```
+
+**Acceptance Criteria**:
+- [ ] Consolidation suggestions generated without user intervention
+- [ ] User approves before any data modification
+- [ ] Consolidated memory links back to originals
+- [ ] Originals marked Consolidated, not deleted immediately
+
+---
+
+#### 9.1.5: User-Defined Anchors (Pin/Protect)
+**Priority**: P2 (simple, high value)
+**Effort**: Small
+
+Let users explicitly pin memories they know are important. Pinned memories exempt from automatic decay/prune.
+
+Schema additions:
+```sql
+ALTER TABLE memories ADD COLUMN pinned BOOLEAN DEFAULT FALSE;
+ALTER TABLE memories ADD COLUMN pinned_at DATETIME;
+ALTER TABLE memories ADD COLUMN pinned_reason TEXT;
+```
+
+**Acceptance Criteria**:
+- [ ] PinMemory/UnpinMemory APIs
+- [ ] Pinned memories exempt from Prune
+- [ ] ListMemories filterable by pinned status
+- [ ] Optional: pin limits or pin decay to prevent "pin everything"
+
+---
+
+#### 9.1.6: Conflict Detection
+**Priority**: P3 (advanced feature)
+**Effort**: Medium
+
+When memories contradict each other, flag them for resolution rather than letting both decay naturally.
+
+API surface:
+```go
+func (g *Gognee) DetectConflicts(ctx context.Context) ([]MemoryConflict, error)
+func (g *Gognee) ResolveConflict(ctx context.Context, conflictID string, resolution ConflictResolution) error
+```
+
+**Acceptance Criteria**:
+- [ ] Conflicts detected based on semantic similarity + opposing conclusions
+- [ ] Conflicts surfaced to user for resolution
+- [ ] Resolution creates supersession link
+
+---
+
+#### 9.1.7: Provenance-Weighted Scoring
+**Priority**: P3 (graph-based importance)
+**Effort**: Medium
+
+Memories linked to important entities inherit their importance. A memory about a core architectural decision stays valuable because the entity is structurally central.
+
+Formula:
+```
+memory_importance = base_importance + sum(linked_entity_importances × edge_weight)
+```
+
+**Acceptance Criteria**:
+- [ ] Node importance computed from reference count, edge count, manual boost
+- [ ] Memory decay modified by linked node importance
+- [ ] Core entities (database, API, etc.) confer protection to linked memories
+
+---
+
+**Open Questions**:
+1. Should consolidation be automatic or always user-approved? → Deferred to v1.2.0 (9.1.4)
+2. How to handle supersession chains when the superseding memory is later deleted? → RESOLVED: ON DELETE SET NULL preserves chain history
+3. Should pin limits exist to prevent "pin everything"? → RESOLVED: No limit in v1.1.0; add optional config in v1.2.0 if needed
+4. How deep should provenance weighting traverse the graph? → Deferred to v1.2.0 (9.1.7)
+
+**Status Notes**:
+- 2026-01-27: Epic created based on strategic discussion about memory thinning beyond calendar-time decay
+- 2026-01-27: Plan 021 drafted with 13 milestones covering sub-epics 9.1.1, 9.1.2, 9.1.3, 9.1.5; pending Critic review
+
+---
+
 ## Strategic Alignment
 
-**Current Phase**: Post-MVP Enhancement Complete → Memory CRUD (v1.0.0)
+**Current Phase**: Post-MVP Enhancement Complete → Memory CRUD (v1.0.0) → Intelligent Memory Lifecycle (v1.1.0+)
 
 **Active Priority**:
 Epic 8.1 (First-Class Memory CRUD) is P0 because:
@@ -569,16 +783,24 @@ Epic 8.1 (First-Class Memory CRUD) is P0 because:
 2. **Architecture evolution**: Current design treats text as ephemeral input; memory management requires treating it as a persistent entity
 3. **Value proposition gap**: "Persistent memory" isn't truly persistent if users can't manage it
 
+**Upcoming Priority**:
+Epic 9.1 (Intelligent Memory Lifecycle) is P1 because:
+1. **Calendar-time decay is insufficient**: Original truths don't become less true with age
+2. **Access patterns reveal value**: High-retrieval memories are demonstrably useful
+3. **Supersession preserves history**: "Memory B replaces A" is better than silent decay
+4. **Different memory types need different lifespans**: Architectural decisions ≠ debug sessions
+
 **Next Phase Options**:
 1. ✅ **Production Hardening**: Address known limitations (persistent vector store, edge ID fix) - DELIVERED (v0.7.0-v0.9.0)
 2. 🚀 **Memory CRUD**: First-class memory entities with full lifecycle management - IN PROGRESS
-3. **Provider Diversification**: Add Anthropic/Ollama support for vendor flexibility - DEFERRED
+3. 🔮 **Intelligent Memory Lifecycle**: Beyond time-decay to usage-based, semantic, and policy-driven retention - PLANNED (v1.1.0+)
+4. **Provider Diversification**: Add Anthropic/Ollama support for vendor flexibility - DEFERRED
 
 **Recommended Next Steps**:
-1. Create Plan 011 for Epic 8.1 implementation
-2. Architect to review data model (MemoryRecord table, linkage schema)
-3. Coordinate with Glowbabe on API surface requirements
-4. Target v1.0.0 release (semantic version bump reflects API evolution)
+1. Complete Plan 011 for Epic 8.1 implementation (v1.0.0)
+2. Begin architecture review for Epic 9.1 sub-epics (access frequency, supersession chains)
+3. Coordinate with Glowbabe on supersession API surface (how should glowbabe tool expose `Supersedes`?)
+4. Target v1.1.0 for P1 sub-epics (9.1.1, 9.1.2), v1.2.0 for P2 sub-epics (9.1.3, 9.1.4, 9.1.5)
 
 **Success Metrics (MVP)**:
 - ✅ Can add text and build knowledge graph
@@ -594,6 +816,13 @@ Epic 8.1 (First-Class Memory CRUD) is P0 because:
 - [ ] Glowbabe can build functional Memory Browser using new APIs
 - [ ] Deletion cascades correctly (memory → nodes → edges → vectors)
 - [ ] Update re-indexes atomically without orphaned data
+
+**Success Metrics (v1.1.0+ - Intelligent Memory Lifecycle)**:
+- [ ] High-access memories resist decay regardless of age
+- [ ] Supersession chains preserve decision provenance
+- [ ] Retention policies allow permanent/standard/ephemeral memory types
+- [ ] Semantic consolidation reduces redundant memories
+- [ ] Users can pin important memories
 
 ---
 

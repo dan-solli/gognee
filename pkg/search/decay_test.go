@@ -49,6 +49,65 @@ func (m *MockGraphStore) NodeCount(ctx context.Context) (int64, error) { return 
 func (m *MockGraphStore) EdgeCount(ctx context.Context) (int64, error) { return 0, nil }
 func (m *MockGraphStore) Close() error                                 { return nil }
 
+// MockMemoryStore implements store.MemoryStore for testing (minimal implementation)
+type MockMemoryStore struct {
+	Memories       map[string]*store.MemoryRecord
+	NodeToMemories map[string][]string
+}
+
+func (m *MockMemoryStore) GetMemory(ctx context.Context, id string) (*store.MemoryRecord, error) {
+	return m.Memories[id], nil
+}
+
+func (m *MockMemoryStore) GetMemoriesByNodeID(ctx context.Context, nodeID string) ([]string, error) {
+	return m.NodeToMemories[nodeID], nil
+}
+
+// Stub methods to satisfy interface
+func (m *MockMemoryStore) AddMemory(ctx context.Context, record *store.MemoryRecord) error {
+	return nil
+}
+func (m *MockMemoryStore) UpdateMemory(ctx context.Context, id string, update store.MemoryUpdate) error {
+	return nil
+}
+func (m *MockMemoryStore) DeleteMemory(ctx context.Context, id string) error { return nil }
+func (m *MockMemoryStore) ListMemories(ctx context.Context, opts store.ListMemoriesOptions) ([]store.MemorySummary, error) {
+	return nil, nil
+}
+func (m *MockMemoryStore) LinkProvenance(ctx context.Context, memoryID string, nodeIDs, edgeIDs []string) error {
+	return nil
+}
+func (m *MockMemoryStore) UnlinkProvenance(ctx context.Context, memoryID string) error { return nil }
+func (m *MockMemoryStore) GetProvenanceByMemory(ctx context.Context, memoryID string) (nodeIDs []string, edgeIDs []string, err error) {
+	return nil, nil, nil
+}
+func (m *MockMemoryStore) GetMemoriesByNodeIDBatched(ctx context.Context, nodeIDs []string) (map[string][]string, error) {
+	return nil, nil
+}
+func (m *MockMemoryStore) GetMemoriesByEdgeID(ctx context.Context, edgeID string) ([]string, error) {
+	return nil, nil
+}
+func (m *MockMemoryStore) GarbageCollect(ctx context.Context) (int, error)               { return 0, nil }
+func (m *MockMemoryStore) CountMemories(ctx context.Context) (int64, error)              { return 0, nil }
+func (m *MockMemoryStore) UpdateMemoryAccess(ctx context.Context, memoryID string) error { return nil }
+func (m *MockMemoryStore) BatchUpdateMemoryAccess(ctx context.Context, memoryIDs []string) error {
+	return nil
+}
+
+// M3: Supersession methods (Plan 021)
+func (m *MockMemoryStore) RecordSupersession(ctx context.Context, supersedingID, supersededID, reason string) error {
+	return nil
+}
+func (m *MockMemoryStore) GetSupersessionChain(ctx context.Context, memoryID string) ([]store.SupersessionRecord, error) {
+	return nil, nil
+}
+func (m *MockMemoryStore) GetSupersedingMemory(ctx context.Context, memoryID string) (*string, error) {
+	return nil, nil
+}
+func (m *MockMemoryStore) GetSupersededMemories(ctx context.Context, memoryID string) ([]string, error) {
+	return nil, nil
+}
+
 func TestDecayingSearcher_DecayDisabled(t *testing.T) {
 	now := time.Now()
 	mockSearcher := &MockSearcher{
@@ -65,8 +124,10 @@ func TestDecayingSearcher_DecayDisabled(t *testing.T) {
 		},
 	}
 
+	mockMemoryStore := &MockMemoryStore{}
+
 	// Decay disabled
-	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, false, 30, "access")
+	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, mockMemoryStore, false, 30, "access", false, 10)
 
 	ctx := context.Background()
 	results, err := decaySearcher.Search(ctx, "test query", SearchOptions{TopK: 10})
@@ -104,8 +165,10 @@ func TestDecayingSearcher_WithAccessBasedDecay(t *testing.T) {
 		},
 	}
 
+	mockMemoryStore := &MockMemoryStore{}
+
 	// Decay enabled with 30-day half-life, access-based
-	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, true, 30, "access")
+	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, mockMemoryStore, true, 30, "access", false, 10)
 
 	ctx := context.Background()
 	results, err := decaySearcher.Search(ctx, "test query", SearchOptions{TopK: 10})
@@ -152,8 +215,10 @@ func TestDecayingSearcher_WithCreationBasedDecay(t *testing.T) {
 		},
 	}
 
+	mockMemoryStore := &MockMemoryStore{}
+
 	// Decay enabled with 30-day half-life, creation-based
-	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, true, 30, "creation")
+	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, mockMemoryStore, true, 30, "creation", false, 10)
 
 	ctx := context.Background()
 	results, err := decaySearcher.Search(ctx, "test query", SearchOptions{TopK: 10})
@@ -193,8 +258,10 @@ func TestDecayingSearcher_FallbackToCreationTime(t *testing.T) {
 		},
 	}
 
+	mockMemoryStore := &MockMemoryStore{}
+
 	// Decay enabled, access-based but node never accessed
-	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, true, 30, "access")
+	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, mockMemoryStore, true, 30, "access", false, 10)
 
 	ctx := context.Background()
 	results, err := decaySearcher.Search(ctx, "test query", SearchOptions{TopK: 10})
@@ -229,7 +296,9 @@ func TestDecayingSearcher_MinimumThreshold(t *testing.T) {
 		},
 	}
 
-	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, true, 30, "access")
+	mockMemoryStore := &MockMemoryStore{}
+
+	decaySearcher := NewDecayingSearcher(mockSearcher, mockGraphStore, mockMemoryStore, true, 30, "access", false, 10)
 
 	ctx := context.Background()
 	results, err := decaySearcher.Search(ctx, "test query", SearchOptions{TopK: 10})

@@ -761,6 +761,159 @@ func boolPtr(b bool) *bool {
 }
 ```
 
+## Intelligent Memory Lifecycle (v1.1.0)
+
+gognee v1.1.0 introduces intelligent memory lifecycle management to keep knowledge graphs relevant and bounded as they grow over time. Instead of simple time-based aging, memories are managed based on usage patterns, explicit supersession, and retention policies.
+
+### Access Frequency Scoring
+
+Memories that are frequently accessed resist decay, regardless of age:
+
+```go
+cfg := gognee.Config{
+    DecayEnabled: true,
+    DecayHalfLifeDays: 30,
+    AccessFrequencyEnabled: true,  // Enable frequency-based decay modification
+    ReferenceAccessCount: 10,      // Memories with 10+ accesses get full protection
+}
+```
+
+- **Zero-access memories**: Decay to 50% of time-based score (still visible, but de-prioritized)
+- **High-access memories**: Maintain full score despite age (important knowledge stays relevant)
+- **Access tracking**: Automatic - GetMemory() and Search() increment access counters
+
+### Explicit Supersession
+
+Mark when one memory replaces another to maintain provenance chains:
+
+```go
+// Create new memory that supersedes old ones
+result, err := g.AddMemory(ctx, gognee.MemoryInput{
+    Topic: "Updated API Design",
+    Context: "We've switched from REST to GraphQL...",
+    Supersedes: []string{"old-memory-id"},
+    SupersessionReason: "REST approach had scaling issues",
+})
+
+// Query supersession chain
+chain, _ := g.GetSupersessionChain(ctx, "old-memory-id")
+// Returns: [old → intermediate → current]
+```
+
+Superseded memories:
+- Automatically marked as `status="Superseded"`
+- Remain searchable during grace period (default: 30 days)
+- Eligible for pruning after grace period expires
+
+### Retention Policies
+
+Different memory types have different lifespans:
+
+| Policy | Half-Life | Prunable | Use Case |
+|--------|-----------|----------|----------|
+| `permanent` | ∞ (no decay) | Never | Core facts, system knowledge |
+| `decision` | 365 days | Only when superseded | Planning decisions, architectural choices |
+| `standard` | 90 days | Yes | General knowledge (default) |
+| `ephemeral` | 7 days | Yes | Temporary notes, scratch work |
+| `session` | 1 day | Yes | Conversation context |
+
+```go
+result, err := g.AddMemory(ctx, gognee.MemoryInput{
+    Topic: "Core System Architecture",
+    Context: "...",
+    RetentionPolicy: "permanent",  // Never decays or pruned
+})
+```
+
+### User Pinning
+
+Exempt critical memories from automatic lifecycle management:
+
+```go
+// Pin a memory
+err := g.PinMemory(ctx, memoryID, "Critical customer requirement")
+
+// Pinned memories:
+// - Never decay (score stays at 1.0)
+// - Never pruned (even if old or unused)
+// - Marked as status="Pinned"
+
+// Unpin when no longer critical
+err = g.UnpinMemory(ctx, memoryID)
+```
+
+### Prune with Retention Awareness
+
+Prune operations respect retention policies:
+
+```go
+result, err := g.Prune(ctx, gognee.PruneOptions{
+    PruneSuperseded: true,
+    SupersededAgeDays: 30,  // Grace period before pruning superseded memories
+    DryRun: true,           // Preview what would be deleted
+})
+
+fmt.Printf("Would prune %d superseded memories\n", result.SupersededMemoriesPruned)
+```
+
+Prune guarantees:
+- **Permanent** memories never pruned
+- **Pinned** memories never pruned
+- **Decision** memories only pruned when superseded + grace period passed
+- **retention_until** override: explicit expiration timestamp (if set and past, memory pruned regardless of policy)
+
+### Enhanced ListMemories
+
+Filter and sort memories for management UIs:
+
+```go
+pinnedOnly := true
+activeStatus := "Active"
+
+memories, err := g.ListMemories(ctx, store.ListMemoriesOptions{
+    Status: &activeStatus,
+    Pinned: &pinnedOnly,
+    OrderBy: "access_count",
+    OrderDesc: true,  // Most accessed first
+    Limit: 50,
+})
+
+for _, mem := range memories {
+    fmt.Printf("%s - %d accesses, %s retention\n", 
+        mem.Topic, mem.AccessCount, mem.RetentionPolicy)
+}
+```
+
+Available filters:
+- `Status`: Filter by status (Active, Superseded, Pinned, etc.)
+- `RetentionPolicy`: Filter by retention policy
+- `Pinned`: Show only pinned memories
+- `OrderBy`: Sort by created_at, updated_at, access_count, last_accessed_at
+- `OrderDesc`: Sort direction (true = descending, false = ascending)
+
+### Lifecycle Best Practices
+
+1. **Use retention policies intentionally**:
+   - `permanent` for facts that should never change
+   - `decision` for rationale you want to preserve even after supersession
+   - `ephemeral` for debugging notes or temporary context
+
+2. **Supersede instead of delete**:
+   - Maintains provenance chain
+   - Allows rollback if new approach fails
+   - Better for auditing and learning
+
+3. **Pin sparingly**:
+   - Overuse defeats automatic lifecycle management
+   - Reserve for truly critical knowledge
+   - Review pinned memories periodically
+
+4. **Configure decay for your use case**:
+   - Short-lived assistants: aggressive decay (7-day half-life)
+   - Long-term knowledge bases: conservative decay (90-day half-life)
+   - Reference systems: disable decay entirely
+```
+
 ### Example: Agent Memory Loop
 
 ```go

@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-01-27
+
+### Added
+- **Intelligent Memory Lifecycle (Plan 021)**: Memory management based on usage patterns, supersession, and retention policies
+  - **Access Frequency Scoring (M1-M2)**: Frequently accessed memories resist time-based decay
+    - `access_count`, `last_accessed_at`, `access_velocity` columns in memories table
+    - Automatic access tracking on GetMemory() and Search()
+    - `AccessFrequencyEnabled` and `ReferenceAccessCount` config options
+    - Heat multiplier formula: `log(access_count + 1) / log(reference_count + 1)`
+    - Combined decay formula provides 0.5-1.0× score range based on access frequency
+  - **Explicit Supersession (M3-M5)**: Chain tracking when one memory replaces another
+    - `memory_supersession` table with foreign key CASCADE delete
+    - `status` and `superseded_by` columns in memories table
+    - `RecordSupersession()`, `GetSupersessionChain()`, `GetSupersedingMemory()`, `GetSupersededMemories()` APIs
+    - `MemoryInput.Supersedes` and `SupersessionReason` fields for declarative supersession in AddMemory()
+    - Prune respects `SupersededAgeDays` grace period (default: 30 days)
+  - **Retention Policies (M6-M8)**: Different memory types have different lifespans
+    - `retention_policy` and `retention_until` columns in memories table
+    - Five policies: permanent (∞ half-life, never pruned), decision (365d, only pruned when superseded), standard (90d, default), ephemeral (7d), session (1d)
+    - Retention-aware decay: policy-specific half-life overrides configured default
+    - Retention-aware prune: permanent memories never pruned, retention_until override supported
+  - **User Pinning (M9)**: Exempt critical memories from lifecycle management
+    - `pinned`, `pinned_at`, `pinned_reason` columns in memories table
+    - `PinMemory()` and `UnpinMemory()` APIs with reason tracking
+    - Pinned memories get decay multiplier of 1.0 (no decay) and are never pruned
+  - **Enhanced ListMemories (M10)**: Filtering and sorting for management UIs
+    - Filter by: Status, RetentionPolicy, Pinned
+    - Order by: created_at, updated_at, access_count, last_accessed_at
+    - OrderDesc flag for sort direction
+  - **MemorySummary Extended**: Added `RetentionPolicy`, `Pinned`, `AccessCount`, `SupersededBy` fields
+  - **PruneOptions Extended**: Added `PruneSuperseded`, `SupersededAgeDays` fields
+  - **PruneResult Extended**: Added `SupersededMemoriesPruned`, `MemoriesEvaluated` fields
+
+### Changed
+- **MemoryRecord**: Added `RetentionPolicy`, `RetentionUntil`, `Pinned`, `PinnedAt`, `PinnedReason` fields
+- **MemoryInput**: Added `Supersedes`, `SupersessionReason`, `RetentionPolicy` fields
+- **MemoryResult**: Added `MemoriesSuperseded` field
+- Prune operation now includes memory-level pruning with retention policy awareness (Phase 1) before node-level pruning (Phase 2)
+- Decay calculation now checks retention policy and pinning status before applying time-based decay
+
+### Fixed
+- Nullable TEXT fields (e.g., `pinned_reason`) now use `*string` to avoid SQL scan errors
+
 ## [1.4.1] - 2026-01-24
 
 ### Fixed

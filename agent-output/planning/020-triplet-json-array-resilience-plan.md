@@ -3,7 +3,7 @@
 **Plan ID**: 020  
 **Target Release**: v1.4.1 (patch)  
 **Epic Alignment**: Bug fix / LLM Response Resilience  
-**Status**: UAT Approved  
+**Status**: Released (v1.4.1)  
 **Created**: 2026-01-24  
 **Implemented**: 2026-01-24  
 **QA Completed**: 2026-01-24  

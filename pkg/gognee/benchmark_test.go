@@ -238,7 +238,7 @@ func BenchmarkSearch_Empty(b *testing.B) {
 
 	// Rebuild searcher with fake embedding client
 	baseSearcher := search.NewHybridSearcher(fakeEmbed, g.vectorStore, g.graphStore)
-	g.searcher = search.NewDecayingSearcher(baseSearcher, g.graphStore, false, 30.0, "last_accessed")
+	g.searcher = search.NewDecayingSearcher(baseSearcher, g.graphStore, g.memoryStore, false, 30, "last_accessed", false, 10)
 
 	opts := search.SearchOptions{
 		Type: search.SearchTypeVector,
@@ -284,7 +284,7 @@ func BenchmarkSearch_100Memories(b *testing.B) {
 
 	// Rebuild searcher with fake embedding client
 	baseSearcher := search.NewHybridSearcher(fakeEmbed, g.vectorStore, g.graphStore)
-	g.searcher = search.NewDecayingSearcher(baseSearcher, g.graphStore, false, 30.0, "last_accessed")
+	g.searcher = search.NewDecayingSearcher(baseSearcher, g.graphStore, g.memoryStore, false, 30, "last_accessed", false, 10)
 
 	// Pre-seed with 100 memories
 	for i := 0; i < 100; i++ {
@@ -341,7 +341,7 @@ func BenchmarkSearch_1000Memories(b *testing.B) {
 
 	// Rebuild searcher with fake embedding client
 	baseSearcher := search.NewHybridSearcher(fakeEmbed, g.vectorStore, g.graphStore)
-	g.searcher = search.NewDecayingSearcher(baseSearcher, g.graphStore, false, 30.0, "last_accessed")
+	g.searcher = search.NewDecayingSearcher(baseSearcher, g.graphStore, g.memoryStore, false, 30, "last_accessed", false, 10)
 
 	// Pre-seed with 1000 memories
 	b.Log("Seeding 1000 memories...")

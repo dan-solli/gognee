@@ -145,9 +145,15 @@ func (s *SQLiteGraphStore) migrateMemoryTables() error {
 		return fmt.Errorf("failed to check for memories table: %w", err)
 	}
 
-	// If table exists, assume all memory tables exist
+	// If table exists, run migrations sequentially
 	if count > 0 {
-		return nil
+		if err := s.migrateMemoryAccessTracking(); err != nil {
+			return err
+		}
+		if err := s.migrateSupersessionSchema(); err != nil {
+			return err
+		}
+		return s.migrateRetentionPolicySchema()
 	}
 
 	// Create memory tables
@@ -195,6 +201,154 @@ func (s *SQLiteGraphStore) migrateMemoryTables() error {
 	_, err = s.db.Exec(schema)
 	if err != nil {
 		return fmt.Errorf("failed to create memory tables: %w", err)
+	}
+
+	// Apply v1.1.0 migrations for new tables
+	if err := s.migrateMemoryAccessTracking(); err != nil {
+		return err
+	}
+	if err := s.migrateSupersessionSchema(); err != nil {
+		return err
+	}
+	return s.migrateRetentionPolicySchema()
+}
+
+// migrateMemoryAccessTracking adds access tracking columns for v1.1.0.
+func (s *SQLiteGraphStore) migrateMemoryAccessTracking() error {
+	// Check if access_count column exists
+	if !s.columnExists("memories", "access_count") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN access_count INTEGER DEFAULT 0")
+		if err != nil {
+			return fmt.Errorf("failed to add access_count column: %w", err)
+		}
+	}
+
+	// Check if last_accessed_at column exists
+	if !s.columnExists("memories", "last_accessed_at") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN last_accessed_at DATETIME")
+		if err != nil {
+			return fmt.Errorf("failed to add last_accessed_at column: %w", err)
+		}
+	}
+
+	// Check if access_velocity column exists
+	if !s.columnExists("memories", "access_velocity") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN access_velocity REAL DEFAULT 0.0")
+		if err != nil {
+			return fmt.Errorf("failed to add access_velocity column: %w", err)
+		}
+	}
+
+	// Create index on last_accessed_at
+	_, err := s.db.Exec("CREATE INDEX IF NOT EXISTS idx_memories_last_accessed_at ON memories(last_accessed_at)")
+	if err != nil {
+		return fmt.Errorf("failed to create last_accessed_at index: %w", err)
+	}
+
+	return nil
+}
+
+// migrateSupersessionSchema adds supersession table and columns for v1.1.0 (M3: Plan 021).
+func (s *SQLiteGraphStore) migrateSupersessionSchema() error {
+	// Check if memory_supersession table exists
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='memory_supersession'").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check for memory_supersession table: %w", err)
+	}
+
+	// Create memory_supersession table if it doesn't exist
+	if count == 0 {
+		schema := `
+		CREATE TABLE memory_supersession (
+			id TEXT PRIMARY KEY,
+			superseding_id TEXT NOT NULL,
+			superseded_id TEXT NOT NULL,
+			reason TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (superseding_id) REFERENCES memories(id) ON DELETE CASCADE,
+			FOREIGN KEY (superseded_id) REFERENCES memories(id) ON DELETE CASCADE
+		);
+
+		CREATE INDEX idx_supersession_superseding_id ON memory_supersession(superseding_id);
+		CREATE INDEX idx_supersession_superseded_id ON memory_supersession(superseded_id);
+		`
+
+		_, err = s.db.Exec(schema)
+		if err != nil {
+			return fmt.Errorf("failed to create memory_supersession table: %w", err)
+		}
+	}
+
+	// Add superseded_by column to memories table if it doesn't exist
+	if !s.columnExists("memories", "superseded_by") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN superseded_by TEXT")
+		if err != nil {
+			return fmt.Errorf("failed to add superseded_by column: %w", err)
+		}
+	}
+
+	// Create index on superseded_by
+	_, err = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_memories_superseded_by ON memories(superseded_by)")
+	if err != nil {
+		return fmt.Errorf("failed to create superseded_by index: %w", err)
+	}
+
+	return nil
+}
+
+// migrateRetentionPolicySchema adds retention policy columns for v1.1.0 (M6: Plan 021).
+func (s *SQLiteGraphStore) migrateRetentionPolicySchema() error {
+	// Add retention_policy column if it doesn't exist
+	if !s.columnExists("memories", "retention_policy") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN retention_policy TEXT DEFAULT 'standard'")
+		if err != nil {
+			return fmt.Errorf("failed to add retention_policy column: %w", err)
+		}
+	}
+
+	// Add retention_until column if it doesn't exist
+	if !s.columnExists("memories", "retention_until") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN retention_until DATETIME")
+		if err != nil {
+			return fmt.Errorf("failed to add retention_until column: %w", err)
+		}
+	}
+
+	// Add pinned column if it doesn't exist (M9: Plan 021)
+	if !s.columnExists("memories", "pinned") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN pinned BOOLEAN DEFAULT FALSE")
+		if err != nil {
+			return fmt.Errorf("failed to add pinned column: %w", err)
+		}
+	}
+
+	// Add pinned_at column if it doesn't exist (M9: Plan 021)
+	if !s.columnExists("memories", "pinned_at") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN pinned_at DATETIME")
+		if err != nil {
+			return fmt.Errorf("failed to add pinned_at column: %w", err)
+		}
+	}
+
+	// Add pinned_reason column if it doesn't exist (M9: Plan 021)
+	if !s.columnExists("memories", "pinned_reason") {
+		_, err := s.db.Exec("ALTER TABLE memories ADD COLUMN pinned_reason TEXT")
+		if err != nil {
+			return fmt.Errorf("failed to add pinned_reason column: %w", err)
+		}
+	}
+
+	// Create index on retention_policy
+	_, err := s.db.Exec("CREATE INDEX IF NOT EXISTS idx_memories_retention_policy ON memories(retention_policy)")
+	if err != nil {
+		return fmt.Errorf("failed to create retention_policy index: %w", err)
+	}
+
+	// Create index on pinned
+	_, err = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_memories_pinned ON memories(pinned)")
+	if err != nil {
+		return fmt.Errorf("failed to create pinned index: %w", err)
 	}
 
 	return nil

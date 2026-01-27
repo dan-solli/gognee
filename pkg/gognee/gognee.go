@@ -51,6 +51,14 @@ type Config struct {
 	// DecayBasis determines decay calculation: "access" (last access time) or "creation" (creation time)
 	// Default: "access"
 	DecayBasis string
+
+	// AccessFrequencyEnabled enables frequency-based decay modification (default: true when DecayEnabled)
+	// When enabled, frequently accessed memories resist time-based decay
+	AccessFrequencyEnabled bool
+
+	// ReferenceAccessCount is the access count at which heat_multiplier = 1.0 (default: 10)
+	// Memories with this many accesses get full heat protection from decay
+	ReferenceAccessCount int
 }
 
 // Gognee is the main entry point for the memory system
@@ -69,6 +77,21 @@ type Gognee struct {
 	lastCognified     time.Time
 	metricsCollector  metrics.Collector // Optional metrics collector
 	traceExporter     tracepkg.Exporter // Optional trace exporter (Plan 016 M4)
+}
+
+// RetentionPolicyDef defines the parameters for a retention policy (M6: Plan 021)
+type RetentionPolicyDef struct {
+	HalfLifeDays int  // Decay half-life in days (0 = no decay for permanent)
+	Prunable     bool // Whether memories with this policy can be pruned
+}
+
+// RetentionPolicies defines all available retention policies (M6: Plan 021)
+var RetentionPolicies = map[string]RetentionPolicyDef{
+	"permanent": {HalfLifeDays: 0, Prunable: false},      // Never decays, never pruned
+	"decision":  {HalfLifeDays: 365, Prunable: true},     // 1 year half-life, prunable only when superseded
+	"standard":  {HalfLifeDays: 90, Prunable: true},      // 3 months half-life (default)
+	"ephemeral": {HalfLifeDays: 7, Prunable: true},       // 1 week half-life
+	"session":   {HalfLifeDays: 1, Prunable: true},       // 1 day half-life
 }
 
 // AddedDocument represents a document added to the buffer for processing
@@ -143,6 +166,12 @@ type PruneOptions struct {
 
 	// DryRun reports what would be pruned without actually deleting.
 	DryRun bool
+
+	// PruneSuperseded enables pruning of Superseded memories (M5: Plan 021, default: true)
+	PruneSuperseded bool
+
+	// SupersededAgeDays only prunes Superseded memories older than this (M5: Plan 021, default: 30)
+	SupersededAgeDays int
 }
 
 // PruneResult reports the outcome of a Prune() operation
@@ -151,6 +180,10 @@ type PruneResult struct {
 	NodesPruned    int      // Number of nodes deleted
 	EdgesPruned    int      // Number of edges deleted (via cascade)
 	NodeIDs        []string // IDs of pruned nodes (for verification)
+	// SupersededMemoriesPruned is the count of Superseded memories pruned (M5: Plan 021)
+	SupersededMemoriesPruned int
+	// MemoriesEvaluated is the total number of memories considered for pruning (M5: Plan 021)
+	MemoriesEvaluated int
 }
 
 // New creates a new Gognee instance using OpenAI clients
@@ -229,12 +262,24 @@ func NewWithClients(cfg Config, embClient embeddings.EmbeddingClient, llmClient 
 	// Wrap with DecayingSearcher if decay is enabled
 	var searcher search.Searcher
 	if cfg.DecayEnabled {
-		searcher = search.NewDecayingSearcher(baseSearcher, graphStore, cfg.DecayEnabled, cfg.DecayHalfLifeDays, cfg.DecayBasis)
+		// Initialize MemoryStore early for DecayingSearcher (M2: Plan 021)
+		memoryStore := store.NewSQLiteMemoryStore(graphStore.DB())
+		searcher = search.NewDecayingSearcher(
+			baseSearcher,
+			graphStore,
+			memoryStore,
+			cfg.DecayEnabled,
+			cfg.DecayHalfLifeDays,
+			cfg.DecayBasis,
+			cfg.AccessFrequencyEnabled,
+			cfg.ReferenceAccessCount,
+		)
 	} else {
 		searcher = baseSearcher
 	}
 
 	// Initialize MemoryStore (shares DB connection with GraphStore)
+	// Note: If decay is enabled, this is a second instance; consider refactoring if needed
 	memoryStore := store.NewSQLiteMemoryStore(graphStore.DB())
 
 	// Initialize chunker
@@ -732,6 +777,17 @@ func (g *Gognee) Search(ctx context.Context, query string, opts search.SearchOpt
 						results[i].MemoryIDs = []string{} // Empty for legacy nodes
 					}
 				}
+
+				// CRITICAL: Update access tracking for all memories returned by search
+				// This ensures the primary read path (search) drives frequency signal (Milestone 1)
+				allMemoryIDs := make([]string, 0)
+				for _, memIDs := range memoryMap {
+					allMemoryIDs = append(allMemoryIDs, memIDs...)
+				}
+				if len(allMemoryIDs) > 0 {
+					// Best-effort update - don't fail search if access tracking fails
+					_ = g.memoryStore.BatchUpdateMemoryAccess(ctx, allMemoryIDs)
+				}
 			}
 		}
 	}
@@ -803,6 +859,93 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 		NodeIDs: make([]string, 0),
 	}
 
+	// Set default values for supersession options (M5: Plan 021)
+	if opts.PruneSuperseded && opts.SupersededAgeDays == 0 {
+		opts.SupersededAgeDays = 30 // Default grace period
+	}
+
+	// **Phase 1: Evaluate and prune memories based on supersession and retention policies (M5, M8: Plan 021)**
+	if opts.PruneSuperseded {
+		// Query all memories with status='Superseded'
+		allMemories, err := g.memoryStore.ListMemories(ctx, store.ListMemoriesOptions{
+			Offset: 0,
+			Limit:  10000, // Large limit to get all memories
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list memories: %w", err)
+		}
+
+		result.MemoriesEvaluated = len(allMemories)
+
+		now := time.Now()
+		memoriesToPrune := make([]string, 0)
+
+		for _, summary := range allMemories {
+			shouldPrune := false
+
+			// M9: Never prune pinned memories
+			if summary.Pinned {
+				continue
+			}
+
+			// M8: Check retention_until override (if set and in the past, eligible for prune)
+			// For this we need to fetch the full memory record to check retention_until
+			memory, err := g.memoryStore.GetMemory(ctx, summary.ID)
+			if err != nil {
+				continue // Skip on error
+			}
+
+			// M8: retention_until override
+			if memory.RetentionUntil != nil {
+				if now.After(*memory.RetentionUntil) {
+					shouldPrune = true
+				} else {
+					continue // Not yet expired
+				}
+			}
+
+			// M8: permanent retention policy - never pruned
+			if memory.RetentionPolicy == "permanent" {
+				continue
+			}
+
+			// M8: decision retention policy - only pruned when Superseded + grace period
+			if memory.RetentionPolicy == "decision" && summary.Status == "Superseded" {
+				age := now.Sub(summary.UpdatedAt)
+				ageDays := int(age.Hours() / 24)
+				if ageDays >= opts.SupersededAgeDays {
+					shouldPrune = true
+				}
+			}
+
+			// M5: Superseded memories past grace period
+			if summary.Status == "Superseded" && memory.RetentionPolicy != "decision" {
+				age := now.Sub(summary.UpdatedAt)
+				ageDays := int(age.Hours() / 24)
+				if ageDays >= opts.SupersededAgeDays {
+					shouldPrune = true
+				}
+			}
+
+			if shouldPrune {
+				memoriesToPrune = append(memoriesToPrune, summary.ID)
+			}
+		}
+
+		result.SupersededMemoriesPruned = len(memoriesToPrune)
+
+		// If not dry run, delete the memories
+		if !opts.DryRun {
+			for _, memoryID := range memoriesToPrune {
+				if err := g.DeleteMemory(ctx, memoryID); err != nil {
+					// Continue on error to prune as much as possible
+					_ = err
+				}
+			}
+		}
+	}
+
+	// **Phase 2: Evaluate and prune nodes based on decay/age (existing logic)**
 	// Get all nodes for evaluation
 	sqlStore, ok := g.graphStore.(*store.SQLiteGraphStore)
 	if !ok {
@@ -949,6 +1092,13 @@ type MemoryInput struct {
 	Source    string
 	// TraceEnabled enables timing instrumentation (Plan 015)
 	TraceEnabled bool
+	// Supersedes lists memory IDs that this new memory replaces (M4: Plan 021)
+	Supersedes []string
+	// SupersessionReason explains why this memory supersedes the old ones (M4: Plan 021)
+	SupersessionReason string
+	// RetentionPolicy sets the retention policy for this memory (M6: Plan 021)
+	// Valid values: permanent, decision, standard, ephemeral, session (default: standard)
+	RetentionPolicy string
 }
 
 // MemoryResult reports the outcome of memory operations.
@@ -961,6 +1111,8 @@ type MemoryResult struct {
 	Errors       []error
 	// Trace contains timing data when TraceEnabled is true (Plan 015)
 	Trace *OperationTrace
+	// MemoriesSuperseded is the count of memories marked as Superseded (M4: Plan 021)
+	MemoriesSuperseded int
 }
 
 // AddMemory creates a new first-class memory with full CRUD support.
@@ -988,6 +1140,14 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 		return nil, fmt.Errorf("context cannot be empty")
 	}
 
+	// Validate retention policy (M6: Plan 021)
+	if input.RetentionPolicy == "" {
+		input.RetentionPolicy = "standard" // Default
+	}
+	if _, valid := RetentionPolicies[input.RetentionPolicy]; !valid {
+		return nil, fmt.Errorf("invalid retention_policy '%s': must be one of: permanent, decision, standard, ephemeral, session", input.RetentionPolicy)
+	}
+
 	// Compute doc_hash
 	docHash := store.ComputeDocHash(input.Topic, input.Context, input.Decisions, input.Rationale)
 
@@ -1012,15 +1172,16 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 	// Create memory record with status "pending"
 	memoryID := uuid.New().String()
 	memory := &store.MemoryRecord{
-		ID:        memoryID,
-		Topic:     strings.TrimSpace(input.Topic),
-		Context:   strings.TrimSpace(input.Context),
-		Decisions: input.Decisions,
-		Rationale: input.Rationale,
-		Metadata:  input.Metadata,
-		DocHash:   docHash,
-		Source:    input.Source,
-		Status:    "pending",
+		ID:              memoryID,
+		Topic:           strings.TrimSpace(input.Topic),
+		Context:         strings.TrimSpace(input.Context),
+		Decisions:       input.Decisions,
+		Rationale:       input.Rationale,
+		Metadata:        input.Metadata,
+		DocHash:         docHash,
+		Source:          input.Source,
+		Status:          "pending",
+		RetentionPolicy: input.RetentionPolicy, // M6: Plan 021
 	}
 
 	if err := g.memoryStore.AddMemory(ctx, memory); err != nil {
@@ -1168,6 +1329,42 @@ func (g *Gognee) AddMemory(ctx context.Context, input MemoryInput) (*MemoryResul
 	// **Phase 3: Short transaction - link provenance and mark complete**
 	if err := g.memoryStore.LinkProvenance(ctx, memoryID, createdNodeIDs, createdEdgeIDs); err != nil {
 		return nil, fmt.Errorf("failed to link provenance: %w", err)
+	}
+
+	// **Phase 4: Handle supersession if provided (M4: Plan 021)**
+	if len(input.Supersedes) > 0 {
+		for _, supersededID := range input.Supersedes {
+			// Validate that superseded memory exists and is Active
+			supersededMemory, err := g.memoryStore.GetMemory(ctx, supersededID)
+			if err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("cannot supersede memory %s: %w", supersededID, err))
+				continue
+			}
+
+			// Allow superseding Active or already-Superseded memories (creates chains)
+			if supersededMemory.Status != "Active" && supersededMemory.Status != "Superseded" {
+				result.Errors = append(result.Errors, fmt.Errorf("cannot supersede memory %s: status is '%s', must be 'Active' or 'Superseded'", supersededID, supersededMemory.Status))
+				continue
+			}
+
+			// Record supersession
+			if err := g.memoryStore.RecordSupersession(ctx, memoryID, supersededID, input.SupersessionReason); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to record supersession: %w", err))
+				continue
+			}
+
+			// Mark superseded memory as Superseded
+			supersededStatus := "Superseded"
+			supersededUpdates := store.MemoryUpdate{
+				Status: &supersededStatus,
+			}
+			if err := g.memoryStore.UpdateMemory(ctx, supersededID, supersededUpdates); err != nil {
+				result.Errors = append(result.Errors, fmt.Errorf("failed to mark memory %s as superseded: %w", supersededID, err))
+				continue
+			}
+
+			result.MemoriesSuperseded++
+		}
 	}
 
 	// Update memory status to "complete"
@@ -1448,6 +1645,70 @@ func (g *Gognee) GarbageCollect(ctx context.Context) (nodesDeleted, edgesDeleted
 	// For manual GC, we need to identify all orphaned artifacts
 	// This is complex without tracking; for v1.0.0, this is a placeholder
 	return 0, 0, fmt.Errorf("manual garbage collection not yet implemented; use DeleteMemory/UpdateMemory for automatic GC")
+}
+
+// PinMemory marks a memory as pinned, exempting it from decay and prune (M9: Plan 021).
+func (g *Gognee) PinMemory(ctx context.Context, id string, reason string) error {
+	// Verify memory exists
+	memory, err := g.memoryStore.GetMemory(ctx, id)
+	if err != nil {
+		return fmt.Errorf("cannot pin memory: %w", err)
+	}
+
+	// Already pinned?
+	if memory.Pinned {
+		return nil // Idempotent
+	}
+
+	now := time.Now()
+	pinnedStatus := "Pinned"
+	updates := store.MemoryUpdate{
+		Status: &pinnedStatus,
+	}
+	if err := g.memoryStore.UpdateMemory(ctx, id, updates); err != nil {
+		return fmt.Errorf("failed to update memory status: %w", err)
+	}
+
+	// Update pinned fields directly (since MemoryUpdate doesn't have them yet)
+	query := `UPDATE memories SET pinned = TRUE, pinned_at = ?, pinned_reason = ? WHERE id = ?`
+	reasonPtr := &reason
+	_, err = g.memoryStore.DB().ExecContext(ctx, query, now, reasonPtr, id)
+	if err != nil {
+		return fmt.Errorf("failed to set pinned fields: %w", err)
+	}
+
+	return nil
+}
+
+// UnpinMemory removes pinning from a memory, allowing normal decay/prune (M9: Plan 021).
+func (g *Gognee) UnpinMemory(ctx context.Context, id string) error {
+	// Verify memory exists
+	memory, err := g.memoryStore.GetMemory(ctx, id)
+	if err != nil {
+		return fmt.Errorf("cannot unpin memory: %w", err)
+	}
+
+	// Not pinned?
+	if !memory.Pinned {
+		return nil // Idempotent
+	}
+
+	activeStatus := "Active"
+	updates := store.MemoryUpdate{
+		Status: &activeStatus,
+	}
+	if err := g.memoryStore.UpdateMemory(ctx, id, updates); err != nil {
+		return fmt.Errorf("failed to update memory status: %w", err)
+	}
+
+	// Update pinned fields directly
+	query := `UPDATE memories SET pinned = FALSE, pinned_at = NULL, pinned_reason = NULL WHERE id = ?`
+	_, err = g.memoryStore.DB().ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to clear pinned fields: %w", err)
+	}
+
+	return nil
 }
 
 // stringPtr returns a pointer to a string (helper for optional fields).
