@@ -147,6 +147,18 @@ Process:
 **Phase 2: Post-Implementation Test Execution**
 1. Update status to "Testing In Progress" with timestamp
 2. Identify code changes; inventory test coverage
+
+**Milestone Evidence Verification (Required)**: Before running tests, verify implementation evidence exists for EACH plan milestone:
+
+| Milestone | Code Evidence | Test Evidence | Status |
+|-----------|--------------|---------------|--------|
+| M1 | [file:lines] | [test file] | ✅/❌ |
+
+If ANY milestone lacks code evidence:
+1. Document the gap in QA report
+2. Return to PM: "QA BLOCKED - Milestone [N] has no implementation evidence"
+3. Do NOT proceed with test execution for incomplete implementation
+
 3. Map code changes to test cases; identify gaps
 4. Execute test suites (unit, integration, e2e); run `testing-patterns` skill scripts (`run-tests.sh`, `check-coverage.sh`) and capture outputs
 4a. **Milestone Coverage Gate**: Check that milestone maintains or improves overall coverage. If coverage drops >5% from baseline with new code added, flag to PM before proceeding. Exception: Config/template code with documented deferral reason in residuals.

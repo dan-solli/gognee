@@ -69,6 +69,20 @@ INTAKE → DISCOVERY → PLANNING → IMPLEMENTATION → VALIDATION → RELEASE
 - [ ] User confirms plan
 
 ### Gate 3: QA Complete (IMPLEMENTATION → VALIDATION)
+
+#### Gate 3 Chain Validation (Required)
+Before evaluating Gate 3 criteria, verify handoff chain integrity:
+- [ ] Implementation report exists with ALL milestones marked Complete
+- [ ] QA report exists (not just "QA passed" claim)
+- [ ] QA report shows milestone-by-milestone verification
+- [ ] No PARTIAL IMPLEMENTATION flags in implementation handoff
+
+If chain is broken (missing artifacts, partial scope flags):
+1. Do NOT proceed to Gate 3 evaluation
+2. Route back to appropriate agent to complete their phase
+3. Document gap in orchestration changelog
+
+#### Gate 3 Criteria
 - [ ] All implementation code complete
 - [ ] QA document status is "QA Complete"
 - [ ] All tests pass (unit, integration, e2e as applicable)
@@ -262,6 +276,17 @@ Before spawning Implementer tracks, verify:
 - [ ] QA strategy covers each track
 
 Failure to check this led to M8 (SuggestionService) being missed in v0.3.0.
+
+**Large Plan Phase Checkpoints**: For plans with >5 milestones:
+1. Define phase boundaries (e.g., Phase 1: M1-M5, Phase 2: M6-M10)
+2. At each phase boundary, conduct mini-validation:
+   - Implementer: Phase complete?
+   - QA: Phase tests pass?
+   - Scope: Still aligned with plan?
+3. Do NOT allow implementation to proceed past phase boundary without checkpoint pass
+4. Document phase completion in orchestration changelog
+
+This prevents late-stage discovery of scope drift.
 
 **Infrastructure Debt Escalation [REC-V41-004]**:
 If infrastructure debt (e.g., integration test setup, testcontainers configuration) is deferred for **5+ consecutive releases**, it becomes **mandatory** for the next release:

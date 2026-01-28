@@ -14,53 +14,53 @@ import (
 
 // MemoryRecord represents a first-class memory with structured payload.
 type MemoryRecord struct {
-	ID             string                 `json:"id"`
-	Topic          string                 `json:"topic"`
-	Context        string                 `json:"context"`
-	Decisions      []string               `json:"decisions,omitempty"`
-	Rationale      []string               `json:"rationale,omitempty"`
-	Metadata       map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt      time.Time              `json:"created_at"`
-	UpdatedAt      time.Time              `json:"updated_at"`
-	Version        int                    `json:"version"`
-	DocHash        string                 `json:"doc_hash"`
-	Source         string                 `json:"source,omitempty"`
-	Status         string                 `json:"status"`           // "pending", "complete", "Active", "Superseded", "Archived", "Pinned" (M3: Plan 021)
-	AccessCount    int                    `json:"access_count"`     // M1: Plan 021 - Number of times this memory was accessed
-	LastAccessedAt *time.Time             `json:"last_accessed_at"` // M1: Plan 021 - Timestamp of last access
-	AccessVelocity float64                `json:"access_velocity"`  // M1: Plan 021 - Computed access frequency (accesses / days since creation)
-	SupersededBy   *string                `json:"superseded_by"`    // M3: Plan 021 - ID of memory that supersedes this one (nullable)
-	RetentionPolicy string                `json:"retention_policy"` // M6: Plan 021 - Retention policy: permanent, decision, standard, ephemeral, session
-	RetentionUntil  *time.Time            `json:"retention_until"`  // M6: Plan 021 - Explicit expiration timestamp (nullable)
+	ID              string                 `json:"id"`
+	Topic           string                 `json:"topic"`
+	Context         string                 `json:"context"`
+	Decisions       []string               `json:"decisions,omitempty"`
+	Rationale       []string               `json:"rationale,omitempty"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt       time.Time              `json:"created_at"`
+	UpdatedAt       time.Time              `json:"updated_at"`
+	Version         int                    `json:"version"`
+	DocHash         string                 `json:"doc_hash"`
+	Source          string                 `json:"source,omitempty"`
+	Status          string                 `json:"status"`           // "pending", "complete", "Active", "Superseded", "Archived", "Pinned" (M3: Plan 021)
+	AccessCount     int                    `json:"access_count"`     // M1: Plan 021 - Number of times this memory was accessed
+	LastAccessedAt  *time.Time             `json:"last_accessed_at"` // M1: Plan 021 - Timestamp of last access
+	AccessVelocity  float64                `json:"access_velocity"`  // M1: Plan 021 - Computed access frequency (accesses / days since creation)
+	SupersededBy    *string                `json:"superseded_by"`    // M3: Plan 021 - ID of memory that supersedes this one (nullable)
+	RetentionPolicy string                 `json:"retention_policy"` // M6: Plan 021 - Retention policy: permanent, decision, standard, ephemeral, session
+	RetentionUntil  *time.Time             `json:"retention_until"`  // M6: Plan 021 - Explicit expiration timestamp (nullable)
 	Pinned          bool                   `json:"pinned"`           // M9: Plan 021 - Whether this memory is pinned
-	PinnedAt        *time.Time            `json:"pinned_at"`        // M9: Plan 021 - When this memory was pinned
+	PinnedAt        *time.Time             `json:"pinned_at"`        // M9: Plan 021 - When this memory was pinned
 	PinnedReason    *string                `json:"pinned_reason"`    // M9: Plan 021 - Why this memory was pinned (nullable)
 }
 
 // MemorySummary provides a lightweight view of a memory for list operations.
 type MemorySummary struct {
-	ID              string     `json:"id"`
-	Topic           string     `json:"topic"`
-	Preview         string     `json:"preview"` // Truncated context
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
-	DecisionCount   int        `json:"decision_count"`
-	Status          string     `json:"status"`
-	RetentionPolicy string     `json:"retention_policy"` // M10: Plan 021
-	Pinned          bool       `json:"pinned"`           // M10: Plan 021
-	AccessCount     int        `json:"access_count"`     // M10: Plan 021
-	SupersededBy    *string    `json:"superseded_by"`    // M10: Plan 021
+	ID              string    `json:"id"`
+	Topic           string    `json:"topic"`
+	Preview         string    `json:"preview"` // Truncated context
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	DecisionCount   int       `json:"decision_count"`
+	Status          string    `json:"status"`
+	RetentionPolicy string    `json:"retention_policy"` // M10: Plan 021
+	Pinned          bool      `json:"pinned"`           // M10: Plan 021
+	AccessCount     int       `json:"access_count"`     // M10: Plan 021
+	SupersededBy    *string   `json:"superseded_by"`    // M10: Plan 021
 }
 
 // ListMemoriesOptions provides pagination and filtering for memory listing (M10: Plan 021).
 type ListMemoriesOptions struct {
 	Offset          int
-	Limit           int // Default 50, max 100
-	Status          *string   // Filter by status (Active, Superseded, Pinned, etc.) (M10)
-	RetentionPolicy *string   // Filter by retention_policy (M10)
-	Pinned          *bool     // Filter pinned only (M10)
-	OrderBy         string    // "created_at", "updated_at", "access_count", "last_accessed_at" (M10)
-	OrderDesc       bool      // Default true (newest/highest first) (M10)
+	Limit           int     // Default 50, max 100
+	Status          *string // Filter by status (Active, Superseded, Pinned, etc.) (M10)
+	RetentionPolicy *string // Filter by retention_policy (M10)
+	Pinned          *bool   // Filter pinned only (M10)
+	OrderBy         string  // "created_at", "updated_at", "access_count", "last_accessed_at" (M10)
+	OrderDesc       bool    // Default true (newest/highest first) (M10)
 }
 
 // MemoryUpdate represents partial updates to a memory.

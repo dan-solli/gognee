@@ -87,11 +87,11 @@ type RetentionPolicyDef struct {
 
 // RetentionPolicies defines all available retention policies (M6: Plan 021)
 var RetentionPolicies = map[string]RetentionPolicyDef{
-	"permanent": {HalfLifeDays: 0, Prunable: false},      // Never decays, never pruned
-	"decision":  {HalfLifeDays: 365, Prunable: true},     // 1 year half-life, prunable only when superseded
-	"standard":  {HalfLifeDays: 90, Prunable: true},      // 3 months half-life (default)
-	"ephemeral": {HalfLifeDays: 7, Prunable: true},       // 1 week half-life
-	"session":   {HalfLifeDays: 1, Prunable: true},       // 1 day half-life
+	"permanent": {HalfLifeDays: 0, Prunable: false},  // Never decays, never pruned
+	"decision":  {HalfLifeDays: 365, Prunable: true}, // 1 year half-life, prunable only when superseded
+	"standard":  {HalfLifeDays: 90, Prunable: true},  // 3 months half-life (default)
+	"ephemeral": {HalfLifeDays: 7, Prunable: true},   // 1 week half-life
+	"session":   {HalfLifeDays: 1, Prunable: true},   // 1 day half-life
 }
 
 // AddedDocument represents a document added to the buffer for processing

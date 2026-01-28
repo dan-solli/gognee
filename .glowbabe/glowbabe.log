@@ -3548,3 +3548,421 @@
 [2026-01-27 22:18:54.946] CreateMemory: params - topic="Plan 021 UAT Approved v1.5.0" contextLen=922 decisions=5 source=""
 [2026-01-27 22:19:10.109] CreateMemory: completed in 15.229075738s (addMemory=15.12904135s) memoryID=b7472d6d-bdde-4711-bea9-5a21ace6b04d nodes=13 edges=12
 [2026-01-27 22:19:10.142] RES [846] method=memory.create status=OK duration=15314ms
+[2026-01-27 22:27:26.744] REQ [847] method=health
+[2026-01-27 22:27:26.784] RES [847] method=health status=OK duration=40ms
+[2026-01-27 22:27:26.849] REQ [848] method=stats
+[2026-01-27 22:27:26.874] RES [848] method=stats status=OK duration=24ms
+[2026-01-27 22:28:26.745] REQ [849] method=health
+[2026-01-27 22:28:26.786] RES [849] method=health status=OK duration=40ms
+[2026-01-27 22:28:26.820] REQ [850] method=stats
+[2026-01-27 22:28:26.853] RES [850] method=stats status=OK duration=33ms
+[2026-01-27 22:29:26.746] REQ [851] method=health
+[2026-01-27 22:29:26.786] RES [851] method=health status=OK duration=39ms
+[2026-01-27 22:29:26.820] REQ [852] method=stats
+[2026-01-27 22:29:26.853] RES [852] method=stats status=OK duration=33ms
+[2026-01-27 22:30:26.745] REQ [853] method=health
+[2026-01-27 22:30:26.786] RES [853] method=health status=OK duration=40ms
+[2026-01-27 22:30:26.820] REQ [854] method=stats
+[2026-01-27 22:30:26.853] RES [854] method=stats status=OK duration=33ms
+[2026-01-27 22:31:26.746] REQ [855] method=health
+[2026-01-27 22:31:26.786] RES [855] method=health status=OK duration=40ms
+[2026-01-27 22:31:26.842] REQ [856] method=stats
+[2026-01-27 22:31:26.898] RES [856] method=stats status=OK duration=56ms
+[2026-01-27 22:32:26.745] REQ [857] method=health
+[2026-01-27 22:32:26.787] RES [857] method=health status=OK duration=42ms
+[2026-01-27 22:32:26.821] REQ [858] method=stats
+[2026-01-27 22:32:26.855] RES [858] method=stats status=OK duration=33ms
+[2026-01-27 22:33:26.746] REQ [859] method=health
+[2026-01-27 22:33:26.799] RES [859] method=health status=OK duration=52ms
+[2026-01-27 22:33:26.833] REQ [860] method=stats
+[2026-01-27 22:33:26.866] RES [860] method=stats status=OK duration=33ms
+[2026-01-27 22:34:26.746] REQ [861] method=health
+[2026-01-27 22:34:26.777] RES [861] method=health status=OK duration=30ms
+[2026-01-27 22:34:26.810] REQ [862] method=stats
+[2026-01-27 22:34:26.844] RES [862] method=stats status=OK duration=33ms
+[2026-01-27 22:35:26.745] REQ [863] method=health
+[2026-01-27 22:35:26.788] RES [863] method=health status=OK duration=42ms
+[2026-01-27 22:35:26.822] REQ [864] method=stats
+[2026-01-27 22:35:26.855] RES [864] method=stats status=OK duration=33ms
+[2026-01-27 22:36:26.745] REQ [865] method=health
+[2026-01-27 22:36:26.788] RES [865] method=health status=OK duration=42ms
+[2026-01-27 22:36:26.822] REQ [866] method=stats
+[2026-01-27 22:36:26.855] RES [866] method=stats status=OK duration=33ms
+[2026-01-27 22:37:26.746] REQ [867] method=health
+[2026-01-27 22:37:26.788] RES [867] method=health status=OK duration=42ms
+[2026-01-27 22:37:26.822] REQ [868] method=stats
+[2026-01-27 22:37:26.855] RES [868] method=stats status=OK duration=33ms
+[2026-01-27 22:38:26.746] REQ [869] method=health
+[2026-01-27 22:38:26.789] RES [869] method=health status=OK duration=43ms
+[2026-01-27 22:38:26.823] REQ [870] method=stats
+[2026-01-27 22:38:26.857] RES [870] method=stats status=OK duration=33ms
+[2026-01-27 22:39:26.746] REQ [871] method=health
+[2026-01-27 22:39:26.778] RES [871] method=health status=OK duration=31ms
+[2026-01-27 22:39:26.863] REQ [872] method=stats
+[2026-01-27 22:39:26.934] RES [872] method=stats status=OK duration=71ms
+[2026-01-27 22:40:26.746] REQ [873] method=health
+[2026-01-27 22:40:26.778] RES [873] method=health status=OK duration=31ms
+[2026-01-27 22:40:26.812] REQ [874] method=stats
+[2026-01-27 22:40:26.845] RES [874] method=stats status=OK duration=33ms
+[2026-01-27 22:41:26.747] REQ [875] method=health
+[2026-01-27 22:41:26.789] RES [875] method=health status=OK duration=41ms
+[2026-01-27 22:41:26.823] REQ [876] method=stats
+[2026-01-27 22:41:26.856] RES [876] method=stats status=OK duration=33ms
+[2026-01-27 22:42:26.747] REQ [877] method=health
+[2026-01-27 22:42:26.788] RES [877] method=health status=OK duration=40ms
+[2026-01-27 22:42:26.822] REQ [878] method=stats
+[2026-01-27 22:42:26.855] RES [878] method=stats status=OK duration=33ms
+[2026-01-27 22:43:26.747] REQ [879] method=health
+[2026-01-27 22:43:26.788] RES [879] method=health status=OK duration=41ms
+[2026-01-27 22:43:26.822] REQ [880] method=stats
+[2026-01-27 22:43:26.855] RES [880] method=stats status=OK duration=33ms
+[2026-01-27 22:44:26.747] REQ [881] method=health
+[2026-01-27 22:44:26.789] RES [881] method=health status=OK duration=41ms
+[2026-01-27 22:44:26.834] REQ [882] method=stats
+[2026-01-27 22:44:26.879] RES [882] method=stats status=OK duration=44ms
+[2026-01-27 22:45:26.748] REQ [883] method=health
+[2026-01-27 22:45:26.789] RES [883] method=health status=OK duration=40ms
+[2026-01-27 22:45:26.823] REQ [884] method=stats
+[2026-01-27 22:45:26.856] RES [884] method=stats status=OK duration=33ms
+[2026-01-27 22:46:26.747] REQ [885] method=health
+[2026-01-27 22:46:26.789] RES [885] method=health status=OK duration=41ms
+[2026-01-27 22:46:26.823] REQ [886] method=stats
+[2026-01-27 22:46:26.856] RES [886] method=stats status=OK duration=33ms
+[2026-01-27 22:47:26.747] REQ [887] method=health
+[2026-01-27 22:47:26.788] RES [887] method=health status=OK duration=41ms
+[2026-01-27 22:47:26.822] REQ [888] method=stats
+[2026-01-27 22:47:26.856] RES [888] method=stats status=OK duration=33ms
+[2026-01-27 22:48:26.747] REQ [889] method=health
+[2026-01-27 22:48:26.788] RES [889] method=health status=OK duration=40ms
+[2026-01-27 22:48:26.822] REQ [890] method=stats
+[2026-01-27 22:48:26.856] RES [890] method=stats status=OK duration=33ms
+[2026-01-27 22:49:26.747] REQ [891] method=health
+[2026-01-27 22:49:26.788] RES [891] method=health status=OK duration=40ms
+[2026-01-27 22:49:26.822] REQ [892] method=stats
+[2026-01-27 22:49:26.856] RES [892] method=stats status=OK duration=33ms
+[2026-01-27 22:50:26.748] REQ [893] method=health
+[2026-01-27 22:50:26.789] RES [893] method=health status=OK duration=40ms
+[2026-01-27 22:50:26.823] REQ [894] method=stats
+[2026-01-27 22:50:26.856] RES [894] method=stats status=OK duration=33ms
+[2026-01-27 22:51:26.748] REQ [895] method=health
+[2026-01-27 22:51:26.789] RES [895] method=health status=OK duration=40ms
+[2026-01-27 22:51:26.823] REQ [896] method=stats
+[2026-01-27 22:51:26.856] RES [896] method=stats status=OK duration=33ms
+[2026-01-27 22:52:26.749] REQ [897] method=health
+[2026-01-27 22:52:26.800] RES [897] method=health status=OK duration=50ms
+[2026-01-27 22:52:26.834] REQ [898] method=stats
+[2026-01-27 22:52:26.868] RES [898] method=stats status=OK duration=33ms
+[2026-01-27 22:53:26.750] REQ [899] method=health
+[2026-01-27 22:53:26.789] RES [899] method=health status=OK duration=38ms
+[2026-01-27 22:53:26.823] REQ [900] method=stats
+[2026-01-27 22:53:26.856] RES [900] method=stats status=OK duration=33ms
+[2026-01-27 22:54:26.750] REQ [901] method=health
+[2026-01-27 22:54:26.799] RES [901] method=health status=OK duration=49ms
+[2026-01-27 22:54:26.834] REQ [902] method=stats
+[2026-01-27 22:54:26.867] RES [902] method=stats status=OK duration=32ms
+[2026-01-27 22:55:26.750] REQ [903] method=health
+[2026-01-27 22:55:26.800] RES [903] method=health status=OK duration=49ms
+[2026-01-27 22:55:26.845] REQ [904] method=stats
+[2026-01-27 22:55:26.889] RES [904] method=stats status=OK duration=44ms
+[2026-01-27 22:56:26.751] REQ [905] method=health
+[2026-01-27 22:56:26.789] RES [905] method=health status=OK duration=38ms
+[2026-01-27 22:56:26.823] REQ [906] method=stats
+[2026-01-27 22:56:26.857] RES [906] method=stats status=OK duration=33ms
+[2026-01-27 22:57:26.751] REQ [907] method=health
+[2026-01-27 22:57:26.800] RES [907] method=health status=OK duration=49ms
+[2026-01-27 22:57:26.835] REQ [908] method=stats
+[2026-01-27 22:57:26.867] RES [908] method=stats status=OK duration=32ms
+[2026-01-27 22:58:26.751] REQ [909] method=health
+[2026-01-27 22:58:26.832] RES [909] method=health status=OK duration=81ms
+[2026-01-27 22:58:27.000] REQ [910] method=stats
+[2026-01-27 22:58:27.045] RES [910] method=stats status=OK duration=45ms
+[2026-01-27 22:59:26.751] REQ [911] method=health
+[2026-01-27 22:59:26.800] RES [911] method=health status=OK duration=49ms
+[2026-01-27 22:59:26.835] REQ [912] method=stats
+[2026-01-27 22:59:26.867] RES [912] method=stats status=OK duration=32ms
+[2026-01-27 23:00:26.751] REQ [913] method=health
+[2026-01-27 23:00:26.800] RES [913] method=health status=OK duration=48ms
+[2026-01-27 23:00:26.834] REQ [914] method=stats
+[2026-01-27 23:00:26.867] RES [914] method=stats status=OK duration=33ms
+[2026-01-27 23:01:26.752] REQ [915] method=health
+[2026-01-27 23:01:26.789] RES [915] method=health status=OK duration=36ms
+[2026-01-27 23:01:26.823] REQ [916] method=stats
+[2026-01-27 23:01:26.856] RES [916] method=stats status=OK duration=33ms
+[2026-01-27 23:02:26.753] REQ [917] method=health
+[2026-01-27 23:02:26.801] RES [917] method=health status=OK duration=47ms
+[2026-01-27 23:02:26.836] REQ [918] method=stats
+[2026-01-27 23:02:26.868] RES [918] method=stats status=OK duration=32ms
+[2026-01-27 23:03:26.754] REQ [919] method=health
+[2026-01-27 23:03:26.821] RES [919] method=health status=OK duration=66ms
+[2026-01-27 23:03:26.879] REQ [920] method=stats
+[2026-01-27 23:03:26.912] RES [920] method=stats status=OK duration=33ms
+[2026-01-27 23:04:26.754] REQ [921] method=health
+[2026-01-27 23:04:26.801] RES [921] method=health status=OK duration=47ms
+[2026-01-27 23:04:26.835] REQ [922] method=stats
+[2026-01-27 23:04:26.868] RES [922] method=stats status=OK duration=33ms
+[2026-01-27 23:05:26.754] REQ [923] method=health
+[2026-01-27 23:05:26.800] RES [923] method=health status=OK duration=46ms
+[2026-01-27 23:05:26.835] REQ [924] method=stats
+[2026-01-27 23:05:26.868] RES [924] method=stats status=OK duration=33ms
+[2026-01-27 23:06:26.753] REQ [925] method=health
+[2026-01-27 23:06:26.789] RES [925] method=health status=OK duration=36ms
+[2026-01-27 23:06:26.823] REQ [926] method=stats
+[2026-01-27 23:06:26.856] RES [926] method=stats status=OK duration=33ms
+[2026-01-27 23:07:26.754] REQ [927] method=health
+[2026-01-27 23:07:26.800] RES [927] method=health status=OK duration=46ms
+[2026-01-27 23:07:26.834] REQ [928] method=stats
+[2026-01-27 23:07:26.868] RES [928] method=stats status=OK duration=33ms
+[2026-01-27 23:08:26.754] REQ [929] method=health
+[2026-01-27 23:08:26.779] RES [929] method=health status=OK duration=25ms
+[2026-01-27 23:08:26.813] REQ [930] method=stats
+[2026-01-27 23:08:26.847] RES [930] method=stats status=OK duration=33ms
+[2026-01-27 23:09:26.754] REQ [931] method=health
+[2026-01-27 23:09:26.801] RES [931] method=health status=OK duration=47ms
+[2026-01-27 23:09:26.835] REQ [932] method=stats
+[2026-01-27 23:09:26.869] RES [932] method=stats status=OK duration=33ms
+[2026-01-27 23:10:26.754] REQ [933] method=health
+[2026-01-27 23:10:26.801] RES [933] method=health status=OK duration=47ms
+[2026-01-27 23:10:26.835] REQ [934] method=stats
+[2026-01-27 23:10:26.869] RES [934] method=stats status=OK duration=33ms
+[2026-01-27 23:11:26.754] REQ [935] method=health
+[2026-01-27 23:11:26.790] RES [935] method=health status=OK duration=36ms
+[2026-01-27 23:11:26.835] REQ [936] method=stats
+[2026-01-27 23:11:26.879] RES [936] method=stats status=OK duration=44ms
+[2026-01-27 23:12:26.754] REQ [937] method=health
+[2026-01-27 23:12:26.779] RES [937] method=health status=OK duration=24ms
+[2026-01-27 23:12:26.813] REQ [938] method=stats
+[2026-01-27 23:12:26.846] RES [938] method=stats status=OK duration=33ms
+[2026-01-27 23:13:26.755] REQ [939] method=health
+[2026-01-27 23:13:26.801] RES [939] method=health status=OK duration=46ms
+[2026-01-27 23:13:26.835] REQ [940] method=stats
+[2026-01-27 23:13:26.870] RES [940] method=stats status=OK duration=34ms
+[2026-01-27 23:14:26.756] REQ [941] method=health
+[2026-01-27 23:14:26.791] RES [941] method=health status=OK duration=34ms
+[2026-01-27 23:14:26.825] REQ [942] method=stats
+[2026-01-27 23:14:26.858] RES [942] method=stats status=OK duration=32ms
+[2026-01-27 23:15:26.755] REQ [943] method=health
+[2026-01-27 23:15:26.801] RES [943] method=health status=OK duration=45ms
+[2026-01-27 23:15:26.835] REQ [944] method=stats
+[2026-01-27 23:15:26.868] RES [944] method=stats status=OK duration=32ms
+[2026-01-27 23:16:26.756] REQ [945] method=health
+[2026-01-27 23:16:26.801] RES [945] method=health status=OK duration=45ms
+[2026-01-27 23:16:26.867] REQ [946] method=stats
+[2026-01-27 23:16:26.902] RES [946] method=stats status=OK duration=35ms
+[2026-01-27 23:17:26.755] REQ [947] method=health
+[2026-01-27 23:17:26.834] RES [947] method=health status=OK duration=78ms
+[2026-01-27 23:17:26.868] REQ [948] method=stats
+[2026-01-27 23:17:26.902] RES [948] method=stats status=OK duration=33ms
+[2026-01-27 23:18:26.755] REQ [949] method=health
+[2026-01-27 23:18:26.800] RES [949] method=health status=OK duration=44ms
+[2026-01-27 23:18:26.834] REQ [950] method=stats
+[2026-01-27 23:18:26.868] RES [950] method=stats status=OK duration=33ms
+[2026-01-27 23:19:26.756] REQ [951] method=health
+[2026-01-27 23:19:26.791] RES [951] method=health status=OK duration=34ms
+[2026-01-27 23:19:26.824] REQ [952] method=stats
+[2026-01-27 23:19:26.858] RES [952] method=stats status=OK duration=33ms
+[2026-01-27 23:20:26.756] REQ [953] method=health
+[2026-01-27 23:20:26.801] RES [953] method=health status=OK duration=45ms
+[2026-01-27 23:20:26.835] REQ [954] method=stats
+[2026-01-27 23:20:26.869] RES [954] method=stats status=OK duration=33ms
+[2026-01-27 23:21:26.756] REQ [955] method=health
+[2026-01-27 23:21:26.801] RES [955] method=health status=OK duration=45ms
+[2026-01-27 23:21:26.835] REQ [956] method=stats
+[2026-01-27 23:21:26.868] RES [956] method=stats status=OK duration=33ms
+[2026-01-27 23:22:26.756] REQ [957] method=health
+[2026-01-27 23:22:26.790] RES [957] method=health status=OK duration=33ms
+[2026-01-27 23:22:26.824] REQ [958] method=stats
+[2026-01-27 23:22:26.857] RES [958] method=stats status=OK duration=33ms
+[2026-01-27 23:23:26.756] REQ [959] method=health
+[2026-01-27 23:23:26.800] RES [959] method=health status=OK duration=44ms
+[2026-01-27 23:23:26.834] REQ [960] method=stats
+[2026-01-27 23:23:26.868] RES [960] method=stats status=OK duration=33ms
+[2026-01-27 23:24:26.756] REQ [961] method=health
+[2026-01-27 23:24:26.800] RES [961] method=health status=OK duration=43ms
+[2026-01-27 23:24:26.863] REQ [962] method=stats
+[2026-01-27 23:24:26.923] RES [962] method=stats status=OK duration=60ms
+[2026-01-27 23:25:19.754] REQ [963] method=health
+[2026-01-27 23:25:19.801] RES [963] method=health status=OK duration=47ms
+[2026-01-27 23:25:19.835] REQ [964] method=stats
+[2026-01-27 23:25:19.869] RES [964] method=stats status=OK duration=33ms
+[2026-01-27 23:25:53.932] REQ [965] method=health
+[2026-01-27 23:25:53.979] RES [965] method=health status=OK duration=46ms
+[2026-01-27 23:25:54.013] REQ [966] method=stats
+[2026-01-27 23:25:54.047] RES [966] method=stats status=OK duration=33ms
+[2026-01-27 23:26:53.933] REQ [967] method=health
+[2026-01-27 23:26:53.969] RES [967] method=health status=OK duration=36ms
+[2026-01-27 23:26:54.003] REQ [968] method=stats
+[2026-01-27 23:26:54.037] RES [968] method=stats status=OK duration=33ms
+[2026-01-27 23:26:59.763] REQ [969] method=health
+[2026-01-27 23:26:59.792] RES [969] method=health status=OK duration=28ms
+[2026-01-27 23:26:59.825] REQ [970] method=stats
+[2026-01-27 23:26:59.859] RES [970] method=stats status=OK duration=33ms
+[2026-01-27 23:27:59.764] REQ [971] method=health
+[2026-01-27 23:27:59.814] RES [971] method=health status=OK duration=50ms
+[2026-01-27 23:27:59.848] REQ [972] method=stats
+[2026-01-27 23:27:59.881] RES [972] method=stats status=OK duration=33ms
+[2026-01-27 23:28:59.763] REQ [973] method=health
+[2026-01-27 23:28:59.803] RES [973] method=health status=OK duration=39ms
+[2026-01-27 23:28:59.837] REQ [974] method=stats
+[2026-01-27 23:28:59.870] RES [974] method=stats status=OK duration=33ms
+[2026-01-27 23:29:59.763] REQ [975] method=health
+[2026-01-27 23:29:59.813] RES [975] method=health status=OK duration=49ms
+[2026-01-27 23:29:59.847] REQ [976] method=stats
+[2026-01-27 23:29:59.881] RES [976] method=stats status=OK duration=33ms
+[2026-01-27 23:34:00.243] REQ [977] method=health
+[2026-01-27 23:34:00.298] RES [977] method=health status=OK duration=55ms
+[2026-01-27 23:34:00.343] REQ [978] method=stats
+[2026-01-27 23:34:00.377] RES [978] method=stats status=OK duration=33ms
+[2026-01-27 23:44:01.603] REQ [979] method=health
+[2026-01-27 23:44:01.651] RES [979] method=health status=OK duration=48ms
+[2026-01-27 23:44:01.702] REQ [980] method=stats
+[2026-01-27 23:44:01.730] RES [980] method=stats status=OK duration=27ms
+[2026-01-27 23:44:09.782] REQ [981] method=health
+[2026-01-27 23:44:09.836] RES [981] method=health status=OK duration=53ms
+[2026-01-27 23:44:09.897] REQ [982] method=stats
+[2026-01-27 23:44:09.932] RES [982] method=stats status=OK duration=34ms
+[2026-01-27 23:45:09.782] REQ [983] method=health
+[2026-01-27 23:45:09.830] RES [983] method=health status=OK duration=47ms
+[2026-01-27 23:45:09.864] REQ [984] method=stats
+[2026-01-27 23:45:09.898] RES [984] method=stats status=OK duration=33ms
+[2026-01-27 23:45:17.897] REQ [985] method=memory.search
+[2026-01-27 23:45:17.942] REQ [985] query="Plan 021 Intelligent Memory Lifecycle implementation UAT failure partial scope v1.5.0"
+[2026-01-27 23:45:17.975] SearchMemories: starting query="Plan 021 Intelligent Memory Lifecycle implementation UAT failure partial scope v..." maxResults=5
+[2026-01-27 23:45:18.009] SearchMemories: calling gognee.Search topK=5
+[2026-01-27 23:45:23.475] SearchMemories: gognee.Search completed in 5.433317751s results=5
+[2026-01-27 23:45:23.519] SearchMemories: result[0] node="Plan 021" type=System score=0.8942 source=hybrid
+[2026-01-27 23:45:23.564] SearchMemories: result[1] node="Plan 021" type=Concept score=0.8740 source=hybrid
+[2026-01-27 23:45:23.608] SearchMemories: result[2] node="Intelligent Memory Lifecycle v1.1.0" type=Technology score=0.6875 source=hybrid
+[2026-01-27 23:45:23.653] SearchMemories: result[3] node="Enhanced ListMemories" type=Feature score=0.6254 source=hybrid
+[2026-01-27 23:45:23.686] SearchMemories: result[4] node="M3 Supersession" type=Concept score=0.5799 source=hybrid
+[2026-01-27 23:45:23.720] SearchMemories: completed in 5.744201759s totalResults=5
+[2026-01-27 23:45:23.753] RES [985] method=memory.search status=OK duration=5856ms
+[2026-01-27 23:45:23.786] RES [985] memories_found=5
+[2026-01-27 23:45:43.901] REQ [986] method=memory.search
+[2026-01-27 23:45:43.931] REQ [986] query="UAT failure incomplete implementation scope drift agent workflow M1 M2 M3 only"
+[2026-01-27 23:45:43.964] SearchMemories: starting query="UAT failure incomplete implementation scope drift agent workflow M1 M2 M3 only" maxResults=5
+[2026-01-27 23:45:43.998] SearchMemories: calling gognee.Search topK=5
+[2026-01-27 23:45:48.888] SearchMemories: gognee.Search completed in 4.856618864s results=5
+[2026-01-27 23:45:48.921] SearchMemories: result[0] node="Intelligent Memory Lifecycle Epic 9.1" type=Concept score=0.5000 source=graph
+[2026-01-27 23:45:48.954] SearchMemories: result[1] node="MemoryRecord" type=Concept score=0.5000 source=graph
+[2026-01-27 23:45:48.987] SearchMemories: result[2] node="CHANGELOG.md v1.5.0" type=Document score=0.5000 source=graph
+[2026-01-27 23:45:49.021] SearchMemories: result[3] node="User Pinning" type=Feature score=0.5000 source=graph
+[2026-01-27 23:45:49.054] SearchMemories: result[4] node="Supersession Schema" type=System score=0.5000 source=graph
+[2026-01-27 23:45:49.088] SearchMemories: completed in 5.12320452s totalResults=5
+[2026-01-27 23:45:49.121] RES [986] method=memory.search status=OK duration=5220ms
+[2026-01-27 23:45:49.154] RES [986] memories_found=5
+[2026-01-27 23:45:49.794] REQ [987] method=health
+[2026-01-27 23:45:49.821] RES [987] method=health status=OK duration=27ms
+[2026-01-27 23:45:49.855] REQ [988] method=stats
+[2026-01-27 23:45:49.889] RES [988] method=stats status=OK duration=33ms
+[2026-01-27 23:46:49.793] REQ [989] method=health
+[2026-01-27 23:46:49.833] RES [989] method=health status=OK duration=39ms
+[2026-01-27 23:46:49.866] REQ [990] method=stats
+[2026-01-27 23:46:49.900] RES [990] method=stats status=OK duration=33ms
+[2026-01-27 23:47:48.453] REQ [991] method=memory.create
+[2026-01-27 23:47:48.488] CreateMemory: starting topic="Plan 021 Retrospective Findings" contextLen=601
+[2026-01-27 23:47:48.521] CreateMemory: calling gognee.AddMemory
+[2026-01-27 23:47:48.555] CreateMemory: params - topic="Plan 021 Retrospective Findings" contextLen=601 decisions=5 source=""
+[2026-01-27 23:47:57.177] CreateMemory: completed in 8.688983737s (addMemory=8.588849437s) memoryID=9d6a9233-4f25-4678-b545-2fe125593ece nodes=8 edges=4
+[2026-01-27 23:47:57.210] RES [991] method=memory.create status=OK duration=8757ms
+[2026-01-27 23:48:30.661] REQ [992] method=memory.search
+[2026-01-27 23:48:30.711] REQ [992] query="process improvement partial delivery incomplete implementation QA UAT handoff gaps"
+[2026-01-27 23:48:30.745] SearchMemories: starting query="process improvement partial delivery incomplete implementation QA UAT handoff ga..." maxResults=5
+[2026-01-27 23:48:30.778] SearchMemories: calling gognee.Search topK=5
+[2026-01-27 23:48:34.420] SearchMemories: gognee.Search completed in 3.608541177s results=5
+[2026-01-27 23:48:34.530] SearchMemories: result[0] node="M3" type=Feature score=0.5000 source=graph
+[2026-01-27 23:48:34.564] SearchMemories: result[1] node="Enhanced ListMemories" type=Feature score=0.5000 source=graph
+[2026-01-27 23:48:34.597] SearchMemories: result[2] node="Retention Policies" type=Feature score=0.5000 source=graph
+[2026-01-27 23:48:34.631] SearchMemories: result[3] node="M2" type=Feature score=0.5000 source=graph
+[2026-01-27 23:48:34.664] SearchMemories: result[4] node="M3 Supersession" type=Concept score=0.5000 source=graph
+[2026-01-27 23:48:34.698] SearchMemories: completed in 3.952768192s totalResults=5
+[2026-01-27 23:48:34.731] RES [992] method=memory.search status=OK duration=4069ms
+[2026-01-27 23:48:34.764] RES [992] memories_found=5
+[2026-01-27 23:51:20.448] REQ [993] method=memory.create
+[2026-01-27 23:51:20.495] CreateMemory: starting topic="Process Improvement REC-V55 Scope Gates" contextLen=623
+[2026-01-27 23:51:20.528] CreateMemory: calling gognee.AddMemory
+[2026-01-27 23:51:20.562] CreateMemory: params - topic="Process Improvement REC-V55 Scope Gates" contextLen=623 decisions=5 source=""
+[2026-01-27 23:51:32.005] CreateMemory: completed in 11.509940296s (addMemory=11.409960216s) memoryID=901f1417-6937-419c-b29a-3cf3f21418c8 nodes=8 edges=2
+[2026-01-27 23:51:32.039] RES [993] method=memory.create status=OK duration=11591ms
+[2026-01-28 00:12:48.153] REQ [994] method=health
+[2026-01-28 00:12:48.186] RES [994] method=health status=OK duration=33ms
+[2026-01-28 00:12:48.246] REQ [995] method=stats
+[2026-01-28 00:12:48.287] RES [995] method=stats status=OK duration=40ms
+[2026-01-28 04:39:50.470] REQ [996] method=health
+[2026-01-28 04:39:50.517] RES [996] method=health status=OK duration=46ms
+[2026-01-28 04:39:50.614] REQ [997] method=stats
+[2026-01-28 04:39:50.640] RES [997] method=stats status=OK duration=25ms
+[2026-01-28 04:40:20.386] REQ [998] method=health
+[2026-01-28 04:40:20.429] RES [998] method=health status=OK duration=42ms
+[2026-01-28 04:40:20.472] REQ [999] method=stats
+[2026-01-28 04:40:20.507] RES [999] method=stats status=OK duration=34ms
+[2026-01-28 04:41:36.112] REQ [1000] method=health
+[2026-01-28 04:41:36.167] RES [1000] method=health status=OK duration=55ms
+[2026-01-28 04:41:36.201] REQ [1001] method=stats
+[2026-01-28 04:41:36.234] RES [1001] method=stats status=OK duration=33ms
+[2026-01-28 05:06:30.146] REQ [1002] method=health
+[2026-01-28 05:06:30.191] RES [1002] method=health status=OK duration=44ms
+[2026-01-28 05:06:30.225] REQ [1003] method=stats
+[2026-01-28 05:06:30.258] RES [1003] method=stats status=OK duration=33ms
+[2026-01-28 05:06:55.478] REQ [1004] method=health
+[2026-01-28 05:06:55.525] RES [1004] method=health status=OK duration=46ms
+[2026-01-28 05:06:55.565] REQ [1005] method=stats
+[2026-01-28 05:06:55.592] RES [1005] method=stats status=OK duration=27ms
+[2026-01-28 05:07:55.479] REQ [1006] method=health
+[2026-01-28 05:07:55.525] RES [1006] method=health status=OK duration=45ms
+[2026-01-28 05:07:55.559] REQ [1007] method=stats
+[2026-01-28 05:07:55.592] RES [1007] method=stats status=OK duration=33ms
+[2026-01-28 05:08:05.419] REQ [1008] method=health
+[2026-01-28 05:08:05.460] RES [1008] method=health status=OK duration=40ms
+[2026-01-28 05:08:05.494] REQ [1009] method=stats
+[2026-01-28 05:08:05.527] RES [1009] method=stats status=OK duration=33ms
+[2026-01-28 05:08:10.740] REQ [1010] method=health
+[2026-01-28 05:08:10.771] RES [1010] method=health status=OK duration=31ms
+[2026-01-28 05:08:10.805] REQ [1011] method=stats
+[2026-01-28 05:08:10.839] RES [1011] method=stats status=OK duration=33ms
+[2026-01-28 05:09:22.489] REQ [1012] method=memory.create
+[2026-01-28 05:09:22.532] CreateMemory: starting topic="Plan 021 v1.5.0 Release Complete" contextLen=680
+[2026-01-28 05:09:22.565] CreateMemory: calling gognee.AddMemory
+[2026-01-28 05:09:22.599] CreateMemory: params - topic="Plan 021 v1.5.0 Release Complete" contextLen=680 decisions=3 source=""
+[2026-01-28 05:09:34.093] CreateMemory: completed in 11.561238797s (addMemory=11.461230519s) memoryID=ffdf4e49-4e00-49be-a1a2-04d4f36718a8 nodes=12 edges=6
+[2026-01-28 05:09:34.127] RES [1012] method=memory.create status=OK duration=11638ms
+[2026-01-28 05:27:30.586] REQ [1013] method=health
+[2026-01-28 05:27:30.619] RES [1013] method=health status=OK duration=32ms
+[2026-01-28 05:27:30.665] REQ [1014] method=stats
+[2026-01-28 05:27:30.698] RES [1014] method=stats status=OK duration=32ms
+[2026-01-28 05:27:44.167] REQ [1015] method=health
+[2026-01-28 05:27:44.220] RES [1015] method=health status=OK duration=52ms
+[2026-01-28 05:27:44.314] REQ [1016] method=stats
+[2026-01-28 05:27:44.342] RES [1016] method=stats status=OK duration=28ms
+[2026-01-28 05:28:44.168] REQ [1017] method=health
+[2026-01-28 05:28:44.221] RES [1017] method=health status=OK duration=52ms
+[2026-01-28 05:28:44.255] REQ [1018] method=stats
+[2026-01-28 05:28:44.288] RES [1018] method=stats status=OK duration=33ms
+[2026-01-28 05:29:59.568] REQ [1019] method=health
+[2026-01-28 05:29:59.653] RES [1019] method=health status=OK duration=85ms
+[2026-01-28 05:29:59.766] REQ [1020] method=stats
+[2026-01-28 05:29:59.944] RES [1020] method=stats status=OK duration=177ms
+[2026-01-28 10:05:19.202] === Glowbabe Backend v1.5.0 started ===
+[2026-01-28 10:05:19.255] PID: 1089067
+[2026-01-28 10:05:19.299] Workspace: /home/dsi/projects/gognee
+[2026-01-28 10:05:19.344] Database: /home/dsi/projects/gognee/.glowbabe/glowbabe.db
+[2026-01-28 10:05:19.388] RES [2] method=init status=OK duration=190ms
+[2026-01-28 10:17:15.051] REQ [3] method=health
+[2026-01-28 10:17:15.077] RES [3] method=health status=OK duration=25ms
+[2026-01-28 10:17:15.111] REQ [4] method=stats
+[2026-01-28 10:17:15.144] RES [4] method=stats status=OK duration=33ms
+[2026-01-28 10:17:17.895] REQ [5] method=health
+[2026-01-28 10:17:17.944] RES [5] method=health status=OK duration=49ms
+[2026-01-28 10:17:17.982] REQ [6] method=stats
+[2026-01-28 10:17:18.011] RES [6] method=stats status=OK duration=29ms
+[2026-01-28 10:18:17.896] REQ [7] method=health
+[2026-01-28 10:18:17.943] RES [7] method=health status=OK duration=47ms
+[2026-01-28 10:18:17.977] REQ [8] method=stats
+[2026-01-28 10:18:18.010] RES [8] method=stats status=OK duration=33ms
+[2026-01-28 10:18:27.888] REQ [9] method=health
+[2026-01-28 10:18:27.932] RES [9] method=health status=OK duration=44ms
+[2026-01-28 10:18:27.966] REQ [10] method=stats
+[2026-01-28 10:18:28.000] RES [10] method=stats status=OK duration=33ms
+[2026-01-28 10:19:18.357] REQ [11] method=health
+[2026-01-28 10:19:18.423] RES [11] method=health status=OK duration=65ms
+[2026-01-28 10:19:18.482] REQ [12] method=stats
+[2026-01-28 10:19:18.546] RES [12] method=stats status=OK duration=63ms

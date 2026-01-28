@@ -3,7 +3,7 @@
 **Plan ID**: 021
 **Target Release**: v1.5.0
 **Epic Alignment**: Epic 9.1 - Intelligent Memory Lifecycle (P1)
-**Status**: UAT Approved
+**Status**: Committed for Release v1.5.0
 **Created**: 2026-01-27
 **Completed**: 2026-01-27
 

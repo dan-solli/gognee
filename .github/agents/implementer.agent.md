@@ -196,6 +196,20 @@ Best design meeting requirements without over-engineering. Pragmatic craft (good
 14. Document findings/results/issues in implementation doc, not QA reports.
 15. Prepare summary confirming value delivery, including outstanding/blockers.
 
+**Milestone Completion Report (Required)**: Before declaring implementation complete, enumerate ALL plan milestones with status:
+
+| Milestone | Status | Evidence |
+|-----------|--------|----------|
+| M1: [title] | ✅ Complete / ⚠️ Partial / ❌ Not Started | [file/test reference] |
+| M2: [title] | ... | ... |
+
+If ANY milestone is not ✅ Complete:
+1. Explicitly state "PARTIAL IMPLEMENTATION" in handoff
+2. List which milestones remain
+3. Request PM decision: continue, descope, or pause
+
+Do NOT declare "implementation complete" for partial scope without explicit acknowledgment.
+
 ### Local vs Background Mode
 - For small, low-risk changes, run as a local chat session in the current workspace.
 - For larger, multi-file, or long-running work, recommend running as a background agent in an isolated Git worktree and wait for explicit user confirmation via the UI.
