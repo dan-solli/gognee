@@ -441,7 +441,7 @@ func (s *SQLiteGraphStore) AddNode(ctx context.Context, node *Node) error {
 // Also updates last_accessed_at timestamp to track access for decay.
 func (s *SQLiteGraphStore) GetNode(ctx context.Context, id string) (*Node, error) {
 	query := `
-		SELECT id, name, type, description, embedding, created_at, metadata
+		SELECT id, name, type, description, embedding, created_at, metadata, last_accessed_at
 		FROM nodes
 		WHERE id = ?
 	`
@@ -449,6 +449,7 @@ func (s *SQLiteGraphStore) GetNode(ctx context.Context, id string) (*Node, error
 	var node Node
 	var embeddingBytes []byte
 	var metadataJSON []byte
+	var lastAccessed sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&node.ID,
@@ -458,6 +459,7 @@ func (s *SQLiteGraphStore) GetNode(ctx context.Context, id string) (*Node, error
 		&embeddingBytes,
 		&node.CreatedAt,
 		&metadataJSON,
+		&lastAccessed,
 	)
 
 	if err == sql.ErrNoRows {
@@ -482,6 +484,11 @@ func (s *SQLiteGraphStore) GetNode(ctx context.Context, id string) (*Node, error
 		}
 	}
 
+	// Populate LastAccessedAt from query result
+	if lastAccessed.Valid {
+		node.LastAccessedAt = &lastAccessed.Time
+	}
+
 	// Update last_accessed_at timestamp
 	_, err = s.db.ExecContext(ctx, "UPDATE nodes SET last_accessed_at = ? WHERE id = ?", time.Now(), id)
 	if err != nil {
@@ -495,7 +502,7 @@ func (s *SQLiteGraphStore) GetNode(ctx context.Context, id string) (*Node, error
 // FindNodesByName searches for nodes by name using case-insensitive matching.
 func (s *SQLiteGraphStore) FindNodesByName(ctx context.Context, name string) ([]*Node, error) {
 	query := `
-		SELECT id, name, type, description, embedding, created_at, metadata
+		SELECT id, name, type, description, embedding, created_at, metadata, last_accessed_at
 		FROM nodes
 		WHERE LOWER(name) = LOWER(?)
 		ORDER BY created_at, id
@@ -512,6 +519,7 @@ func (s *SQLiteGraphStore) FindNodesByName(ctx context.Context, name string) ([]
 		var node Node
 		var embeddingBytes []byte
 		var metadataJSON []byte
+		var lastAccessed sql.NullTime
 
 		err := rows.Scan(
 			&node.ID,
@@ -521,6 +529,7 @@ func (s *SQLiteGraphStore) FindNodesByName(ctx context.Context, name string) ([]
 			&embeddingBytes,
 			&node.CreatedAt,
 			&metadataJSON,
+			&lastAccessed,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan node: %w", err)
@@ -539,6 +548,11 @@ func (s *SQLiteGraphStore) FindNodesByName(ctx context.Context, name string) ([]
 			if err := json.Unmarshal(metadataJSON, &node.Metadata); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
 			}
+		}
+
+		// Populate LastAccessedAt
+		if lastAccessed.Valid {
+			node.LastAccessedAt = &lastAccessed.Time
 		}
 
 		nodes = append(nodes, &node)

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-02-04
+
+### Fixed
+- **GetNode() Bug (Plan 022)**: `GetNode()` and `FindNodesByName()` now properly SELECT and populate `last_accessed_at` field, enabling accurate access-based memory decay
+
+### Changed
+- **⚠️ BREAKING CHANGE: Decay Features Enabled by Default (Plan 022)**
+  - `Config.DecayEnabled` now defaults to `true` (was `false`)
+  - `Config.AccessFrequencyEnabled` now defaults to `true` (was `false`)
+  - `Config.ReferenceAccessCount` now defaults to `10` (was `0`)
+  - `PruneOptions.PruneSuperseded` now defaults to `true` (was `false`)
+  - **Impact**: Existing integrations using zero-value `Config{}` will now have decay and access frequency tracking enabled automatically
+  - **Migration**: To disable decay, explicitly set `Config{DecayEnabled: false}` in your configuration
+  - **Rationale**: Memory lifecycle features should work out-of-the-box without requiring explicit configuration
+
+### Known Issues
+- Access counts may be double-incremented during search operations (`DecayingSearcher.Search()` + `Gognee.Search()` both call access tracking). This inflates frequency heat but does not break functionality. Fix deferred to future release.
+
 ## [1.5.0] - 2026-01-27
 
 ### Added

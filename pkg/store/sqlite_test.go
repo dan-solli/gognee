@@ -1276,3 +1276,106 @@ func TestSQLiteGraphStore_DB(t *testing.T) {
 		t.Error("Shared connection should allow vector operations")
 	}
 }
+
+// TestGetNode_HydratesLastAccessedAt verifies GetNode() populates LastAccessedAt (Plan 022 M1).
+func TestGetNode_HydratesLastAccessedAt(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	ctx := context.Background()
+
+	// Add a node
+	node := &Node{
+		ID:        "test-node-access",
+		Name:      "Test Node",
+		Type:      "Concept",
+		CreatedAt: time.Now(),
+	}
+	if err := store.AddNode(ctx, node); err != nil {
+		t.Fatalf("AddNode failed: %v", err)
+	}
+
+	// Update access time
+	accessTime := time.Date(2026, 2, 1, 12, 0, 0, 0, time.UTC)
+	_, err := store.db.ExecContext(ctx, "UPDATE nodes SET last_accessed_at = ? WHERE id = ?", accessTime, "test-node-access")
+	if err != nil {
+		t.Fatalf("Failed to set last_accessed_at: %v", err)
+	}
+
+	// GetNode should populate LastAccessedAt
+	retrieved, err := store.GetNode(ctx, "test-node-access")
+	if err != nil {
+		t.Fatalf("GetNode failed: %v", err)
+	}
+
+	if retrieved.LastAccessedAt == nil {
+		t.Fatal("Expected LastAccessedAt to be populated, got nil")
+	}
+
+	// Verify the timestamp is close to what we set (within 1 second tolerance)
+	diff := retrieved.LastAccessedAt.Sub(accessTime)
+	if diff < -time.Second || diff > time.Second {
+		t.Errorf("LastAccessedAt mismatch: got %v, want %v", retrieved.LastAccessedAt, accessTime)
+	}
+}
+
+// TestFindNodesByName_HydratesLastAccessedAt verifies FindNodesByName() populates LastAccessedAt (Plan 022 M1).
+func TestFindNodesByName_HydratesLastAccessedAt(t *testing.T) {
+	store := setupTestStore(t)
+	defer store.Close()
+
+	ctx := context.Background()
+
+	// Add two nodes with same name
+	base := time.Now()
+	n1 := &Node{
+		ID:        "node-1",
+		Name:      "TestName",
+		Type:      "Concept",
+		CreatedAt: base,
+	}
+	n2 := &Node{
+		ID:        "node-2",
+		Name:      "TestName",
+		Type:      "Concept",
+		CreatedAt: base.Add(1 * time.Hour),
+	}
+	if err := store.AddNode(ctx, n1); err != nil {
+		t.Fatalf("AddNode(n1) failed: %v", err)
+	}
+	if err := store.AddNode(ctx, n2); err != nil {
+		t.Fatalf("AddNode(n2) failed: %v", err)
+	}
+
+	// Update access time for node-2
+	accessTime := time.Date(2026, 2, 1, 14, 0, 0, 0, time.UTC)
+	_, err := store.db.ExecContext(ctx, "UPDATE nodes SET last_accessed_at = ? WHERE id = ?", accessTime, "node-2")
+	if err != nil {
+		t.Fatalf("Failed to set last_accessed_at: %v", err)
+	}
+
+	// FindNodesByName should populate LastAccessedAt
+	nodes, err := store.FindNodesByName(ctx, "TestName")
+	if err != nil {
+		t.Fatalf("FindNodesByName failed: %v", err)
+	}
+
+	if len(nodes) != 2 {
+		t.Fatalf("Expected 2 nodes, got %d", len(nodes))
+	}
+
+	// node-1 should have nil LastAccessedAt
+	if nodes[0].LastAccessedAt != nil {
+		t.Errorf("Expected node-1 LastAccessedAt to be nil, got %v", nodes[0].LastAccessedAt)
+	}
+
+	// node-2 should have LastAccessedAt populated
+	if nodes[1].LastAccessedAt == nil {
+		t.Fatal("Expected node-2 LastAccessedAt to be populated, got nil")
+	}
+
+	diff := nodes[1].LastAccessedAt.Sub(accessTime)
+	if diff < -time.Second || diff > time.Second {
+		t.Errorf("node-2 LastAccessedAt mismatch: got %v, want %v", nodes[1].LastAccessedAt, accessTime)
+	}
+}
