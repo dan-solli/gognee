@@ -211,3 +211,50 @@ func TestPrune_EmptyDatabase(t *testing.T) {
 		t.Errorf("NodesEvaluated: got %d, want 0", result.NodesEvaluated)
 	}
 }
+
+// TestPrune_PruneSupersededDefault tests that PruneSuperseded defaults to true (Plan 022 M3).
+func TestPrune_PruneSupersededDefault(t *testing.T) {
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	ctx := context.Background()
+
+	// Create a memory
+	memInput := MemoryInput{
+		Topic:   "Test Memory",
+		Context: "This will be superseded",
+	}
+	mem, err := g.AddMemory(ctx, memInput)
+	if err != nil {
+		t.Fatalf("AddMemory failed: %v", err)
+	}
+
+	// Mark it as superseded and set updated_at to 40 days ago
+	oldTime := time.Now().Add(-40 * 24 * time.Hour)
+	_, err = g.memoryStore.DB().ExecContext(ctx,
+		"UPDATE memories SET status = 'Superseded', updated_at = ? WHERE id = ?",
+		oldTime, mem.MemoryID)
+	if err != nil {
+		t.Fatalf("Failed to update memory status: %v", err)
+	}
+
+	// Prune with empty options (should default PruneSuperseded=true, SupersededAgeDays=30)
+	result, err := g.Prune(ctx, PruneOptions{})
+	if err != nil {
+		t.Fatalf("Prune failed: %v", err)
+	}
+
+	// Should have pruned 1 superseded memory
+	if result.SupersededMemoriesPruned != 1 {
+		t.Errorf("SupersededMemoriesPruned: got %d, want 1 (default should be true)", result.SupersededMemoriesPruned)
+	}
+
+	// Verify the memory was actually deleted
+	_, err = g.memoryStore.GetMemory(ctx, mem.MemoryID)
+	if err == nil {
+		t.Error("Expected memory to be deleted, but it still exists")
+	}
+}

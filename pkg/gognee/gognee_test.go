@@ -178,9 +178,9 @@ func TestNew_DecayDefaults(t *testing.T) {
 	}
 	defer g.Close()
 
-	// Verify defaults are applied
-	if g.config.DecayEnabled {
-		t.Error("DecayEnabled should default to false")
+	// Verify defaults are applied (Plan 022 M2: decay now defaults to ON)
+	if !g.config.DecayEnabled {
+		t.Error("DecayEnabled should default to true (Plan 022 M2)")
 	}
 	if g.config.DecayHalfLifeDays != 30 {
 		t.Errorf("DecayHalfLifeDays: got %d, want 30", g.config.DecayHalfLifeDays)
@@ -237,16 +237,9 @@ func TestNew_DecayValidation(t *testing.T) {
 			wantErr: true,
 			errMsg:  "DecayBasis must be 'access' or 'creation'",
 		},
-		{
-			name: "decay_disabled_ignores_invalid_config",
-			config: Config{
-				DBPath:            ":memory:",
-				DecayEnabled:      false,
-				DecayHalfLifeDays: -5,
-				DecayBasis:        "invalid",
-			},
-			wantErr: false, // Should not validate when decay is disabled
-		},
+		// Note: "decay_disabled_ignores_invalid_config" test removed in Plan 022 M2
+		// because DecayEnabled now defaults to true and cannot be easily disabled
+		// due to Go's zero-value behavior for booleans.
 	}
 
 	for _, tt := range tests {
@@ -268,6 +261,40 @@ func TestNew_DecayValidation(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestNew_DecayDefaultsActivated verifies that decay features are enabled by default (Plan 022 M2).
+func TestNew_DecayDefaultsActivated(t *testing.T) {
+	g, err := New(Config{DBPath: ":memory:"})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	defer g.Close()
+
+	// Verify decay is enabled by default
+	if !g.config.DecayEnabled {
+		t.Error("DecayEnabled should default to true (Plan 022 M2)")
+	}
+
+	// Verify AccessFrequencyEnabled is enabled by default
+	if !g.config.AccessFrequencyEnabled {
+		t.Error("AccessFrequencyEnabled should default to true (Plan 022 M2)")
+	}
+
+	// Verify ReferenceAccessCount defaults to 10
+	if g.config.ReferenceAccessCount != 10 {
+		t.Errorf("ReferenceAccessCount: got %d, want 10 (Plan 022 M2)", g.config.ReferenceAccessCount)
+	}
+
+	// Verify half-life still defaults to 30
+	if g.config.DecayHalfLifeDays != 30 {
+		t.Errorf("DecayHalfLifeDays: got %d, want 30", g.config.DecayHalfLifeDays)
+	}
+
+	// Verify decay basis still defaults to "access"
+	if g.config.DecayBasis != "access" {
+		t.Errorf("DecayBasis: got %q, want 'access'", g.config.DecayBasis)
 	}
 }
 

@@ -3966,3 +3966,10 @@
 [2026-01-28 10:19:18.423] RES [11] method=health status=OK duration=65ms
 [2026-01-28 10:19:18.482] REQ [12] method=stats
 [2026-01-28 10:19:18.546] RES [12] method=stats status=OK duration=63ms
+[2026-02-02 06:11:58.959] === Glowbabe Backend v1.5.0 started ===
+[2026-02-02 06:11:59.013] PID: 877665
+[2026-02-02 06:11:59.046] Workspace: /home/dsi/projects/gognee
+[2026-02-02 06:11:59.098] Database: /home/dsi/projects/gognee/.glowbabe/glowbabe.db
+[2026-02-02 06:11:59.136] RES [2] method=init status=OK duration=229ms
+[2026-02-02 06:12:33.624] REQ [3] method=shutdown
+[2026-02-02 06:12:33.690] RES [3] method=shutdown status=OK duration=66ms

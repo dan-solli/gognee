@@ -217,6 +217,18 @@ func NewWithClients(cfg Config, embClient embeddings.EmbeddingClient, llmClient 
 		cfg.DecayBasis = "access"
 	}
 
+	// Apply decay defaults (Plan 022 M2: defaults changed to ON)
+	// Note: This means users must explicitly set DecayEnabled=false to disable
+	if !cfg.DecayEnabled {
+		cfg.DecayEnabled = true
+	}
+	if !cfg.AccessFrequencyEnabled {
+		cfg.AccessFrequencyEnabled = true
+	}
+	if cfg.ReferenceAccessCount == 0 {
+		cfg.ReferenceAccessCount = 10
+	}
+
 	// Validate decay configuration (before applying half-life default)
 	if cfg.DecayEnabled {
 		if cfg.DecayHalfLifeDays < 0 {
@@ -857,6 +869,11 @@ func (g *Gognee) Stats() (Stats, error) {
 func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, error) {
 	result := &PruneResult{
 		NodeIDs: make([]string, 0),
+	}
+
+	// Apply default: PruneSuperseded defaults to true (Plan 022 M3)
+	if !opts.PruneSuperseded {
+		opts.PruneSuperseded = true
 	}
 
 	// Set default values for supersession options (M5: Plan 021)

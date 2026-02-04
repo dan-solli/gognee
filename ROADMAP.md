@@ -22,12 +22,12 @@ Build a Go library package that provides AI assistants with:
 
 | Phase | Focus | Duration | Status |
 |-------|-------|----------|--------|
-| [Phase 1](#phase-1-foundation) | Foundation (Chunking + Embeddings) | 1 week | ✅ Delivered (v0.1.0) |
-| [Phase 2](#phase-2-entity-extraction) | Entity Extraction via LLM | 1 week | ✅ Delivered (v0.2.0) |
-| [Phase 3](#phase-3-relationship-extraction) | Relationship Extraction | 1 week | ✅ Delivered (v0.3.0) |
-| [Phase 4](#phase-4-storage-layer) | Storage Layer (SQLite Graph + Vector) | 1 week | ✅ Delivered (v0.4.0) |
-| [Phase 5](#phase-5-search) | Hybrid Search | 1 week | ✅ Delivered (v0.5.0) |
-| [Phase 6](#phase-6-integration) | Full Pipeline + API | 1-2 weeks | ✅ Delivered (v0.6.0) |
+| [Phase 1](#phase-1-foundation) | Foundation (Chunking + Embeddings) | 1 week | ✅ Delivered (v1.0.0) |
+| [Phase 2](#phase-2-entity-extraction) | Entity Extraction via LLM | 1 week | ✅ Delivered (v1.0.0) |
+| [Phase 3](#phase-3-relationship-extraction) | Relationship Extraction | 1 week | ✅ Delivered (v1.0.0) |
+| [Phase 4](#phase-4-storage-layer) | Storage Layer (SQLite Graph + Vector) | 1 week | ✅ Delivered (v1.0.0) |
+| [Phase 5](#phase-5-search) | Hybrid Search | 1 week | ✅ Delivered (v1.0.0) |
+| [Phase 6](#phase-6-integration) | Full Pipeline + API | 1-2 weeks | ✅ Delivered (v1.0.0) |
 
 **Total estimated time: 6-8 weeks for MVP**
 **Elapsed time: 6 weeks (All phases complete - MVP delivered)**
