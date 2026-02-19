@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-02-19
+
+### Added
+- **Structured Logging for Memory Decay (Plan 023)**: Observable memory decay subsystem via `log/slog`
+  - Injectable `WithLogger(*slog.Logger)` method on Gognee (fluent API pattern)
+  - Startup: decay configuration logged at INFO level when logger is set
+  - Prune operations: options logged at INFO (start/complete), per-item evaluation at DEBUG
+  - Search decay: per-node evaluation logged at DEBUG (DecayingSearcher)
+  - Zero overhead when logger is nil (no allocations, no formatting)
+  - Structured attributes (no string interpolation) for machine-parseable logs
+  - Logger propagates from Gognee to DecayingSearcher automatically
+
+### Fixed
+- **Security Fix**: Entity type normalization log no longer includes entity names (user content)
+  - Previous: `"entity 'Sensitive Name' has unrecognized type…"`
+  - Fixed: `"entity with unrecognized type 'Unknown' normalizing to Concept"`
+  - Prevents inadvertent exposure of extracted entity names in library logs
+
+### Security
+- Logging follows strict data classification per security review:
+  - **NEVER logged**: Topic, Context, Decisions, Rationale, Node.Name, Node.Description, API keys
+  - **Safe to log**: IDs (UUIDs), timestamps, counts, status enums, config values (decay settings)
+- All log statements audited to ensure no sensitive content leakage
+
 ## [1.5.2] - 2026-02-04
 
 ### Fixed

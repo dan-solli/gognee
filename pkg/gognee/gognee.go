@@ -1,4 +1,3 @@
-// Package gognee provides a knowledge graph memory system for AI assistants
 package gognee
 
 import (
@@ -6,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -77,6 +77,7 @@ type Gognee struct {
 	lastCognified     time.Time
 	metricsCollector  metrics.Collector // Optional metrics collector
 	traceExporter     tracepkg.Exporter // Optional trace exporter (Plan 016 M4)
+	logger            *slog.Logger      // Optional structured logger (Plan 023 M2)
 }
 
 // RetentionPolicyDef defines the parameters for a retention policy (M6: Plan 021)
@@ -327,6 +328,31 @@ func (g *Gognee) WithMetricsCollector(collector metrics.Collector) *Gognee {
 // WithTraceExporter sets the trace exporter for this Gognee instance (Plan 016 M4)
 func (g *Gognee) WithTraceExporter(exporter tracepkg.Exporter) *Gognee {
 	g.traceExporter = exporter
+	return g
+}
+
+// WithLogger sets the structured logger for this Gognee instance (Plan 023 M2).
+// When nil, logging is disabled (zero overhead).
+// Propagates logger to DecayingSearcher if present.
+func (g *Gognee) WithLogger(logger *slog.Logger) *Gognee {
+	g.logger = logger
+	
+	// Log decay configuration at startup (M4)
+	if g.logger != nil {
+		g.logger.LogAttrs(context.Background(), slog.LevelInfo, "decay config initialized",
+			slog.Bool("decay_enabled", g.config.DecayEnabled),
+			slog.Int("half_life_days", g.config.DecayHalfLifeDays),
+			slog.String("decay_basis", g.config.DecayBasis),
+			slog.Bool("access_frequency_enabled", g.config.AccessFrequencyEnabled),
+			slog.Int("reference_access_count", g.config.ReferenceAccessCount),
+		)
+	}
+	
+	// M8: Propagate to DecayingSearcher
+	if ds, ok := g.searcher.(*search.DecayingSearcher); ok {
+		ds.SetLogger(logger)
+	}
+	
 	return g
 }
 
@@ -867,6 +893,9 @@ func (g *Gognee) Stats() (Stats, error) {
 // Edges connected to pruned nodes are also deleted (cascade).
 // Use DryRun to preview what would be pruned without actually deleting.
 func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, error) {
+	// M6: Capture start time for duration logging
+	startTime := time.Now()
+	
 	result := &PruneResult{
 		NodeIDs: make([]string, 0),
 	}
@@ -879,6 +908,17 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 	// Set default values for supersession options (M5: Plan 021)
 	if opts.PruneSuperseded && opts.SupersededAgeDays == 0 {
 		opts.SupersededAgeDays = 30 // Default grace period
+	}
+
+	// M6: Log prune start at INFO level with options
+	if g.logger != nil {
+		g.logger.LogAttrs(ctx, slog.LevelInfo, "prune started",
+			slog.Bool("dry_run", opts.DryRun),
+			slog.Int("max_age_days", opts.MaxAgeDays),
+			slog.Float64("min_decay_score", opts.MinDecayScore),
+			slog.Bool("prune_superseded", opts.PruneSuperseded),
+			slog.Int("superseded_age_days", opts.SupersededAgeDays),
+		)
 	}
 
 	// **Phase 1: Evaluate and prune memories based on supersession and retention policies (M5, M8: Plan 021)**
@@ -902,6 +942,16 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 
 			// M9: Never prune pinned memories
 			if summary.Pinned {
+				// M6: Log memory evaluation (DEBUG) - pinned memories skipped
+				if g.logger != nil {
+					g.logger.LogAttrs(ctx, slog.LevelDebug, "memory evaluated",
+						slog.String("memory_id", summary.ID),
+						slog.String("status", summary.Status),
+						slog.String("retention_policy", ""), // Will be filled after GetMemory
+						slog.Bool("pinned", true),
+						slog.String("decision", "keep_pinned"),
+					)
+				}
 				continue
 			}
 
@@ -909,6 +959,13 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 			// For this we need to fetch the full memory record to check retention_until
 			memory, err := g.memoryStore.GetMemory(ctx, summary.ID)
 			if err != nil {
+				// M6: Log fetch error (WARN)
+				if g.logger != nil {
+					g.logger.LogAttrs(ctx, slog.LevelWarn, "memory fetch failed",
+						slog.String("memory_id", summary.ID),
+						slog.String("error", "fetch_failed"),
+					)
+				}
 				continue // Skip on error
 			}
 
@@ -917,12 +974,32 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 				if now.After(*memory.RetentionUntil) {
 					shouldPrune = true
 				} else {
+					// M6: Log memory evaluation (DEBUG) - retention_until not yet reached
+					if g.logger != nil {
+						g.logger.LogAttrs(ctx, slog.LevelDebug, "memory evaluated",
+							slog.String("memory_id", summary.ID),
+							slog.String("status", summary.Status),
+							slog.String("retention_policy", memory.RetentionPolicy),
+							slog.Bool("pinned", summary.Pinned),
+							slog.String("decision", "keep_retention_until"),
+						)
+					}
 					continue // Not yet expired
 				}
 			}
 
 			// M8: permanent retention policy - never pruned
 			if memory.RetentionPolicy == "permanent" {
+				// M6: Log memory evaluation (DEBUG) - permanent policy
+				if g.logger != nil {
+					g.logger.LogAttrs(ctx, slog.LevelDebug, "memory evaluated",
+						slog.String("memory_id", summary.ID),
+						slog.String("status", summary.Status),
+						slog.String("retention_policy", "permanent"),
+						slog.Bool("pinned", summary.Pinned),
+						slog.String("decision", "keep_permanent"),
+					)
+				}
 				continue
 			}
 
@@ -942,6 +1019,21 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 				if ageDays >= opts.SupersededAgeDays {
 					shouldPrune = true
 				}
+			}
+
+			// M6: Log memory evaluation decision (DEBUG)
+			if g.logger != nil {
+				decision := "keep"
+				if shouldPrune {
+					decision = "prune"
+				}
+				g.logger.LogAttrs(ctx, slog.LevelDebug, "memory evaluated",
+					slog.String("memory_id", summary.ID),
+					slog.String("status", summary.Status),
+					slog.String("retention_policy", memory.RetentionPolicy),
+					slog.Bool("pinned", summary.Pinned),
+					slog.String("decision", decision),
+				)
 			}
 
 			if shouldPrune {
@@ -983,6 +1075,7 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 
 	for _, node := range allNodes {
 		shouldPrune := false
+		var decayScore float64 = 1.0
 
 		// Check MaxAgeDays criterion
 		if opts.MaxAgeDays > 0 {
@@ -1008,10 +1101,33 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 				age = now.Sub(node.CreatedAt)
 			}
 
-			decayScore := calculateDecay(age, g.config.DecayHalfLifeDays)
+			decayScore = calculateDecay(age, g.config.DecayHalfLifeDays)
 			if decayScore < opts.MinDecayScore {
 				shouldPrune = true
 			}
+		}
+
+		// M6: Log node evaluation (DEBUG) - safe attributes only (no Name, Description)
+		if g.logger != nil {
+			var age time.Duration
+			if g.config.DecayBasis == "access" && node.LastAccessedAt != nil {
+				age = now.Sub(*node.LastAccessedAt)
+			} else {
+				age = now.Sub(node.CreatedAt)
+			}
+			ageDays := int(age.Hours() / 24)
+			
+			decision := "keep"
+			if shouldPrune {
+				decision = "prune"
+			}
+
+			g.logger.LogAttrs(ctx, slog.LevelDebug, "node evaluated",
+				slog.String("node_id", node.ID),
+				slog.Int("age_days", ageDays),
+				slog.Float64("decay_score", decayScore),
+				slog.String("decision", decision),
+			)
 		}
 
 		if shouldPrune {
@@ -1031,6 +1147,20 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 				result.EdgesPruned += len(edges)
 			}
 		}
+		
+		// M6: Log prune completion summary at INFO level (dry run path)
+		if g.logger != nil {
+			durationMs := time.Since(startTime).Milliseconds()
+			g.logger.LogAttrs(ctx, slog.LevelInfo, "prune complete",
+				slog.Int("memories_evaluated", result.MemoriesEvaluated),
+				slog.Int("memories_pruned", result.SupersededMemoriesPruned),
+				slog.Int("nodes_evaluated", result.NodesEvaluated),
+				slog.Int("nodes_pruned", result.NodesPruned),
+				slog.Int("edges_pruned", result.EdgesPruned),
+				slog.Int64("duration_ms", durationMs),
+			)
+		}
+		
 		return result, nil
 	}
 
@@ -1061,6 +1191,19 @@ func (g *Gognee) Prune(ctx context.Context, opts PruneOptions) (*PruneResult, er
 			// Continue on error
 			continue
 		}
+	}
+
+	// M6: Log prune completion summary at INFO level
+	if g.logger != nil {
+		durationMs := time.Since(startTime).Milliseconds()
+		g.logger.LogAttrs(ctx, slog.LevelInfo, "prune complete",
+			slog.Int("memories_evaluated", result.MemoriesEvaluated),
+			slog.Int("memories_pruned", result.SupersededMemoriesPruned),
+			slog.Int("nodes_evaluated", result.NodesEvaluated),
+			slog.Int("nodes_pruned", result.NodesPruned),
+			slog.Int("edges_pruned", result.EdgesPruned),
+			slog.Int64("duration_ms", durationMs),
+		)
 	}
 
 	return result, nil

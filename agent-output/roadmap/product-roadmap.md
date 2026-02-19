@@ -7,6 +7,7 @@
 ## Change Log
 | Date & Time | Change | Rationale |
 |-------------|--------|-----------|
+| 2026-02-18 | Created Epic 10.1: Memory Decay Observability (slog-based structured logging for decay subsystem) | Decay/prune runs silently; consumers cannot verify effectiveness for long-running assistants |
 | 2026-01-27 | Plan 021 APPROVED after Critic revisions; search instrumentation added, bidirectional supersession confirmed, real-time velocity locked | Critic found HIGH-severity gap: access tracking must capture search path (primary read). Resolved with BatchUpdateMemoryAccess. Handoff to Implementer. |
 | 2026-01-27 | Plan 021 drafted for Epic 9.1 (v1.1.0); 13 milestones, 4 sub-epics | Implementation planning for Intelligent Memory Lifecycle |
 | 2026-01-27 | Created Epic 9.1 (Intelligent Memory Lifecycle) with 7 sub-epics | Strategic analysis: calendar-time decay insufficient; need access-frequency scoring, explicit supersession, semantic consolidation, retention policies, pinning, conflict detection, provenance weighting |
@@ -770,6 +771,84 @@ memory_importance = base_importance + sum(linked_entity_importances × edge_weig
 **Status Notes**:
 - 2026-01-27: Epic created based on strategic discussion about memory thinning beyond calendar-time decay
 - 2026-01-27: Plan 021 drafted with 13 milestones covering sub-epics 9.1.1, 9.1.2, 9.1.3, 9.1.5; pending Critic review
+
+---
+
+### Epic 10.1: Memory Decay Observability (Post-MVP)
+**Priority**: P1
+**Status**: Planned
+**Target Release**: v1.6.0
+
+**User Story**:
+As a developer running a long-lived AI assistant with gognee,
+I want structured logging for the memory decay subsystem,
+So that I can verify decay/prune operations are working correctly and debug retention issues without guessing.
+
+**Business Value**:
+- **Operational visibility**: Currently decay/prune runs silently; consumers have no way to confirm it's working
+- **Debug capability**: When memories unexpectedly disappear or persist, logs provide audit trail
+- **Tuning feedback**: Logs reveal whether decay parameters (half-life, thresholds) are appropriate for workload
+- **Production confidence**: Long-running AI assistants need observability to trust memory management
+
+**Dependencies**:
+- v1.5.0 complete (Intelligent Memory Lifecycle with access frequency, supersession, retention policies)
+- Go `log/slog` available (standard library since Go 1.21)
+
+**Technical Approach**:
+- Injectable `slog.Logger` interface (consumers provide their logger; default to no-op)
+- Three logging domains:
+  1. **Configuration** (INFO): Log decay settings at startup (DecayEnabled, DecayHalfLifeDays, DecayBasis, etc.)
+  2. **Evaluation** (DEBUG): Log per-node/memory decay score calculations during Search
+  3. **Actions** (INFO): Log prune operations (nodes/edges/memories evaluated, pruned, skipped)
+
+**Acceptance Criteria** (outcome-focused):
+- [ ] **Injectable logger**: `Config.Logger` field of type `*slog.Logger`; nil means no logging
+- [ ] **Startup logging**: When decay enabled, log config values (DecayEnabled, DecayHalfLifeDays, DecayBasis, AccessFrequencyEnabled, ReferenceAccessCount) at INFO level
+- [ ] **DecayingSearcher logging**: At DEBUG level, log per-result decay evaluation (nodeID, age, basis, score, frequency_multiplier, final_score)
+- [ ] **Prune startup logging**: At INFO level, log prune options (MaxAgeDays, MinDecayScore, DryRun, PruneSuperseded, SupersededAgeDays)
+- [ ] **Prune evaluation logging**: At DEBUG level, log each node/memory evaluation (id, status, retention_policy, age, score, decision)
+- [ ] **Prune summary logging**: At INFO level, log prune outcome (memories_evaluated, nodes_evaluated, nodes_pruned, edges_pruned, superseded_memories_pruned)
+- [ ] **Structured fields**: Use slog Attrs for all logged values (not string interpolation)
+- [ ] **Zero overhead when disabled**: When Logger is nil, no logging code executes (check-then-log pattern)
+- [ ] **Test coverage ≥80%** for logging paths
+- [ ] **Documentation**: README section on enabling decay logging with slog example
+
+**Constraints**:
+- Use Go standard library `log/slog` only (no third-party logging frameworks)
+- DEBUG logs must be opt-in (not emitted at default log level)
+- Logging must not change functional behavior (pure observability)
+- No new dependencies
+
+**Logging Schema Examples**:
+
+```go
+// Startup (INFO)
+logger.Info("decay enabled",
+    slog.Bool("enabled", true),
+    slog.Int("half_life_days", 30),
+    slog.String("basis", "access"),
+    slog.Bool("access_frequency_enabled", true),
+    slog.Int("reference_access_count", 10))
+
+// Decay evaluation (DEBUG)
+logger.Debug("decay score calculated",
+    slog.String("node_id", nodeID),
+    slog.Duration("age", age),
+    slog.Float64("decay_score", decayScore),
+    slog.Float64("frequency_multiplier", heatMultiplier),
+    slog.Float64("final_score", finalScore))
+
+// Prune summary (INFO)
+logger.Info("prune completed",
+    slog.Int("memories_evaluated", result.MemoriesEvaluated),
+    slog.Int("nodes_evaluated", result.NodesEvaluated),
+    slog.Int("nodes_pruned", result.NodesPruned),
+    slog.Int("edges_pruned", result.EdgesPruned),
+    slog.Bool("dry_run", opts.DryRun))
+```
+
+**Status Notes**:
+- 2026-02-18: Epic created based on user request for decay subsystem observability
 
 ---
 

@@ -250,13 +250,14 @@ func TestEntityExtractorExtract_UnknownTypeNormalization(t *testing.T) {
 		t.Errorf("Expected type to be normalized to 'Concept', got %s", result[0].Type)
 	}
 
-	// Verify warning was logged
+	// Verify warning was logged (M10: entity NAMES must not be logged per security fix)
 	logOutput := logBuf.String()
 	if !strings.Contains(logOutput, "gognee:") {
 		t.Errorf("Expected log to contain 'gognee:' prefix, got: %s", logOutput)
 	}
-	if !strings.Contains(logOutput, "SomeProblemInstance") {
-		t.Errorf("Expected log to contain entity name 'SomeProblemInstance', got: %s", logOutput)
+	// M10 SECURITY: entity names must NOT appear in logs
+	if strings.Contains(logOutput, "SomeProblemInstance") {
+		t.Errorf("SECURITY VIOLATION: log must NOT contain entity name 'SomeProblemInstance', got: %s", logOutput)
 	}
 	if !strings.Contains(logOutput, "UnknownType") {
 		t.Errorf("Expected log to contain original type 'UnknownType', got: %s", logOutput)

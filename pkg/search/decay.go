@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"log/slog"
 	"math"
 	"time"
 
@@ -16,9 +17,10 @@ type DecayingSearcher struct {
 	memoryStore            store.MemoryStore
 	enabled                bool
 	halfLifeDays           int
-	basis                  string // "access" or "creation"
-	accessFrequencyEnabled bool   // M2: Enable access frequency decay (Plan 021)
-	referenceAccessCount   int    // M2: Reference access count for heat calculation (Plan 021)
+	basis                  string      // "access" or "creation"
+	accessFrequencyEnabled bool        // M2: Enable access frequency decay (Plan 021)
+	referenceAccessCount   int         // M2: Reference access count for heat calculation (Plan 021)
+	logger                 *slog.Logger // M8: Optional structured logger (Plan 023)
 }
 
 // NewDecayingSearcher creates a new decaying searcher wrapper.
@@ -52,6 +54,12 @@ func NewDecayingSearcher(
 		accessFrequencyEnabled: accessFrequencyEnabled,
 		referenceAccessCount:   referenceAccessCount,
 	}
+}
+
+// SetLogger sets the structured logger for this DecayingSearcher (M8: Plan 023).
+// When nil, logging is disabled (zero overhead).
+func (d *DecayingSearcher) SetLogger(logger *slog.Logger) {
+	d.logger = logger
 }
 
 // Search performs search with decay applied to scores.

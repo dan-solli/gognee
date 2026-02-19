@@ -94,7 +94,9 @@ func (e *EntityExtractor) Extract(ctx context.Context, text string) ([]Entity, e
 
 		// Normalize unknown types to Concept with warning
 		if !validEntityTypes[entity.Type] {
-			log.Printf("gognee: entity %q has unrecognized type %q, normalizing to Concept", entity.Name, entity.Type)
+			// M10: Security fix - don't log entity.Name (user content)
+			// Log type only (safe per security review)
+			log.Printf("gognee: entity with unrecognized type %q, normalizing to Concept", entity.Type)
 			entities[i].Type = "Concept"
 		}
 	}

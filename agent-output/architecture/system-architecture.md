@@ -1,6 +1,6 @@
 # gognee - System Architecture
 
-**Last Updated**: 2026-01-10
+**Last Updated**: 2026-02-18
 **Architecture Owner**: Architect mode agent
 **Status**: Current state documented; reconciled against implemented Memory CRUD
 
@@ -9,6 +9,7 @@
 |------|--------|-----------|
 | 2026-01-02 | Created initial system architecture doc and diagram | Repo had plans/implementations but no architecture SSOT; required before Epic 8.1 planning |
 | 2026-01-10 | Reconciled architecture vs. implemented Memory CRUD (v1.0.0+) and follow-up releases | Architecture docs must reflect what IS, not what was planned |
+| 2026-02-18 | Pre-planning review: structured logging for decay subsystem (023) | Approved log/slog with caller-injection; see 023-memory-decay-structured-logging-architecture-findings.md |
 
 ## Purpose
 `gognee` is an importable Go library that provides persistent knowledge-graph-backed memory for AI assistants. It is designed to be embedded into downstream apps (notably Glowbabe).

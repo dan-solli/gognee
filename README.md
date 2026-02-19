@@ -503,6 +503,87 @@ Examples with 30-day half-life:
    - Product documentation: 90-180 days
    - Reference knowledge: 365+ days
 
+## Observability and Logging (v1.6.0+)
+
+gognee v1.6.0 adds structured logging for the memory decay subsystem using Go's standard `log/slog` package. Logging is completely optional and has zero overhead when not enabled.
+
+### Configuration
+
+Enable logging by injecting a `*slog.Logger` via `WithLogger()`:
+
+```go
+import "log/slog"
+
+// Create a logger (JSON or text format)
+logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+    Level: slog.LevelInfo, // or LevelDebug for verbose logging
+}))
+
+// Create Gognee instance
+g, err := gognee.New(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Inject logger - triggers configuration logging
+g.WithLogger(logger)
+```
+
+### What Gets Logged
+
+**Startup (INFO level):**
+- Decay configuration when `WithLogger()` is called
+- Config values: `decay_enabled`, `half_life_days`, `decay_basis`, `access_frequency_enabled`, `reference_access_count`
+
+**Prune Operations:**
+- Start (INFO): options (`dry_run`, `max_age_days`, `min_decay_score`, etc.)
+- Per-memory evaluation (DEBUG): `memory_id`, `status`, `retention_policy`, `pinned`, `decision`
+- Per-node evaluation (DEBUG): `node_id`, `age_days`, `decay_score`, `decision`
+- Complete (INFO): summary with counts (`memories_evaluated`, `memories_pruned`, `nodes_pruned`, `duration_ms`)
+
+**Search Decay (DEBUG level):**
+- Per-node decay score calculation
+- Retention policy overrides
+- Filtered nodes (score < threshold)
+
+### Log Levels
+
+- **INFO**: Operational events (config, prune start/complete)
+- **DEBUG**: Detailed evaluation (per-memory, per-node decisions)
+- **WARN**: Recoverable errors (node fetch failures)
+
+**Recommendation:** Use `LevelInfo` for production, `LevelDebug` for troubleshooting decay behavior.
+
+### Security and Privacy
+
+Logging follows strict data classification to prevent sensitive content exposure:
+
+**NEVER logged:**
+- Memory content fields: `Topic`, `Context`, `Decisions`, `Rationale`
+- Node content fields: `Name`, `Description`
+- Credentials: `OpenAIKey`, API tokens
+- User-supplied metadata values
+
+**Safe to log:**
+- IDs: `memory_id`, `node_id`, `edge_id` (UUIDs are opaque)
+- Timestamps: `created_at`, `updated_at`, `last_accessed_at`
+- Counts and scores: `access_count`, `decay_score`, `nodes_pruned`
+- Enums: `status` (Active/Superseded), `retention_policy` (permanent/standard/ephemeral)
+- Config values: decay settings, thresholds
+
+### Example Log Output
+
+```json
+{"time":"2026-02-18T10:00:00Z","level":"INFO","msg":"decay config initialized","decay_enabled":true,"half_life_days":30,"decay_basis":"access","access_frequency_enabled":true,"reference_access_count":10}
+{"time":"2026-02-18T10:05:00Z","level":"INFO","msg":"prune started","dry_run":false,"max_age_days":90,"min_decay_score":0.1}
+{"time":"2026-02-18T10:05:00Z","level":"DEBUG","msg":"node evaluated","node_id":"abc123","age_days":120,"decay_score":0.03,"decision":"prune"}
+{"time":"2026-02-18T10:05:01Z","level":"INFO","msg":"prune complete","memories_evaluated":245,"memories_pruned":12,"nodes_evaluated":1523,"nodes_pruned":89,"edges_pruned":142,"duration_ms":1234}
+```
+
+### Disabling Logging
+
+Simply don't call `WithLogger()`. When the logger is `nil` (default), all logging code paths are no-ops with zero allocations.
+
 ## Memory Management (v1.0.0+)
 
 gognee v1.0.0 introduces **first-class memory CRUD** - a higher-level abstraction for managing discrete units of knowledge with full lifecycle management and provenance tracking.
