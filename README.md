@@ -1,5 +1,11 @@
 **This project is 100% AI-slop. Use at own risk for life and limb.**
 
+> **⚠️ ARCHIVED — This repository has been merged into [glowbabe](https://github.com/dan-solli/glowbabe)**
+>
+> All gognee packages now live under `backend/pkg/` in the glowbabe monorepo.
+> This repository is no longer maintained. All future development happens in glowbabe.
+
+
 # gognee - A Go Knowledge Graph Memory System
 
 > **gognee** is an importable Go library that provides persistent knowledge graph memory for AI assistants. It enables applications to extract, store, and retrieve information relationships using a combination of vector search and graph traversal.
